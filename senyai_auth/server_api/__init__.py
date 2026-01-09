@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal
+from typing import Literal, AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ class AppSettings(BaseModel):
     secret_key: str
     algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = 30
+    echo: bool = False
 
 
 def get_settings():
@@ -27,7 +28,7 @@ def get_settings():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = app.dependency_overrides.get(get_settings, get_settings)()
-    async_engine = create_async_engine(settings.db_url, echo=True)
+    async_engine = create_async_engine(settings.db_url, echo=settings.echo)
     app.state.async_session = sessionmaker[AsyncSession](
         async_engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -42,6 +43,11 @@ async def lifespan(app: FastAPI):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with app.state.async_session() as session:
+        yield session
 
 
 app = FastAPI(version="0.1.0", lifespan=lifespan)

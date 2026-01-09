@@ -4,6 +4,7 @@ from unittest import TestCase, IsolatedAsyncioTestCase
 from sqlalchemy.exc import IntegrityError
 
 from . import app, get_settings, AppSettings
+from .db import Project, Role, User
 
 
 def test_get_settings():
@@ -59,8 +60,6 @@ authorization_str: str | None = None
 
 class WorkflowTest(IsolatedAsyncioTestCase):
     async def create_test_user(self):
-        from .db import User, Project, Role
-
         salt = ")mEzH=k-BU>poq%uz8=d"
         password = "realitycheck23"
         test_admin = User(
@@ -142,12 +141,58 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             json=project,
         )
         self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {"project_id": 2})
         response = client.post(
             "/project",
             headers={"Authorization": authorization_str},
             json=project,
         )
         self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json(), {"detail": "project already exists"})
 
-    def test_03_edit_project(self):
+    async def test_03_edit_project(self):
         assert isinstance(authorization_str, str), authorization_str
+        project = {
+            "description": "Customizable MDI application",
+        }
+        response = client.patch(
+            "/project/2",
+            headers={"Authorization": authorization_str},
+            json=project,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), None)
+        async with app.state.async_session() as session:
+            project_db = await session.get(Project, 2)
+        self.assertEqual(project_db.description, project["description"])
+
+    async def test_04_add_role(self):
+        assert isinstance(authorization_str, str), authorization_str
+        role = {
+            "name": "test_role",
+            "project_id": 2,
+            "permissions_api": "user",
+        }
+        response = client.post(
+            "/role",
+            headers={"Authorization": authorization_str},
+            json=role,
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {"role_id": 2})
+
+    async def test_05_update_role(self):
+        assert isinstance(authorization_str, str), authorization_str
+        role = {
+            "description": "Update",
+        }
+        response = client.patch(
+            "/role/2",
+            headers={"Authorization": authorization_str},
+            json=role,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), None)
+        async with app.state.async_session() as session:
+            role_db = await session.get(Role, 2)
+        self.assertEqual(role_db.description, role["description"])

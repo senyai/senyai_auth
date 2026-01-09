@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Literal
 from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -152,6 +153,9 @@ class MemberRole(Base):
     # member: Mapped[Member] = relationship()
 
 
+PermissionsAPI = Literal["", "superadmin", "user"]
+
+
 class Role(Base):
     """
     Exists to add list of `Role`s to a project.
@@ -165,7 +169,8 @@ class Role(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey(Project.id), nullable=False
     )
-    permissions_api: Mapped[str] = mapped_column(default="")
+    description: Mapped[str] = mapped_column(nullable=False, default="")
+    permissions_api: Mapped[PermissionsAPI] = mapped_column(default="")
     "Access these API calls"
     permissions_git: Mapped[str] = mapped_column(default="")
     permissions_storage: Mapped[str] = mapped_column(default="")
