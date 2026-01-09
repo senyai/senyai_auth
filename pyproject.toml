@@ -1,0 +1,39 @@
+[project]
+name = "senyai_auth"
+dynamic = ["version"]
+authors = [
+  { name="Arseniy Terekhin", email="senyai@gmail.com" },
+]
+description = "Experimental AUTH server"
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+  "aiosqlite>=0.22.1",
+  "fastapi[standard]>=0.128.0",
+  "pyargon2>=1.1.2",
+  "pyasn1>=0.6.1",
+  "pydantic>=2.12.5",
+  "PyJWT>=2.10.1",
+  "SQLAlchemy>=2.0.45",
+  "zxcvbn>=4.5.0",
+]
+[project.urls]
+"Homepage" = "https://github.com/iitpvisionlab/senyai_auth"
+"Bug Reports" = "https://github.com/iitpvisionlab/senyai_auth/issues"
+"Source" = "https://github.com/iitpvisionlab/senyai_auth"
+[build-system]
+requires = [
+  "setuptools",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+[tool.black]
+line-length = 79
+target-version = ["py312"]
+[tool.setuptools.dynamic]
+version = {attr = "senyai_auth.__version__"}
