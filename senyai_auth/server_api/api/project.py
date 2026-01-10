@@ -3,54 +3,59 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from pydantic import (
     AfterValidator,
+    BaseModel,
+    Field,
     constr,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from .blocklist import not_in_blocklist
-from ..db import Project, User
+from ..db import Project, User, auth_for_project_stmt, PermissionsAPI
 from .. import get_async_session
-from ..auth import get_current_user
+from ..auth import get_current_user, not_authorized_exception
 
 
 router = APIRouter()
 
-type ProjectId = Annotated[
+type Name = Annotated[
     str,
+    Field(description="Name as it will be used in url string"),
     constr(min_length=2, max_length=32, to_lower=True, strip_whitespace=True),
     AfterValidator(not_in_blocklist),
 ]
 
-type ProjectName = Annotated[
+type DisplayName = Annotated[
     str,
+    Field(description="Name as it will be displayed in the title"),
     constr(min_length=3, max_length=79, strip_whitespace=True),
     AfterValidator(not_in_blocklist),
 ]
 
-type ProjectDescription = Annotated[str, constr(min_length=0, max_length=1024)]
+type Description = Annotated[str, constr(max_length=1024)]
 
 
-class ProjectCreate(BaseModel):
-    project_id: ProjectId
-    name: ProjectName
-    description: ProjectDescription
+class ProjectCreate(BaseModel, strict=True):
+    name: Name
+    display_name: DisplayName
+    description: Description
+    parent_id: int
 
     def make_project(self):
         return Project(
-            project_id=self.project_id,
             name=self.name,
+            display_name=self.display_name,
             description=self.description,
+            parent_id=self.parent_id,
         )
 
 
-class ProjectUpdate(BaseModel):
-    project_id: ProjectId | None = None
-    name: ProjectName | None = None
-    description: ProjectDescription | None = None
+class ProjectUpdate(BaseModel, strict=True):
+    name: Name | None = None
+    display_name: DisplayName | None = None
+    description: Description | None = None
 
     def update(self, project: Project):
         for key, value in self.model_dump(
@@ -60,12 +65,19 @@ class ProjectUpdate(BaseModel):
 
 
 @router.post("/project", tags=["project"])
-async def project(
+async def new_project(
     project: ProjectCreate,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    # ToDo: ensure correct right
+    permission = (
+        await session.execute(
+            auth_for_project_stmt,
+            {"user_id": user.id, "project_id": project.parent_id},
+        )
+    ).scalar()
+    if permission < PermissionsAPI.user:
+        raise not_authorized_exception
     project_db = project.make_project()
     session.add(project_db)
     try:
@@ -89,7 +101,17 @@ async def update_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
-    # ToDo: ensure correct right
+    permission = (
+        await session.execute(
+            auth_for_project_stmt,
+            {"user_id": user.id, "project_id": project_id},
+        )
+    ).scalar()
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    # Don't allow manager to change project name
+    if project.name is not None and permission < PermissionsAPI.admin:
+        raise not_authorized_exception
     project_db = await session.get(Project, project_id)
     if project_db is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -104,12 +126,19 @@ async def get_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    # ToDo: ensure correct right
+    permission = (
+        await session.execute(
+            auth_for_project_stmt,
+            {"user_id": user.id, "project_id": project_id},
+        )
+    ).scalar()
+    if permission < PermissionsAPI.user:
+        raise not_authorized_exception
     project_db = await session.get(Project, project_id)
     if project_db is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return {
-        "project_id": project_db.project_id,
         "name": project_db.name,
+        "display_name": project_db.display_name,
         "description": project_db.description,
     }

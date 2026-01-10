@@ -14,6 +14,12 @@ from sqlalchemy import select
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+not_authorized_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="User is not authorized to perform this action",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
 
 class Token(BaseModel):
     access_token: str
