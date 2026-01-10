@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Literal
 from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -10,7 +9,15 @@ from sqlalchemy.orm import (
 )
 from datetime import datetime
 from pyargon2 import hash as pyargon2_hash
-from sqlalchemy import select
+from sqlalchemy import (
+    select,
+    bindparam,
+    type_coerce,
+    Integer,
+    TypeDecorator,
+    Dialect,
+)
+from enum import IntFlag
 
 
 class Base(DeclarativeBase):
@@ -68,6 +75,9 @@ class User(Base):
             password, self.salt
         )
 
+    def __repr__(self) -> str:
+        return f"{super().__repr__()[:-1]} username={self.username!r}>"
+
 
 class Member(Base):
     """
@@ -107,8 +117,8 @@ class Project(Base):
     __tablename__ = "project"  # Organizational Unit in LDAP terms
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[str] = mapped_column(index=True, unique=True)
-    name: Mapped[str] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(index=True, unique=True)
+    display_name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
@@ -129,6 +139,9 @@ class Project(Base):
         "Project", back_populates="parent", cascade="all, delete-orphan"
     )
     roles = relationship("Role", back_populates="project")
+
+    def __repr__(self) -> str:
+        return f"{super().__repr__()[:-1]} project_id={self.name}!r>"
 
 
 class MemberRole(Base):
@@ -153,7 +166,56 @@ class MemberRole(Base):
     # member: Mapped[Member] = relationship()
 
 
-PermissionsAPI = Literal["", "superadmin", "user"]
+class PermissionsAPI(IntFlag):
+    """
+    Warning! Do not add or remove elements from this class
+
+    Permissions:
+    """
+
+    none = 0
+
+    user = 1
+    """
+    * Change password
+    * Change display_name
+    * List projects
+    """
+
+    manager = 2
+    """
+    * Create and edit roles
+    * Manage users
+    * Send invites
+    """
+
+    admin = 4
+    """
+    * Create projects
+    """
+
+    superadmin = 8
+    """
+    * All, but ideally this permission is never used
+    """
+
+
+class PermissionsAPIType(TypeDecorator[PermissionsAPI]):
+    impl = Integer
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: PermissionsAPI | None, dialect: Dialect
+    ) -> int | None:
+        return None if value is None else value.value
+
+    def process_result_value(
+        self, value: str | int | None, dialect: Dialect
+    ) -> PermissionsAPI:
+        if value is None:
+            return PermissionsAPI.none
+        assert isinstance(value, str | int), repr(value)
+        return PermissionsAPI(int(value))
 
 
 class Role(Base):
@@ -170,7 +232,9 @@ class Role(Base):
         ForeignKey(Project.id), nullable=False
     )
     description: Mapped[str] = mapped_column(nullable=False, default="")
-    permissions_api: Mapped[PermissionsAPI] = mapped_column(default="")
+    permissions_api: Mapped[PermissionsAPI] = mapped_column(
+        PermissionsAPIType, default=PermissionsAPI.none
+    )
     "Access these API calls"
     permissions_git: Mapped[str] = mapped_column(default="")
     permissions_storage: Mapped[str] = mapped_column(default="")
@@ -182,19 +246,49 @@ class Role(Base):
         User, secondary=MemberRole.__table__
     )
 
+    def __repr__(self) -> str:
+        return (
+            f"{super().__repr__()[:-1]} name={self.name!r} "
+            f"api={self.permissions_api!r} "
+            f"git={self.permissions_git!r} "
+            f"storage={self.permissions_storage!r} "
+            f"extra={self.permissions_extra!r} "
+        )
 
-def auth_for_user_stmt(
-    project_id: int,
+
+def create_auth_for_project_stmt(
+    # user: User,
+    # project_id: int,
 ):
-    base = select(Project.id, Project.parent_id).where(
-        Project.id == project_id
+    """
+    Let's say user wants to add a `Role`. We must ensure he or she have
+    permissions. That's the intent of this function.
+    """
+    project_id = bindparam("project_id", type_=Integer)
+    user_id = bindparam("user_id", type_=Integer)
+    base = (
+        select(Project.id, Project.parent_id)
+        .where(Project.id == project_id)
+        .cte(name="base", recursive=True)
     )
-    cte = base.cte(name="anc", recursive=True)
-    cte_alias = cte.alias()
-    rec_member = select(Project.id, Project.parent_id).where(
-        Project.id == cte_alias.c.parent_id
+    user_projects = base.union_all(
+        select(Project.id, Project.parent_id).join(
+            base, Project.id == base.c.parent_id
+        ),
     )
-    cte = cte.union_all(rec_member)
-    # stmt = select(Project).join(cte, Project.id == cte.c.id)
+    return (
+        select(
+            type_coerce(
+                func.sum(func.distinct(Role.permissions_api)),
+                PermissionsAPIType,
+            )
+        )
+        .join(user_projects, user_projects.c.id == Role.project_id)
+        .join(
+            MemberRole,
+            (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+        )
+    )
 
-    return cte
+
+auth_for_project_stmt = create_auth_for_project_stmt()

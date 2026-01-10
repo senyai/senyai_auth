@@ -104,4 +104,4 @@ async def whoami(
         .where(Member.user == user)
     )
     permissions_api = await session.execute(stmt)
-    return UserInfo.from_user(user, [tuple(row) for row in permissions_api])
+    return UserInfo.from_user(user, [(name, perm.name) for name, perm in permissions_api])

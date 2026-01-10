@@ -4,7 +4,7 @@ from unittest import TestCase, IsolatedAsyncioTestCase
 from sqlalchemy.exc import IntegrityError
 
 from . import app, get_settings, AppSettings
-from .db import Project, Role, User
+from .db import Project, Role, User, PermissionsAPI
 
 
 def test_get_settings():
@@ -70,8 +70,8 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             email="test_admin@example.com",
         )
         root_project = Project(
-            project_id="root",
             name="root",
+            display_name="root",
             description="All projects must be ancestors of this project",
         )
         async with app.state.async_session() as session:
@@ -85,7 +85,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             role = Role(
                 name="admin",
                 project=root_project,
-                permissions_api="superadmin",  # has no restrictions on api
+                permissions_api=PermissionsAPI.superadmin,  # has no restrictions on api
             )
             session.add(role)
             # add a admin admin role
@@ -131,9 +131,10 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     def test_02_add_project(self):
         assert isinstance(authorization_str, str), authorization_str
         project = {
-            "project_id": "gmc",
-            "name": "General Markup Creator",
+            "name": "gmc",
+            "display_name": "General Markup Creator",
             "description": "",
+            "parent_id": 1,
         }
         response = client.post(
             "/project",
