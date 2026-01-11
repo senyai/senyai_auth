@@ -14,16 +14,30 @@ from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from zxcvbn import zxcvbn
 
-from ..db import Role, User, MemberRole
-from ..auth import get_current_user
+from ..db import User, all_permissions_stmt, PermissionsAPI
+from ..auth import get_current_user, not_authorized_exception
 from .. import get_async_session
 
 
 router = APIRouter()
+
+
+def check_password(
+    password: str, username: str, email: str, display_name: str
+) -> None:
+    validation = zxcvbn(
+        password=password,
+        user_inputs=[username, email, display_name],
+    )
+    feedback = validation["feedback"]
+    if validation["score"] <= 2 or validation["guesses_log10"] < 8:
+        raise ValueError(
+            f"Password is too weak {feedback['warning']}, "
+            f"{''.join(feedback['suggestions'])}"
+        )
 
 
 class CreateUserModel(BaseModel):
@@ -34,7 +48,7 @@ class CreateUserModel(BaseModel):
             max_length=32,
             to_lower=True,
             strip_whitespace=True,
-            pattern=r"^[a-z_]+$",
+            pattern=r"^[a-z_-]+$",
         ),
         AfterValidator(not_in_blocklist),
     ]
@@ -62,16 +76,12 @@ class CreateUserModel(BaseModel):
 
     @model_validator(mode="after")
     def check_strong_password(self):
-        validation = zxcvbn(
-            password=self.password.get_secret_value(),
-            user_inputs=[self.username, self.email, self.display_name],
+        check_password(
+            self.password.get_secret_value(),
+            self.username,
+            self.email,
+            self.display_name,
         )
-        feedback = validation["feedback"]
-        if validation["score"] <= 2 or validation["guesses_log10"] < 8:
-            raise ValueError(
-                f"Password is too weak {feedback['warning']}, "
-                f"{''.join(feedback['suggestions'])}"
-            )
         return self
 
     def make_user(self) -> User:
@@ -102,13 +112,12 @@ async def user(
     * Superadmin
     * User, using special one time auth link. will be implemented later
     """
-    # ToDo: ensure correct right
-    auth_stmt = select(Role.name).where(
-        Role.permissions_api == "superadmin", MemberRole.user == auth_user
-    )
+    permissions = (
+        await session.execute(all_permissions_stmt, {"user_id": auth_user.id})
+    ).scalar()
+    if not permissions & PermissionsAPI.superadmin:
+        raise not_authorized_exception
     user_db = user.make_user()
-    dbg = await session.execute(auth_stmt)
-    breakpoint()
     session.add(user_db)
     try:
         await session.commit()

@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import Role, User, auth_for_project_stmt, PermissionsAPI
@@ -115,3 +116,40 @@ async def update_role(
     role.update(role_db)
     session.add(role_db)
     await session.commit()
+
+
+@router.delete("/role/{role_id}", tags=["role"])
+async def delete_role(
+    role_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    role_db = await session.get(Role, role_id)
+    if role_db is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    permission = (
+        await session.execute(
+            auth_for_project_stmt,
+            {"user_id": user.id, "project_id": role_db.project_id},
+        )
+    ).scalar()
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    await session.delete(role_db)
+    await session.flush()
+
+
+@router.post("/role/{role}/user/{user}", tags=["role"])
+async def add_user_to_a_role(
+    role: int | str,
+    user: int | str,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    breakpoint()
+    if isinstance(role, int):
+        role_db = await session.get(Role, role)
+    else:
+        role_db = (
+            await session.execute(select(Role).where(Role.name == role))
+        ).scalar()

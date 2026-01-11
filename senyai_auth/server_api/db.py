@@ -256,25 +256,19 @@ class Role(Base):
         )
 
 
-def create_auth_for_project_stmt(
-    # user: User,
-    # project_id: int,
-):
+def create_auth_for_project_stmt():
     """
     Let's say user wants to add a `Role`. We must ensure he or she have
     permissions. That's the intent of this function.
     """
     project_id = bindparam("project_id", type_=Integer)
     user_id = bindparam("user_id", type_=Integer)
-    base = (
-        select(Project.id, Project.parent_id)
-        .where(Project.id == project_id)
-        .cte(name="base", recursive=True)
+    id_and_parent = select(Project.id, Project.parent_id)
+    base = id_and_parent.where(Project.id == project_id).cte(
+        name="base", recursive=True
     )
     user_projects = base.union_all(
-        select(Project.id, Project.parent_id).join(
-            base, Project.id == base.c.parent_id
-        ),
+        id_and_parent.join(base, Project.id == base.c.parent_id),
     )
     return (
         select(
@@ -291,4 +285,18 @@ def create_auth_for_project_stmt(
     )
 
 
+def create_all_permissions_stmt():
+    user_id = bindparam("user_id", type_=Integer)
+    return select(
+        type_coerce(
+            func.sum(func.distinct(Role.permissions_api)),
+            PermissionsAPIType,
+        )
+    ).join(
+        MemberRole,
+        (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+    )
+
+
 auth_for_project_stmt = create_auth_for_project_stmt()
+all_permissions_stmt = create_all_permissions_stmt()
