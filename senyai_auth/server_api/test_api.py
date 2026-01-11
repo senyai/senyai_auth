@@ -197,3 +197,19 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         async with app.state.async_session() as session:
             role_db = await session.get(Role, 2)
         self.assertEqual(role_db.description, role["description"])
+
+    async def test_06_create_admin_for_project(self):
+        assert isinstance(authorization_str, str), authorization_str
+        user = {
+            "username": "john",
+            "password": "jiBBerish",
+            "display_name": "John Blackpool",
+            "email": "johnnyB@example.com",
+        }
+        response = client.post(
+            "/user",
+            headers={"Authorization": authorization_str},
+            json=user,
+        )
+        self.assertEqual(response.json(), {"user_id": 2})
+        self.assertEqual(response.status_code, 201)
