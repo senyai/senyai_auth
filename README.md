@@ -6,5 +6,6 @@ Work in progress.
 ## debugging
 
 ```bash
+python -m senyai_auth.server_api init
 fastapi dev --no-reload -e 'senyai_auth.server_api:app'
 ```

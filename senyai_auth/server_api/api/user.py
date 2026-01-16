@@ -112,9 +112,9 @@ async def user(
     * Superadmin
     * User, using special one time auth link. will be implemented later
     """
-    permissions = (
-        await session.execute(all_permissions_stmt, {"user_id": auth_user.id})
-    ).scalar()
+    permissions = await session.scalar(
+        all_permissions_stmt, {"user_id": auth_user.id}
+    )
     if not permissions & PermissionsAPI.superadmin:
         raise not_authorized_exception
     user_db = user.make_user()

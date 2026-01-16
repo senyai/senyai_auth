@@ -89,7 +89,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             )
             session.add(role)
             # add a admin admin role
-            role.users.append(test_admin)
+            role.members.append(test_admin)
             try:
                 await session.commit()
             except IntegrityError:
@@ -192,8 +192,8 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=role,
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), None)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
         async with app.state.async_session() as session:
             role_db = await session.get(Role, 2)
         self.assertEqual(role_db.description, role["description"])
@@ -213,3 +213,26 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.json(), {"user_id": 2})
         self.assertEqual(response.status_code, 201)
+
+    async def test_07_add_admin_for_project(self):
+        assert isinstance(authorization_str, str), authorization_str
+        users = [2]
+        response = client.post(
+            "/role/2/users",
+            headers={"Authorization": authorization_str},
+            json=users,
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, b"")
+
+    async def test_07_delete_admin_from_project(self):
+        assert isinstance(authorization_str, str), authorization_str
+        users = [2]
+        response = client.request(
+            "DELETE",
+            "/role/2/users",
+            headers={"Authorization": authorization_str},
+            json=users,
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json(), {"deleted": 1})
