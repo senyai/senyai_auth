@@ -11,10 +11,11 @@ from pydantic import (
     SecretStr,
 )
 from .blocklist import not_in_blocklist
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
 from zxcvbn import zxcvbn
 
 from ..db import User, all_permissions_stmt, PermissionsAPI
@@ -132,7 +133,7 @@ async def user(
 
 @router.delete("/user", tags=["user"])
 async def delete_user(
-    user: CreateUserModel,
+    user_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -141,4 +142,16 @@ async def delete_user(
 
     Should only be possible by superadmin
     """
-    raise NotImplementedError()
+    permissions = await session.scalar(
+        all_permissions_stmt, {"user_id": auth_user.id}
+    )
+    if not permissions & PermissionsAPI.superadmin:
+        raise not_authorized_exception
+    affected = await session.execute(delete(User).where(User.id == user_id))
+    return Response(
+        status_code=(
+            status.HTTP_204_NO_CONTENT
+            if affected.rowcount == 1
+            else status.HTTP_404_NOT_FOUND
+        ),
+    )
