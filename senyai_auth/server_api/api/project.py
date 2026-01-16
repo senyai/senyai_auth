@@ -70,12 +70,10 @@ async def new_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": project.parent_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project.parent_id},
+    )
     if permission < PermissionsAPI.user:
         raise not_authorized_exception
     project_db = project.make_project()
@@ -101,12 +99,10 @@ async def update_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": project_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     # Don't allow manager to change project name
@@ -126,12 +122,10 @@ async def get_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": project_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
     if permission < PermissionsAPI.user:
         raise not_authorized_exception
     project_db = await session.get(Project, project_id)

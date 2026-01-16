@@ -31,6 +31,28 @@ class Base(DeclarativeBase):
 # * https://docs.sqlalchemy.org/en/20/orm/relationship_api.html
 
 
+class MemberRole(Base):
+    """
+    Assign a role user to a user. Must be managed carefully, because users can be
+    removed from `Project` `Member`s
+    """
+
+    __tablename__ = "member_role"
+
+    # ToDo: remove this primary key
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    role_id: Mapped[int] = mapped_column(ForeignKey("role.id"), nullable=False)
+
+    __table_args__ = (UniqueConstraint(user_id, role_id),)
+
+    role: Mapped[Role] = relationship()
+    user: Mapped[User] = relationship(back_populates="member_roles")
+    # member: Mapped[Member] = relationship()
+
+
 class User(Base):
     __tablename__ = "user"
 
@@ -51,11 +73,12 @@ class User(Base):
     )
     last_login_at: Mapped[datetime | None]
 
-    member_links = relationship(
-        "Member", back_populates="user", cascade="all, delete-orphan"
-    )
     # optional convenience:
     # projects = relationship("Project", secondary="member", viewonly=True)
+
+    member_roles: Mapped[list[MemberRole]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     @staticmethod
     def create_password_hash(password: str, salt: str):
@@ -98,19 +121,6 @@ class Member(Base):
 
     user: Mapped[User] = relationship()
     project: Mapped[Project] = relationship()
-    # member_roles: Mapped[list["MemberRole"]] = relationship(
-    #     "MemberRole",
-    #     primaryjoin="Member.id == MemberRole.role_id",
-    #     back_populates="member",
-    #     cascade="all, delete-orphan",
-    #     passive_deletes=True,
-    # )
-    # member_roles: Mapped[list[MemberRole]] = relationship(
-    #     primaryjoin="Member.user_id==MemberRole.user_id"
-    #     # back_populates="member",
-    #     # cascade="all, delete-orphan",
-    #     # passive_deletes=True
-    # )
 
 
 class Project(Base):
@@ -142,28 +152,6 @@ class Project(Base):
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} project_id={self.name}!r>"
-
-
-class MemberRole(Base):
-    """
-    Assign a role user to a user. Must be managed carefully, because users can be
-    removed from `Project` `Member`s
-    """
-
-    __tablename__ = "member_role"
-
-    # ToDo: remove this primary key
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE"), nullable=False
-    )
-    role_id: Mapped[int] = mapped_column(ForeignKey("role.id"), nullable=False)
-
-    __table_args__ = (UniqueConstraint(user_id, role_id),)
-
-    role: Mapped[Role] = relationship()
-    user: Mapped[User] = relationship()
-    # member: Mapped[Member] = relationship()
 
 
 class PermissionsAPI(IntFlag):
@@ -242,8 +230,10 @@ class Role(Base):
     idx_uniq_name_project = UniqueConstraint(name, project_id)
 
     project: Mapped[Project] = relationship(back_populates="roles")
-    users: Mapped[list[User]] = relationship(
-        User, secondary=MemberRole.__table__
+
+    members: Mapped[list[User]] = relationship(
+        User,
+        secondary=MemberRole.__table__,
     )
 
     def __repr__(self) -> str:

@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Response
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..db import Role, User, auth_for_project_stmt, PermissionsAPI
+from ..db import Role, User, auth_for_project_stmt, PermissionsAPI, MemberRole
 from ..auth import get_current_user, not_authorized_exception
 from .. import get_async_session
 from .project import Name, Description
@@ -56,12 +56,10 @@ async def new_role(
     """
     ## Create Role for a project
     """
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": role.project_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": role.project_id},
+    )
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     role_db = role.make_role()
@@ -105,17 +103,16 @@ async def update_role(
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": role_db.project_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": role_db.project_id},
+    )
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     role.update(role_db)
     session.add(role_db)
     await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/role/{role_id}", tags=["role"])
@@ -127,29 +124,65 @@ async def delete_role(
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
-    permission = (
-        await session.execute(
-            auth_for_project_stmt,
-            {"user_id": user.id, "project_id": role_db.project_id},
-        )
-    ).scalar()
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": role_db.project_id},
+    )
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     await session.delete(role_db)
     await session.flush()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/role/{role}/user/{user}", tags=["role"])
-async def add_user_to_a_role(
-    role: int | str,
-    user: int | str,
+@router.post("/role/{role_id}/users", tags=["role"])
+async def add_users_to_a_role(
+    role_id: int,
+    user_ids: list[int],
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    breakpoint()
-    if isinstance(role, int):
-        role_db = await session.get(Role, role)
-    else:
-        role_db = (
-            await session.execute(select(Role).where(Role.name == role))
-        ).scalar()
+    role_db = await session.get(Role, role_id)
+    if role_db is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": role_db.project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    # ToDo: uid are unchecked - fix that
+    member_roles = [MemberRole(user_id=uid, role=role_db) for uid in user_ids]
+    session.add_all(member_roles)
+    await session.commit()
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.delete("/role/{role_id}/users", tags=["role"])
+async def remove_users_from_role(
+    role_id: int,
+    user_ids: list[int],
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    role_db = await session.get(Role, role_id)
+    if role_db is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": role_db.project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    affected = await session.execute(
+        delete(MemberRole).where(
+            MemberRole.role_id == role_id, MemberRole.role_id.in_(user_ids)
+        )
+    )
+    await session.commit()
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"deleted": affected.rowcount},
+    )
