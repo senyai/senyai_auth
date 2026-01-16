@@ -67,13 +67,13 @@ async def projects(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    raise NotImplementedError()
-    # session.add(project_db)
-    # try:
-    #     await session.commit()
-    # except IntegrityError:
-    #     raise ValueError("project already exists")
-    # return project_db.id
+    """
+    ## List projects user belong to
+    """
+    projects = await session.scalars(
+        select(Project).where(Project.members.contains(user))
+    )
+    return [{"id": project.id, "name": project.name} for project in projects]
 
 
 class UserInfo(BaseModel):
