@@ -10,12 +10,13 @@ from sqlalchemy.orm import (
 from datetime import datetime
 from pyargon2 import hash as pyargon2_hash
 from sqlalchemy import (
-    select,
     bindparam,
-    type_coerce,
-    Integer,
-    TypeDecorator,
     Dialect,
+    Integer,
+    select,
+    String,
+    type_coerce,
+    TypeDecorator,
 )
 from enum import IntFlag
 
@@ -138,17 +139,17 @@ class Project(Base):
     )
 
     parent: Mapped[Project | None] = relationship(
-        "Project", remote_side=[id], back_populates="children"
+        remote_side=[id], back_populates="children"
     )
     members: Mapped[list[User]] = relationship(
         User,
         secondary=Member.__table__,
     )
     roles: Mapped[list[Role]] = relationship("Role")
-    children = relationship(
-        "Project", back_populates="parent", cascade="all, delete-orphan"
+    children: Mapped[list[Project]] = relationship(
+        back_populates="parent", cascade="all, delete-orphan"
     )
-    roles = relationship("Role", back_populates="project")
+    roles: Mapped[list[Role]] = relationship(back_populates="project")
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} project_id={self.name}!r>"
@@ -244,6 +245,29 @@ class Role(Base):
             f"storage={self.permissions_storage!r} "
             f"extra={self.permissions_extra!r} "
         )
+
+
+class Invitation(Base):
+    __tablename__ = "invitation"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url_key: Mapped[str] = mapped_column(String(32), unique=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey(Project.id), nullable=False
+    )
+    inviter_id: Mapped[User] = mapped_column(
+        ForeignKey(User.id), nullable=False
+    )
+    prompt: Mapped[str] = mapped_column(nullable=False)
+    default_username: Mapped[str] = mapped_column(nullable=False)
+    default_display_name: Mapped[str] = mapped_column(nullable=False)
+    default_email: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), nullable=False
+    )
+    accepted: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    inviter: Mapped[User] = relationship()
 
 
 def create_auth_for_project_stmt():
