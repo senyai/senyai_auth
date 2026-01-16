@@ -1,0 +1,170 @@
+from __future__ import annotations
+from typing import Annotated
+import os
+import base64
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    constr,
+    Field,
+)
+from .blocklist import not_in_blocklist
+from fastapi import APIRouter, status, Depends, Response
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select
+
+from ..db import User, Invitation
+from ..auth import get_current_user, not_authorized_exception
+from .. import get_async_session
+from ..db import User, auth_for_project_stmt, PermissionsAPI
+
+
+router = APIRouter()
+
+
+def _get_key_32() -> str:
+    """
+    Random url friendly string
+    """
+    return base64.urlsafe_b64encode(os.urandom(24)).decode()
+
+
+class InviteUserModel(BaseModel):
+    project_id: Annotated[
+        int,
+        Field(
+            description="After user accepts invitation,"
+            "it will be added to the project. No roles will be assigned"
+        ),
+    ]
+    prompt: Annotated[
+        str,
+        constr(max_length=1024, strip_whitespace=True),
+        Field(description="Show invitation above user registration form."),
+    ]
+    default_username: Annotated[
+        str,
+        constr(
+            min_length=0,
+            max_length=32,
+            to_lower=True,
+            strip_whitespace=True,
+            pattern=r"^[a-z_-]+$",
+        ),
+        AfterValidator(not_in_blocklist),
+        Field(
+            description="User will have username field filled for convenience."
+        ),
+    ]
+    default_email: Annotated[
+        str,
+        constr(
+            min_length=0,
+            max_length=500,
+            strip_whitespace=True,
+            pattern=r"^\W*$",
+        ),
+        Field(description="For convenience. Should be left empty."),
+    ]
+
+    default_display_name: Annotated[
+        str,
+        constr(
+            min_length=0,
+            max_length=79,
+            strip_whitespace=True,
+            pattern=r"^[\W ]*$",
+        ),
+        Field(
+            description="User will have display_name field filled "
+            "for convenience and to allow to see the name of the person "
+            "who awaits/got invitation"
+        ),
+    ]
+
+    def make_invitation_by(self, inviter: User) -> Invitation:
+        url_key = _get_key_32()
+        return Invitation(
+            url_key=url_key,
+            project_id=self.project_id,
+            inviter=inviter,
+            prompt=self.prompt,
+            default_username=self.default_username,
+            default_display_name=self.default_display_name,
+            default_email=self.default_email,
+        )
+
+
+@router.post("/invite", tags=["invite"])
+async def invite_user(
+    user: InviteUserModel,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": user.project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    invitation_db = user.make_invitation_by(auth_user)
+    session.add(invitation_db)
+    await session.commit()
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"auth_id": invitation_db.url_key},
+    )
+
+
+@router.delete("/invite/{invitation_id}", tags=["invite"])
+async def delete_invitation(
+    invitation_id: int,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": user.project_id},
+    )
+    if permission < PermissionsAPI.superadmin:
+        raise not_authorized_exception
+
+    affected = await session.execute(
+        delete(Invitation).where(Invitation.id == invitation_id)
+    )
+    await session.commit()
+    return Response(
+        status_code=(
+            status.HTTP_202_ACCEPTED
+            if affected.rowcount
+            else status.HTTP_404_NOT_FOUND
+        ),
+    )
+
+
+@router.post("/invites/{project_id}", tags=["invite"])
+async def list_invites(
+    project_id: int,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    invitations = await session.scalars(
+        select(Invitation).where(Invitation.project_id == project_id)
+    )
+    ret = []
+    for invitation in invitations:
+        ret.append({"url_key": invitation.url_key})
+    return ret
+    # return JSONResponse(
+    #     status_code=status.HTTP_200_OK,
+    #     content={"auth_id": invitation_db.url_key},
+    # )

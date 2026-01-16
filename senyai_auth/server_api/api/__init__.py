@@ -5,33 +5,23 @@ Tried https://github.com/fief-dev/fief, but the vibe is off
 from __future__ import annotations
 
 from typing import Annotated
-import os
-import base64
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    constr,
-    Field,
-    model_validator,
-    SecretStr,
-)
-from fastapi import status, Depends
-from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from fastapi import Depends
 from .. import app
-from ..db import User, Project, Member, Role, MemberRole
+from ..db import User, Project, Member, Role
 from ..auth import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 from .user import router as user_router
 from .project import router as project_router
 from .role import router as role_router
+from .invite import router as invite_router
 from .. import get_async_session
 
 app.include_router(user_router)
 app.include_router(project_router)
 app.include_router(role_router)
+app.include_router(invite_router)
 
 
 @app.get("/")
