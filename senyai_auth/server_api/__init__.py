@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 
-class AppSettings(BaseModel):
+class AppSettings(BaseModel, strict=True, frozen=True):
     db_url: str = "sqlite+aiosqlite:///./ldap_test.sqlite"
     # to get a string like this run:
     # openssl rand -hex 32
@@ -50,6 +50,15 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-app = FastAPI(version="0.1.0", title="Senyai Auth", lifespan=lifespan)
+app = FastAPI(
+    version="0.1.0",
+    title="Senyai Auth API",
+    contact={
+        "name": "Arseniy Terekhin",
+        "url": "https://github.com/senyai/senyai_auth",
+        "email": "senyai@gmail.com",
+    },
+    lifespan=lifespan,
+)
 from . import auth as auth
 from . import api as api
