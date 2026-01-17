@@ -135,7 +135,9 @@ async def delete_role(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/role/{role_id}/users", tags=["role"])
+@router.post(
+    "/role/{role_id}/users", status_code=status.HTTP_201_CREATED, tags=["role"]
+)
 async def add_users_to_a_role(
     role_id: int,
     user_ids: list[int],
@@ -159,7 +161,11 @@ async def add_users_to_a_role(
     return Response(status_code=status.HTTP_201_CREATED)
 
 
-@router.delete("/role/{role_id}/users", tags=["role"])
+@router.delete(
+    "/role/{role_id}/users",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["role"],
+)
 async def remove_users_from_role(
     role_id: int,
     user_ids: list[int],
@@ -181,8 +187,7 @@ async def remove_users_from_role(
             MemberRole.role_id == role_id, MemberRole.role_id.in_(user_ids)
         )
     )
+    if affected.rowcount == 0:
+        raise HTTPException(status_code=404, detail="No users were removed")
     await session.commit()
-    return JSONResponse(
-        status_code=status.HTTP_202_ACCEPTED,
-        content={"deleted": affected.rowcount},
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

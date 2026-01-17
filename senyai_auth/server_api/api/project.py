@@ -83,7 +83,7 @@ async def new_project(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="project already exists",
+            detail=f"project '{project.name}' already exists",
         )
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,

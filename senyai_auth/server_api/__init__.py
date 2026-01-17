@@ -50,6 +50,6 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-app = FastAPI(version="0.1.0", lifespan=lifespan)
+app = FastAPI(version="0.1.0", title="Senyai Auth", lifespan=lifespan)
 from . import auth as auth
 from . import api as api

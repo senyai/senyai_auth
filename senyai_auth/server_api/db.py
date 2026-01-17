@@ -113,15 +113,14 @@ class Member(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey("project.id"), nullable=False
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey(User.id), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
-    # idx_uniq_project_user = UniqueConstraint(project_id, user_id)
-    __table_args__ = (UniqueConstraint(project_id, user_id),)
+    idx_uniq_project_user = UniqueConstraint(project_id, user_id)
 
-    user: Mapped[User] = relationship()
-    project: Mapped[Project] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    project: Mapped[Project] = relationship(foreign_keys=[project_id])
 
 
 class Project(Base):
@@ -265,9 +264,15 @@ class Invitation(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
-    accepted: Mapped[bool] = mapped_column(default=False, nullable=False)
+    who_accepted_id: Mapped[int | None] = mapped_column(
+        ForeignKey(User.id), nullable=True
+    )
 
-    inviter: Mapped[User] = relationship()
+    who_accepted: Mapped[User | None] = relationship(
+        foreign_keys=[who_accepted_id]
+    )
+    inviter: Mapped[User] = relationship(foreign_keys=[inviter_id])
+    project: Mapped[Project] = relationship(foreign_keys=[project_id])
 
 
 def create_auth_for_project_stmt():

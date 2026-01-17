@@ -1,5 +1,6 @@
 from __future__ import annotations
 from fastapi.testclient import TestClient
+from fastapi import status
 from unittest import TestCase, IsolatedAsyncioTestCase
 from sqlalchemy.exc import IntegrityError
 
@@ -56,6 +57,7 @@ class TokenFailureTest(TestCase):
 
 
 authorization_str: str | None = None
+invitation_str: str | None = None
 
 
 class WorkflowTest(IsolatedAsyncioTestCase):
@@ -105,7 +107,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                 "password": password,
             },
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         token_body = response.json()
         self.assertIn("access_token", token_body)
         self.assertIn("token_type", token_body)
@@ -117,7 +119,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         response = client.get(
             "/whoami", headers={"Authorization": authorization_str}
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.json(),
             {
@@ -141,15 +143,17 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=project,
         )
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json(), {"project_id": 2})
         response = client.post(
             "/project",
             headers={"Authorization": authorization_str},
             json=project,
         )
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json(), {"detail": "project already exists"})
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(
+            response.json(), {"detail": "project 'gmc' already exists"}
+        )
 
     async def test_03_edit_project(self):
         assert isinstance(authorization_str, str), authorization_str
@@ -161,7 +165,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=project,
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), None)
         async with app.state.async_session() as session:
             project_db = await session.get(Project, 2)
@@ -179,7 +183,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=role,
         )
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json(), {"role_id": 2})
 
     async def test_05_update_role(self):
@@ -192,7 +196,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=role,
         )
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")
         async with app.state.async_session() as session:
             role_db = await session.get(Role, 2)
@@ -212,7 +216,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             json=user,
         )
         self.assertEqual(response.json(), {"user_id": 2})
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     async def test_07_add_admin_for_project(self):
         assert isinstance(authorization_str, str), authorization_str
@@ -222,10 +226,74 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=users,
         )
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.content, b"")
 
-    async def test_07_delete_admin_from_project(self):
+    async def test_08_admin_creates_invitation(self):
+        assert isinstance(authorization_str, str), authorization_str
+        invitation = {
+            "project_id": 2,
+            "prompt": "Welcome",
+            "default_username": "newuser",
+            "default_email": "newuser@example.com",
+            "default_display_name": "New User",
+        }
+        response = client.post(
+            "/invite",
+            headers={"Authorization": authorization_str},
+            json=invitation,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        json = response.json()
+        self.assertIn("url_key", json)
+        self.assertEqual(len(json["url_key"]), 32)
+        global invitation_str
+        invitation_str = json["url_key"]
+
+    async def test_09_user_gets_invitation(self):
+        response = client.get(f"/invite/{invitation_str}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json(),
+            {
+                "display_name": "New User",
+                "email": "newuser@example.com",
+                "prompt": "Welcome",
+                "username": "newuser",
+            },
+        )
+
+    async def test_10_user_accepts_invitation(self):
+        user = {
+            "username": "invited_user",
+            "password": "milkshape3000",
+            "display_name": "Invited User",
+            "email": "ted@example.com",
+        }
+        response = client.post(f"/user/{invitation_str}", json=user)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json(), {"user_id": 3})
+
+    async def test_11_admin_lists_invitations(self):
+        assert isinstance(authorization_str, str), authorization_str
+        project_id = 2
+        response = client.get(
+            f"/invites/{project_id}",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json(),
+            [
+                {
+                    "accepted_id": 3,
+                    "display_name": "New User",
+                    "url_key": invitation_str,
+                }
+            ],
+        )
+
+    async def test_20_delete_admin_from_project(self):
         assert isinstance(authorization_str, str), authorization_str
         users = [2]
         response = client.request(
@@ -234,5 +302,5 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=users,
         )
-        self.assertEqual(response.status_code, 202)
-        self.assertEqual(response.json(), {"deleted": 1})
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
