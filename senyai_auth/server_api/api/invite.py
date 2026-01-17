@@ -9,7 +9,7 @@ from pydantic import (
     Field,
 )
 from .blocklist import not_in_blocklist
-from fastapi import APIRouter, status, Depends, Response
+from fastapi import APIRouter, status, Depends, Response, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
@@ -96,12 +96,21 @@ class InviteUserModel(BaseModel):
         )
 
 
-@router.post("/invite", tags=["invite"])
+class InviteResult(BaseModel, strict=True):
+    url_key: str
+
+
+@router.post("/invite", tags=["invite"], status_code=status.HTTP_201_CREATED)
 async def invite_user(
     user: InviteUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    ## Create new invite
+
+    Only managers can do it
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": user.project_id},
@@ -112,9 +121,37 @@ async def invite_user(
     invitation_db = user.make_invitation_by(auth_user)
     session.add(invitation_db)
     await session.commit()
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={"auth_id": invitation_db.url_key},
+    return InviteResult(url_key=invitation_db.url_key)
+
+
+class InvitationForm(BaseModel, strict=True):
+    prompt: str
+    username: str
+    display_name: str
+    email: str
+
+
+@router.get("/invite/{key}", tags=["invite"])
+async def get_invitation(
+    key: str,
+    session: AsyncSession = Depends(get_async_session),
+) -> InvitationForm:
+    """
+    ## For "Create New User" page
+    """
+    invitation = await session.scalar(
+        select(Invitation).where(
+            Invitation.url_key == key, Invitation.who_accepted_id == None
+        )
+    )
+    if invitation is None:
+        breakpoint()
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    return InvitationForm(
+        prompt=invitation.prompt,
+        username=invitation.default_username,
+        display_name=invitation.default_display_name,
+        email=invitation.default_email,
     )
 
 
@@ -124,6 +161,11 @@ async def delete_invitation(
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    ## Delete a single invite
+
+    Only superadmins can do it
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": user.project_id},
@@ -137,19 +179,30 @@ async def delete_invitation(
     await session.commit()
     return Response(
         status_code=(
-            status.HTTP_202_ACCEPTED
+            status.HTTP_200_OK
             if affected.rowcount
             else status.HTTP_404_NOT_FOUND
         ),
     )
 
 
-@router.post("/invites/{project_id}", tags=["invite"])
+class InviteEntry(BaseModel, strict=True):
+    url_key: str
+    display_name: str
+    accepted_id: int | None
+
+
+@router.get("/invites/{project_id}", tags=["invite"])
 async def list_invites(
     project_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> list[InviteEntry]:
+    """
+    ## List invites for a project.
+
+    Only managers have access to this list.
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": project_id},
@@ -157,14 +210,20 @@ async def list_invites(
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
-    invitations = await session.scalars(
-        select(Invitation).where(Invitation.project_id == project_id)
+    invitations = await session.execute(
+        select(
+            Invitation.url_key,
+            Invitation.default_display_name,
+            Invitation.who_accepted_id,
+        ).where(Invitation.project_id == project_id)
     )
-    ret = []
-    for invitation in invitations:
-        ret.append({"url_key": invitation.url_key})
+    ret: list[InviteEntry] = []
+    for url_key, display_name, accepted_id in invitations:
+        ret.append(
+            InviteEntry(
+                url_key=url_key,
+                display_name=display_name,
+                accepted_id=accepted_id,
+            )
+        )
     return ret
-    # return JSONResponse(
-    #     status_code=status.HTTP_200_OK,
-    #     content={"auth_id": invitation_db.url_key},
-    # )

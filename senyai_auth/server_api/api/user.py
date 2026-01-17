@@ -11,14 +11,13 @@ from pydantic import (
     SecretStr,
 )
 from .blocklist import not_in_blocklist
-from fastapi import APIRouter, status, Depends, Response
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, status, Depends, Response, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete
+from sqlalchemy import select, delete
 from zxcvbn import zxcvbn
 
-from ..db import User, all_permissions_stmt, PermissionsAPI
+from ..db import User, Invitation, all_permissions_stmt, PermissionsAPI, Member
 from ..auth import get_current_user, not_authorized_exception
 from .. import get_async_session
 
@@ -99,8 +98,17 @@ class CreateUserModel(BaseModel):
         )
 
 
-@router.post("/user", tags=["user"])
-async def user(
+class NewUserResponse(BaseModel, strict=True):
+    user_id: int
+
+
+@router.post(
+    "/user",
+    tags=["user"],
+    status_code=status.HTTP_201_CREATED,
+    response_model=NewUserResponse,
+)
+async def create_user(
     user: CreateUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
@@ -111,7 +119,6 @@ async def user(
     Who can do it:
 
     * Superadmin
-    * User, using special one time auth link. will be implemented later
     """
     permissions = await session.scalar(
         all_permissions_stmt, {"user_id": auth_user.id}
@@ -123,15 +130,52 @@ async def user(
     try:
         await session.commit()
     except IntegrityError:
-        raise ValueError("user already exists")
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={"user_id": user_db.id},
-        headers={"Location": f"/user/{user_db.id}"},
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"user {user.username} already exists",
+        )
+    return NewUserResponse(user_id=user_db.id)
+
+
+@router.post(
+    "/user/{key}",
+    tags=["user"],
+    status_code=status.HTTP_201_CREATED,
+    response_model=NewUserResponse,
+)
+async def create_user_by_invitation(
+    key: str,
+    user: CreateUserModel,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    ## Create a new user.
+
+    Using invitation key
+    """
+    invitation = await session.scalar(
+        select(Invitation).where(
+            Invitation.url_key == key, Invitation.who_accepted_id == None
+        )
     )
+    if invitation is None:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    user_db = user.make_user()
+    invitation.who_accepted = user_db
+    session.add(Member(project_id=invitation.project_id, user=user_db))
+    session.add(invitation)
+    session.add(user_db)
+    try:
+        await session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"user {user.username} already exists",
+        )
+    return NewUserResponse(user_id=user_db.id)
 
 
-@router.delete("/user", tags=["user"])
+@router.delete("/user", tags=["user"], status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
@@ -148,10 +192,6 @@ async def delete_user(
     if not permissions & PermissionsAPI.superadmin:
         raise not_authorized_exception
     affected = await session.execute(delete(User).where(User.id == user_id))
-    return Response(
-        status_code=(
-            status.HTTP_204_NO_CONTENT
-            if affected.rowcount == 1
-            else status.HTTP_404_NOT_FOUND
-        ),
-    )
+    if affected.rowcount == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
