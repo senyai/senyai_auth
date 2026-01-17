@@ -22,9 +22,11 @@ client.__enter__()
 class UnauthorizedTest(TestCase):
     def test_all(self):
         for path, method in (
-            ("/whoami", "get"),
+            ("/user", "get"),
             ("/", "get"),
             ("/user", "post"),
+            ("/user/1", "delete"),
+            ("/user/1", "patch"),
             ("/users", "get"),
             ("/project", "post"),
             ("/project/1", "patch"),
@@ -117,16 +119,18 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     def test_01_whoami(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
-            "/whoami", headers={"Authorization": authorization_str}
+            "/user", headers={"Authorization": authorization_str}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.json(),
             {
+                "id": 1,
                 "display_name": "Test Admin",
                 "email": "test_admin@example.com",
                 "username": "test_admin",
                 "permissions_api": [["root", "superadmin"]],
+                "contacts": "",
             },
         )
 
@@ -209,6 +213,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "password": "jiBBerish",
             "display_name": "John Blackpool",
             "email": "johnnyB@example.com",
+            "contacts": "HQ",
         }
         response = client.post(
             "/user",
@@ -269,8 +274,9 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "password": "milkshape3000",
             "display_name": "Invited User",
             "email": "ted@example.com",
+            "contacts": "home address",
         }
-        response = client.post(f"/user/{invitation_str}", json=user)
+        response = client.post(f"/register/{invitation_str}", json=user)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json(), {"user_id": 3})
 
@@ -304,3 +310,87 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")
+
+
+class Z_UserUpdateTest(IsolatedAsyncioTestCase):
+    async def login(self, username: str, password: str) -> str:
+        response = client.post(
+            "/token",
+            data={
+                "username": username,
+                "password": password,
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        token_body = response.json()
+        self.assertIn("access_token", token_body)
+        self.assertIn("token_type", token_body)
+        return f"{token_body['token_type'].capitalize()} {token_body['access_token']}"
+
+    async def change_display_name(self, authorization_str: str) -> int:
+        my_id: int = client.get(
+            "/user", headers={"Authorization": authorization_str}
+        ).json()["id"]
+        response = client.patch(
+            f"/user/{my_id}",
+            json={"display_name": "Mike Buginsky"},
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        new_display_name = client.get(
+            "/user", headers={"Authorization": authorization_str}
+        ).json()["display_name"]
+        self.assertEqual(new_display_name, "Mike Buginsky")
+        return my_id
+
+    async def change_password(
+        self, authorization_str: str, my_id: int
+    ) -> None:
+        response = client.patch(
+            f"/user/{my_id}",
+            json={
+                "password": {"old": "milkshape3000", "new": "milkshape3001"}
+            },
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = client.get(
+            "/user", headers={"Authorization": authorization_str}
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    async def must_provide_original_password(
+        self, authorization_str: str, my_id: int
+    ) -> None:
+        response = client.patch(
+            f"/user/{my_id}",
+            json={"password": {"old": "milkshape300", "new": "milkshape3001"}},
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json(), {"detail": "Current password does not match"}
+        )
+
+    async def cant_change_username(
+        self, authorization_str: str, my_id: int
+    ) -> None:
+        response = client.patch(
+            f"/user/{my_id}",
+            json={"username": "sly_fox"},
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.json(),
+            {"detail": "Only Administrator can change user's username"},
+        )
+
+    async def test(self):
+        authorization_str = await self.login(
+            username="invited_user", password="milkshape3000"
+        )
+        my_id = await self.change_display_name(authorization_str)
+        await self.must_provide_original_password(authorization_str, my_id)
+        await self.cant_change_username(authorization_str, my_id)
+        await self.change_password(authorization_str, my_id)

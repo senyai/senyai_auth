@@ -64,36 +64,3 @@ async def projects(
         select(Project).where(Project.members.contains(user))
     )
     return [{"id": project.id, "name": project.name} for project in projects]
-
-
-class UserInfo(BaseModel):
-    username: str
-    email: str
-    display_name: str
-    permissions_api: list[tuple[str, str]]
-
-    @classmethod
-    def from_user(cls, user: User, permissions_api: list[tuple[str, str]]):
-        return cls(
-            username=user.username,
-            email=user.email,
-            display_name=user.display_name,
-            permissions_api=permissions_api,
-        )
-
-
-@app.get("/whoami")
-async def whoami(
-    user: Annotated[User, Depends(get_current_user)],
-    session: AsyncSession = Depends(get_async_session),
-) -> UserInfo:
-    stmt = (
-        select(Project.name, Role.permissions_api)
-        .join(Member)
-        .join(Role)
-        .where(Member.user == user)
-    )
-    permissions_api = await session.execute(stmt)
-    return UserInfo.from_user(
-        user, [(name, perm.name) for name, perm in permissions_api]
-    )

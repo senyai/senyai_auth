@@ -17,7 +17,7 @@ from sqlalchemy import delete, select
 from ..db import User, Invitation
 from ..auth import get_current_user, not_authorized_exception
 from .. import get_async_session
-from ..db import User, auth_for_project_stmt, PermissionsAPI
+from ..db import auth_for_project_stmt, PermissionsAPI
 
 
 router = APIRouter()
@@ -30,7 +30,7 @@ def _get_key_32() -> str:
     return base64.urlsafe_b64encode(os.urandom(24)).decode()
 
 
-class InviteUserModel(BaseModel):
+class InviteUserModel(BaseModel, strict=True, frozen=True):
     project_id: Annotated[
         int,
         Field(
