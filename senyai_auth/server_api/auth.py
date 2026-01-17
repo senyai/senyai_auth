@@ -5,7 +5,6 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from . import app
 from .db import User
@@ -21,7 +20,7 @@ not_authorized_exception = HTTPException(
 )
 
 
-class Token(BaseModel):
+class Token(BaseModel, strict=True, frozen=True):
     access_token: str
     token_type: str
 
@@ -48,6 +47,7 @@ def _create_access_token(
 
 
 async def _get_user_by_username(username: str) -> User | None:
+    # Will check for 'disabled' later to ensure better error message
     stmt = select(User).where(User.username == username)
     async with app.state.async_session() as session:
         user = (await session.execute(stmt)).scalar_one_or_none()
@@ -63,10 +63,10 @@ async def authenticate_user(username: str, password: str) -> User | None:
     return user
 
 
-@app.post("/token", response_model=Token)
+@app.post("/token", response_model=Token, tags=["auth"])
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> JSONResponse:
+):
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -82,12 +82,7 @@ async def login_for_access_token(
         expires_delta=access_token_expires,
         salt=user.salt,
     )
-    token = Token(access_token=access_token, token_type="bearer")
-    response = JSONResponse(token.model_dump())
-    response.set_cookie(
-        key="access_token", value=f"Bearer {access_token}", httponly=True
-    )
-    return response
+    return Token(access_token=access_token, token_type="bearer")
 
 
 async def get_current_user(

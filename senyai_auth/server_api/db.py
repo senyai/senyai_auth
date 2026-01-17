@@ -68,6 +68,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(nullable=False)
     salt: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(default="", nullable=False)
+    contacts: Mapped[str] = mapped_column(
+        default="", nullable=False, deferred=True
+    )
     disabled: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False

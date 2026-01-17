@@ -24,7 +24,7 @@ def validate_api(value: str) -> PermissionsAPI:
         )
 
 
-class RoleCreate(BaseModel):
+class RoleCreate(BaseModel, strict=True, frozen=True):
     project_id: int
     name: Name
     description: Description = ""
@@ -78,7 +78,7 @@ async def new_role(
     )
 
 
-class RoleUpdate(BaseModel):
+class RoleUpdate(BaseModel, strict=True, frozen=True):
     name: Name | None = None
     description: Description | None = None
     permissions_api: str | None = None
