@@ -2,14 +2,18 @@ from __future__ import annotations
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from fastapi import APIRouter, Depends, status, HTTPException, Response
-from fastapi.responses import JSONResponse
-from sqlalchemy import select, delete
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import Role, User, auth_for_project_stmt, PermissionsAPI, MemberRole
-from ..auth import get_current_user, not_authorized_exception
+from .auth import get_current_user
 from .. import get_async_session
 from .project import Name, Description
+from .exceptions import (
+    not_authorized_exception,
+    response_description,
+    response_with_perm_check,
+)
 
 router = APIRouter()
 
@@ -47,12 +51,26 @@ class RoleCreate(BaseModel, strict=True, frozen=True):
         )
 
 
-@router.post("/role", tags=["role"])
+class RoleModel(BaseModel, strict=True):
+    role_id: int
+
+
+@router.post(
+    "/role",
+    tags=["role"],
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_409_CONFLICT: response_description(
+            "Role with that name already exists"
+        ),
+    },
+)
 async def new_role(
     role: RoleCreate,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> RoleModel:
     """
     ## Create Role for a project
     """
@@ -69,13 +87,9 @@ async def new_role(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="project already exists",
+            detail="Role with that name already exists",
         )
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={"role_id": role_db.id},
-        headers={"Location": f"/project/{role_db.id}"},
-    )
+    return RoleModel(role_id=role_db.id)
 
 
 class RoleUpdate(BaseModel, strict=True, frozen=True):
@@ -93,13 +107,21 @@ class RoleUpdate(BaseModel, strict=True, frozen=True):
             setattr(role, key, value)
 
 
-@router.patch("/role/{role_id}", tags=["role"])
+@router.patch(
+    "/role/{role_id}",
+    tags=["role"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Role not found"),
+    },
+)
 async def update_role(
     role_id: int,
     role: RoleUpdate,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -115,15 +137,25 @@ async def update_role(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/role/{role_id}", tags=["role"])
+@router.delete(
+    "/role/{role_id}",
+    tags=["role"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Role not found"),
+    },
+)
 async def delete_role(
     role_id: int,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+        )
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
@@ -136,14 +168,20 @@ async def delete_role(
 
 
 @router.post(
-    "/role/{role_id}/users", status_code=status.HTTP_201_CREATED, tags=["role"]
+    "/role/{role_id}/users",
+    status_code=status.HTTP_201_CREATED,
+    tags=["role"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Role not found"),
+    },
 )
 async def add_users_to_a_role(
     role_id: int,
     user_ids: list[int],
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -165,13 +203,17 @@ async def add_users_to_a_role(
     "/role/{role_id}/users",
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["role"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Role not found"),
+    },
 )
 async def remove_users_from_role(
     role_id: int,
     user_ids: list[int],
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")

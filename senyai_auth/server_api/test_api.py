@@ -156,7 +156,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(
-            response.json(), {"detail": "project 'gmc' already exists"}
+            response.json(), {"detail": "Project 'gmc' already exists"}
         )
 
     async def test_03_edit_project(self):
@@ -169,8 +169,8 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
             json=project,
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), None)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
         async with app.state.async_session() as session:
             project_db = await session.get(Project, 2)
         self.assertEqual(project_db.description, project["description"])
