@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import Annotated
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Response
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -15,7 +14,12 @@ from sqlalchemy.exc import IntegrityError
 from .blocklist import not_in_blocklist
 from ..db import Project, User, auth_for_project_stmt, PermissionsAPI
 from .. import get_async_session
-from ..auth import get_current_user, not_authorized_exception
+from .auth import get_current_user
+from .exceptions import (
+    not_authorized_exception,
+    response_description,
+    response_with_perm_check,
+)
 
 
 router = APIRouter()
@@ -64,12 +68,26 @@ class ProjectUpdate(BaseModel, strict=True):
             setattr(project, key, value)
 
 
-@router.post("/project", tags=["project"])
+class NewProjectInfo(BaseModel, strict=True):
+    project_id: int
+
+
+@router.post(
+    "/project",
+    tags=["project"],
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_409_CONFLICT: response_description(
+            "Project already exists"
+        ),
+    },
+)
 async def new_project(
     project: ProjectCreate,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> NewProjectInfo:
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project.parent_id},
@@ -83,16 +101,20 @@ async def new_project(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"project '{project.name}' already exists",
+            detail=f"Project '{project.name}' already exists",
         )
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={"project_id": project_db.id},
-        headers={"Location": f"/project/{project_db.id}"},
-    )
+    return NewProjectInfo(project_id=project_db.id)
 
 
-@router.patch("/project/{project_id}", tags=["project"])
+@router.patch(
+    "/project/{project_id}",
+    tags=["project"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Project not found"),
+    },
+)
 async def update_project(
     project_id: int,
     project: ProjectUpdate,
@@ -114,14 +136,28 @@ async def update_project(
     project.update(project_db)
     session.add(project_db)
     await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/project/{project_id}", tags=["project"])
+class ProjectModel(BaseModel, strict=True):
+    name: str
+    display_name: str
+    description: str
+
+
+@router.get(
+    "/project/{project_id}",
+    tags=["project"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Project not found"),
+    },
+)
 async def get_project(
     project_id: int,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> ProjectModel:
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
@@ -131,8 +167,8 @@ async def get_project(
     project_db = await session.get(Project, project_id)
     if project_db is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    return {
-        "name": project_db.name,
-        "display_name": project_db.display_name,
-        "description": project_db.description,
-    }
+    return ProjectModel(
+        name=project_db.name,
+        display_name=project_db.display_name,
+        description=project_db.description,
+    )

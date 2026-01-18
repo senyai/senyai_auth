@@ -60,5 +60,4 @@ app = FastAPI(
     },
     lifespan=lifespan,
 )
-from . import auth as auth
 from . import api as api

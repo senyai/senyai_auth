@@ -7,17 +7,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from . import app
-from .db import User
+from ..db import User
+from .exceptions import response_description
 from sqlalchemy import select
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-not_authorized_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="User is not authorized to perform this action",
-    headers={"WWW-Authenticate": "Bearer"},
-)
 
 
 class Token(BaseModel, strict=True, frozen=True):
@@ -39,7 +34,6 @@ def _create_access_token(
         "exp": datetime.now(timezone.utc) + expires_delta,
         "salt": salt,
     }
-    app.state
     encoded_jwt = jwt.encode(
         to_encode, app.state.secret_key, algorithm=app.state.algorithm
     )
@@ -63,10 +57,19 @@ async def authenticate_user(username: str, password: str) -> User | None:
     return user
 
 
-@app.post("/token", response_model=Token, tags=["auth"])
+@app.post(
+    "/token",
+    response_model=Token,
+    tags=["auth"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_description(
+            "Incorrect username or password"
+        )
+    },
+)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-):
+) -> Token:
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(

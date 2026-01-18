@@ -6,12 +6,11 @@ from __future__ import annotations
 
 from typing import Annotated
 from sqlalchemy import select
-from pydantic import BaseModel
 from fastapi import Depends
-from .. import app
-from ..db import User, Project, Member, Role
-from ..auth import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
+from .. import app
+from ..db import User, Project, Member
+from .auth import get_current_user
 from .user import router as user_router
 from .project import router as project_router
 from .role import router as role_router

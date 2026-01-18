@@ -10,12 +10,16 @@ from pydantic import (
 )
 from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
-from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
 
 from ..db import User, Invitation
-from ..auth import get_current_user, not_authorized_exception
+from .auth import get_current_user
+from .exceptions import (
+    not_authorized_exception,
+    response_description,
+    response_with_perm_check,
+)
 from .. import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
 
@@ -100,12 +104,17 @@ class InviteResult(BaseModel, strict=True):
     url_key: str
 
 
-@router.post("/invite", tags=["invite"], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/invite",
+    tags=["invite"],
+    status_code=status.HTTP_201_CREATED,
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
 async def invite_user(
     user: InviteUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> InviteResult:
     """
     ## Create new invite
 
@@ -131,7 +140,15 @@ class InvitationForm(BaseModel, strict=True):
     email: str
 
 
-@router.get("/invite/{key}", tags=["invite"])
+@router.get(
+    "/invite/{key}",
+    tags=["invite"],
+    responses={
+        status.HTTP_404_NOT_FOUND: response_description(
+            "Invitation not found or already accepted"
+        ),
+    },
+)
 async def get_invitation(
     key: str,
     session: AsyncSession = Depends(get_async_session),
@@ -141,12 +158,19 @@ async def get_invitation(
     """
     invitation = await session.scalar(
         select(Invitation).where(
-            Invitation.url_key == key, Invitation.who_accepted_id == None
+            Invitation.url_key == key,
         )
     )
     if invitation is None:
-        breakpoint()
-        raise HTTPException(status_code=404, detail="Invitation not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found",
+        )
+    if invitation.who_accepted_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation already accepted",
+        )
     return InvitationForm(
         prompt=invitation.prompt,
         username=invitation.default_username,
@@ -155,12 +179,22 @@ async def get_invitation(
     )
 
 
-@router.delete("/invite/{invitation_id}", tags=["invite"])
+@router.delete(
+    "/invite/{invitation_id}",
+    tags=["invite"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description(
+            "Invitation not found"
+        ),
+    },
+)
 async def delete_invitation(
     invitation_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     """
     ## Delete a single invite
 
@@ -177,13 +211,12 @@ async def delete_invitation(
         delete(Invitation).where(Invitation.id == invitation_id)
     )
     await session.commit()
-    return Response(
-        status_code=(
-            status.HTTP_200_OK
-            if affected.rowcount
-            else status.HTTP_404_NOT_FOUND
-        ),
-    )
+    if affected.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found",
+        )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class InviteEntry(BaseModel, strict=True):
@@ -192,7 +225,11 @@ class InviteEntry(BaseModel, strict=True):
     accepted_id: int | None
 
 
-@router.get("/invites/{project_id}", tags=["invite"])
+@router.get(
+    "/invites/{project_id}",
+    tags=["invite"],
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
 async def list_invites(
     project_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],

@@ -26,8 +26,14 @@ from ..db import (
     Role,
     User,
 )
-from ..auth import get_current_user, not_authorized_exception
+from .auth import get_current_user
 from .. import get_async_session
+from .exceptions import (
+    not_authorized_exception,
+    response_for_get_current_user,
+    response_with_perm_check,
+    response_description,
+)
 
 
 router = APIRouter()
@@ -127,13 +133,16 @@ class NewUserResponse(BaseModel, strict=True):
     "/user",
     tags=["user"],
     status_code=status.HTTP_201_CREATED,
-    response_model=NewUserResponse,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_409_CONFLICT: response_description("User already exists"),
+    },
 )
 async def create_user(
     user: CreateUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> NewUserResponse:
     """
     ## Create a new user.
 
@@ -153,7 +162,7 @@ async def create_user(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"user {user.username} already exists",
+            detail=f"User {user.username} already exists",
         )
     return NewUserResponse(user_id=user_db.id)
 
@@ -258,11 +267,15 @@ class UserInfo(BaseModel, strict=True, frozen=True):
         )
 
 
-@router.get("/user", tags=["user"])
+@router.get(
+    "/user",
+    tags=["user"],
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
 async def get_user(
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> UserInfo:
     """
     ## Information for "Update User" form
     """
@@ -281,14 +294,25 @@ async def get_user(
 
 
 @router.patch(
-    "/user/{user_id}", tags=["user"], status_code=status.HTTP_204_NO_CONTENT
+    "/user/{user_id}",
+    tags=["user"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_400_BAD_REQUEST: response_description(
+            "Current password does not match"
+        ),
+        status.HTTP_403_FORBIDDEN: response_description(
+            "Only Administrator can change user's username"
+        ),
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+    },
 )
 async def update_user(
     user_id: int,
     user: UpdateUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     """
     ## Update user attributes
 
@@ -307,13 +331,16 @@ async def update_user(
 
 
 @router.delete(
-    "/user/{user_id}", tags=["user"], status_code=status.HTTP_204_NO_CONTENT
+    "/user/{user_id}",
+    tags=["user"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
 async def delete_user(
     user_id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> Response:
     """
     ## Delete user
 
@@ -336,27 +363,36 @@ async def delete_user(
     "/register/{key}",
     tags=["user"],
     status_code=status.HTTP_201_CREATED,
-    response_model=NewUserResponse,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description(
+            "Invitation not found or already accepted"
+        ),
+        status.HTTP_409_CONFLICT: response_description("User already exists"),
+    },
 )
 async def create_user_by_invitation(
     key: str,
     user: CreateUserModel,
     session: AsyncSession = Depends(get_async_session),
-):
+) -> NewUserResponse:
     """
     ## Create a new user.
 
     Using invitation key
     """
     invitation = await session.scalar(
-        select(Invitation).where(
-            Invitation.url_key == key, Invitation.who_accepted_id == None
-        )
+        select(Invitation).where(Invitation.url_key == key)
     )
     if invitation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
+        )
+    if invitation.who_accepted_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation already accepted",
         )
     user_db = user.make_user()
     invitation.who_accepted = user_db
@@ -368,6 +404,6 @@ async def create_user_by_invitation(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"user {user.username} already exists",
+            detail=f"User {user.username} already exists",
         )
     return NewUserResponse(user_id=user_db.id)
