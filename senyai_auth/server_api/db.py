@@ -19,6 +19,7 @@ from sqlalchemy import (
     TypeDecorator,
 )
 from enum import IntFlag
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 
 class Base(DeclarativeBase):
@@ -278,7 +279,7 @@ class Invitation(Base):
     project: Mapped[Project] = relationship(foreign_keys=[project_id])
 
 
-def create_auth_for_project_stmt():
+def _create_auth_for_project_stmt():
     """
     Let's say user wants to add a `Role`. We must ensure he or she have
     permissions. That's the intent of this function.
@@ -307,7 +308,7 @@ def create_auth_for_project_stmt():
     )
 
 
-def create_all_permissions_stmt():
+def _create_permissions_api_stmt():
     user_id = bindparam("user_id", type_=Integer)
     return select(
         type_coerce(
@@ -320,5 +321,18 @@ def create_all_permissions_stmt():
     )
 
 
-auth_for_project_stmt = create_auth_for_project_stmt()
-all_permissions_stmt = create_all_permissions_stmt()
+def _create_permissions_stmt(field: InstrumentedAttribute[str]):
+    user_id = bindparam("user_id", type_=Integer)
+    return select(
+        func.aggregate_strings(field, " "),
+    ).join(
+        MemberRole,
+        (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+    )
+
+
+auth_for_project_stmt = _create_auth_for_project_stmt()
+permissions_api_stmt = _create_permissions_api_stmt()
+permissions_extra_stmt = _create_permissions_stmt(Role.permissions_extra)
+permissions_storage_stmt = _create_permissions_stmt(Role.permissions_storage)
+permissions_git_stmt = _create_permissions_stmt(Role.permissions_git)

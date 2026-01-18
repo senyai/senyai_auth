@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Annotated
+from typing import Annotated, Literal
 import os
 import base64
 from pydantic import (
@@ -18,9 +18,12 @@ from sqlalchemy import select, delete
 from zxcvbn import zxcvbn
 
 from ..db import (
-    all_permissions_stmt,
     Invitation,
     Member,
+    permissions_api_stmt,
+    permissions_extra_stmt,
+    permissions_git_stmt,
+    permissions_storage_stmt,
     PermissionsAPI,
     Project,
     Role,
@@ -30,7 +33,6 @@ from .auth import get_current_user
 from .. import get_async_session
 from .exceptions import (
     not_authorized_exception,
-    response_for_get_current_user,
     response_with_perm_check,
     response_description,
 )
@@ -151,7 +153,7 @@ async def create_user(
     * Superadmin
     """
     permissions = await session.scalar(
-        all_permissions_stmt, {"user_id": auth_user.id}
+        permissions_api_stmt, {"user_id": auth_user.id}
     )
     if not permissions & PermissionsAPI.superadmin:
         raise not_authorized_exception
@@ -319,7 +321,7 @@ async def update_user(
     *username* can only be changed by superadmin
     """
     permissions = await session.scalar(
-        all_permissions_stmt, {"user_id": auth_user.id}
+        permissions_api_stmt, {"user_id": auth_user.id}
     )
     is_superadmin: bool = permissions & PermissionsAPI.superadmin
     if not is_superadmin and auth_user.id != user_id:
@@ -347,7 +349,7 @@ async def delete_user(
     Should only be possible by superadmin
     """
     permissions = await session.scalar(
-        all_permissions_stmt, {"user_id": auth_user.id}
+        permissions_api_stmt, {"user_id": auth_user.id}
     )
     if not permissions & PermissionsAPI.superadmin:
         raise not_authorized_exception
@@ -407,3 +409,32 @@ async def create_user_by_invitation(
             detail=f"User {user.username} already exists",
         )
     return NewUserResponse(user_id=user_db.id)
+
+
+permissions_stmt = {
+    "extra": permissions_extra_stmt,
+    "git": permissions_git_stmt,
+    "storage": permissions_storage_stmt,
+}
+
+
+@router.get(
+    "/permissions/{service}",
+    tags=["auth"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_description(
+            "Incorrect username or password"
+        )
+    },
+)
+async def permissions_storage(
+    service: Literal["storage", "git", "extra"],
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> list[str]:
+    res = await session.scalar(
+        permissions_stmt[service], {"user_id": auth_user.id}
+    )
+    if res is None:
+        return []
+    return sorted(set(res.split(" ")))
