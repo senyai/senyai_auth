@@ -98,10 +98,10 @@ async def get_current_user(
                 token, app.state.secret_key, algorithms=[app.state.algorithm]
             ),
         )
-    except InvalidTokenError:
+    except InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=f"Could not validate credentials: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     # we must fetch user on every request, because user information update
