@@ -254,17 +254,15 @@ class UserInfo(BaseModel, strict=True, frozen=True):
     email: str
     contacts: str
     display_name: str
-    permissions_api: list[tuple[str, str]]
 
     @classmethod
-    def from_user(cls, user: User, permissions_api: list[tuple[str, str]]):
+    def from_user(cls, user: User):
         return cls(
             id=user.id,
             username=user.username,
             email=user.email,
             contacts=user.contacts,
             display_name=user.display_name,
-            permissions_api=permissions_api,
         )
 
 
@@ -279,18 +277,9 @@ async def get_user(
     """
     ## Information for "Update User" form
     """
-    stmt = (
-        select(Project.name, Role.permissions_api)
-        .join(Member)
-        .join(Role)
-        .where(Member.user == auth_user)
-    )
     auth_user = await session.merge(auth_user)
     await session.refresh(auth_user, attribute_names=("contacts",))
-    permissions_api = await session.execute(stmt)
-    return UserInfo.from_user(
-        auth_user, [(name, perm.name) for name, perm in permissions_api]
-    )
+    return UserInfo.from_user(auth_user)
 
 
 @router.patch(
