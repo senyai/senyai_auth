@@ -241,6 +241,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "default_username": "newuser",
             "default_email": "newuser@example.com",
             "default_display_name": "New User",
+            "roles": ["non_existent", "test_role"],
         }
         response = client.post(
             "/invite",

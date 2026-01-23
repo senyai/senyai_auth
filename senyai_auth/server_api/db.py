@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     select,
     String,
+    JSON,
     type_coerce,
     TypeDecorator,
 )
@@ -257,6 +258,9 @@ class Invitation(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey(Project.id), nullable=False
     )
+    roles: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False
+    )  # json serialized list
     inviter_id: Mapped[User] = mapped_column(
         ForeignKey(User.id), nullable=False
     )
