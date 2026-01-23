@@ -24,7 +24,7 @@ from .. import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
 
 
-router = APIRouter()
+router = APIRouter(tags=["invite"])
 
 
 def _get_key_32() -> str:
@@ -106,7 +106,6 @@ class InviteResult(BaseModel, strict=True):
 
 @router.post(
     "/invite",
-    tags=["invite"],
     status_code=status.HTTP_201_CREATED,
     responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
@@ -142,7 +141,6 @@ class InvitationForm(BaseModel, strict=True):
 
 @router.get(
     "/invite/{key}",
-    tags=["invite"],
     responses={
         status.HTTP_404_NOT_FOUND: response_description(
             "Invitation not found or already accepted"
@@ -181,7 +179,6 @@ async def get_invitation(
 
 @router.delete(
     "/invite/{invitation_id}",
-    tags=["invite"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -227,7 +224,6 @@ class InviteEntry(BaseModel, strict=True):
 
 @router.get(
     "/invites/{project_id}",
-    tags=["invite"],
     responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
 async def list_invites(
