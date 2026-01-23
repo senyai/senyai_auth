@@ -27,10 +27,10 @@ class UnauthorizedTest(TestCase):
             ("/user", "post"),
             ("/user/1", "delete"),
             ("/user/1", "patch"),
-            ("/users", "get"),
+            ("/ui/users/1", "get"),
+            ("/ui/main", "get"),
             ("/project", "post"),
             ("/project/1", "patch"),
-            ("/projects", "get"),
         ):
             response = client.request(method, path)
             self.assertEqual(
@@ -129,7 +129,6 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                 "display_name": "Test Admin",
                 "email": "test_admin@example.com",
                 "username": "test_admin",
-                "permissions_api": [["root", "superadmin"]],
                 "contacts": "",
             },
         )

@@ -51,7 +51,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 app = FastAPI(
-    version="0.1.0",
+    version="0.1.1",
     title="Senyai Auth API",
     contact={
         "name": "Arseniy Terekhin",

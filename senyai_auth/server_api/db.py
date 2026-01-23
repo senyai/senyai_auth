@@ -321,12 +321,32 @@ def _create_permissions_api_stmt():
 
 
 def _create_permissions_stmt(field: InstrumentedAttribute[str]):
+    """
+    :param field: Field of a `Role` class
+    """
     user_id = bindparam("user_id", type_=Integer)
+    return (
+        select(
+            func.aggregate_strings(field, " "),
+        )
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(MemberRole.user_id == user_id)
+    )
+
+
+def _create_list_projects_stmt():
+    user_id = bindparam("user_id", type_=Integer)
+    id_name_parent = select(Project.id, Project.name, Project.parent_id)
+    base = (
+        id_name_parent.join(Role, Role.project_id == Project.id)
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(user_id == MemberRole.user_id)
+        .cte(name="base", recursive=True)
+    )
     return select(
-        func.aggregate_strings(field, " "),
-    ).join(
-        MemberRole,
-        (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+        base.union_all(
+            id_name_parent.join(base, Project.parent_id == base.c.id),
+        )
     )
 
 
@@ -335,3 +355,4 @@ permissions_api_stmt = _create_permissions_api_stmt()
 permissions_extra_stmt = _create_permissions_stmt(Role.permissions_extra)
 permissions_storage_stmt = _create_permissions_stmt(Role.permissions_storage)
 permissions_git_stmt = _create_permissions_stmt(Role.permissions_git)
+list_projects_stmt = _create_list_projects_stmt()
