@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container ">
+    <div class="row justify-content-center">
+        <div class="col-md-4 ">
+            <form role="form", method="POST" class="form-control login-form" action="#">
+                <legend>Sign In</legend>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Login" required>
+                    <label for="login">Login</label>
+                </div>
+                <div class="form-floating">
+                    <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
+                    <label for="password">Password</label>
+                </div>
+                <div class="d-grid pt-3">
+                    <button type="submit" class="btn btn-primary">Sign in</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
