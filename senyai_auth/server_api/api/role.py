@@ -15,7 +15,7 @@ from .exceptions import (
     response_with_perm_check,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["role"])
 
 
 def validate_api(value: str) -> PermissionsAPI:
@@ -57,7 +57,6 @@ class RoleModel(BaseModel, strict=True):
 
 @router.post(
     "/role",
-    tags=["role"],
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -109,7 +108,6 @@ class RoleUpdate(BaseModel, strict=True, frozen=True):
 
 @router.patch(
     "/role/{role_id}",
-    tags=["role"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -139,7 +137,6 @@ async def update_role(
 
 @router.delete(
     "/role/{role_id}",
-    tags=["role"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -170,7 +167,6 @@ async def delete_role(
 @router.post(
     "/role/{role_id}/users",
     status_code=status.HTTP_201_CREATED,
-    tags=["role"],
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
         status.HTTP_404_NOT_FOUND: response_description("Role not found"),
@@ -202,7 +198,6 @@ async def add_users_to_a_role(
 @router.delete(
     "/role/{role_id}/users",
     status_code=status.HTTP_204_NO_CONTENT,
-    tags=["role"],
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
         status.HTTP_404_NOT_FOUND: response_description("Role not found"),

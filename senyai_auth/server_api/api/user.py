@@ -38,7 +38,7 @@ from .exceptions import (
 )
 
 
-router = APIRouter()
+router = APIRouter(tags=["user"])
 
 
 def check_password(
@@ -133,7 +133,6 @@ class NewUserResponse(BaseModel, strict=True):
 
 @router.post(
     "/user",
-    tags=["user"],
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -271,7 +270,6 @@ class UserInfo(BaseModel, strict=True, frozen=True):
 
 @router.get(
     "/user",
-    tags=["user"],
     responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
 async def get_user(
@@ -297,7 +295,6 @@ async def get_user(
 
 @router.patch(
     "/user/{user_id}",
-    tags=["user"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_400_BAD_REQUEST: response_description(
@@ -334,7 +331,6 @@ async def update_user(
 
 @router.delete(
     "/user/{user_id}",
-    tags=["user"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
@@ -363,7 +359,6 @@ async def delete_user(
 
 @router.post(
     "/register/{key}",
-    tags=["user"],
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,

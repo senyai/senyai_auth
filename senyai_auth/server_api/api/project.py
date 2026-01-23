@@ -22,7 +22,7 @@ from .exceptions import (
 )
 
 
-router = APIRouter()
+router = APIRouter(tags=["project"])
 
 type Name = Annotated[
     str,
@@ -74,7 +74,6 @@ class NewProjectInfo(BaseModel, strict=True):
 
 @router.post(
     "/project",
-    tags=["project"],
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -108,7 +107,6 @@ async def new_project(
 
 @router.patch(
     "/project/{project_id}",
-    tags=["project"],
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -147,7 +145,6 @@ class ProjectModel(BaseModel, strict=True):
 
 @router.get(
     "/project/{project_id}",
-    tags=["project"],
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
         status.HTTP_404_NOT_FOUND: response_description("Project not found"),
