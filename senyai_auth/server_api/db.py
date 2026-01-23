@@ -148,7 +148,6 @@ class Project(Base):
         User,
         secondary=Member.__table__,
     )
-    roles: Mapped[list[Role]] = relationship("Role")
     children: Mapped[list[Project]] = relationship(
         back_populates="parent", cascade="all, delete-orphan"
     )
