@@ -87,11 +87,21 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
         ),
     ]
 
+    roles: Annotated[
+        list[str],  # list of `Role.name`` for current `project_id`
+        Field(
+            description="Assign these roles after user accepts invitation. "
+            "If anything has happened  with roles before invitation is "
+            "accepted, roles will not be applied."
+        ),
+    ]
+
     def make_invitation_by(self, inviter: User) -> Invitation:
         url_key = _get_key_32()
         return Invitation(
             url_key=url_key,
             project_id=self.project_id,
+            roles=self.roles,
             inviter=inviter,
             prompt=self.prompt,
             default_username=self.default_username,
@@ -133,6 +143,10 @@ async def invite_user(
 
 
 class InvitationForm(BaseModel, strict=True):
+    """
+    What to show when user opens invitation
+    """
+
     prompt: str
     username: str
     display_name: str

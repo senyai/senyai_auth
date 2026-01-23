@@ -14,7 +14,7 @@ from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, insert, delete, literal
 from zxcvbn import zxcvbn
 
 from ..db import (
@@ -25,7 +25,7 @@ from ..db import (
     permissions_git_stmt,
     permissions_storage_stmt,
     PermissionsAPI,
-    Project,
+    MemberRole,
     Role,
     User,
 )
@@ -385,6 +385,19 @@ async def create_user_by_invitation(
     session.add(Member(project_id=invitation.project_id, user=user_db))
     session.add(invitation)
     session.add(user_db)
+    await session.flush((user_db,))
+    await session.execute(
+        insert(MemberRole).from_select(
+            ("user_id", "role_id"),
+            select(
+                literal(user_db.id).label("user_id"), Role.id.label("role_id")
+            ).where(
+                Role.project_id == invitation.project_id,
+                Role.name.in_(invitation.roles),
+            ),
+        )
+    )
+
     try:
         await session.commit()
     except IntegrityError:
