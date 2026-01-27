@@ -1,0 +1,73 @@
+[data-bs-theme="dark"] {
+    --bs-body-color: rgb(230, 230, 230);
+    --bs-body-color-rgb: 230, 230, 230;
+    --bs-body-bg: rgb(31, 31, 31);
+
+    --bs-emphasis-color: rgb(184, 184, 184);
+    --bs-emphasis-color-rgb: 184, 184, 184;
+
+    --bs-tertiary-color: #e4e4e4;
+    --bs-tertiary-bg: rgb(0,0,0);
+    --bs-tertiary-bg-rgb: 0, 0, 0;
+
+    --bs-link-color: hsl(203, 15%, 42%);
+    --bs-link-hover-color: hsl(202, 58%, 38%);
+    --bs-link-active-color: hsl(202, 58%, 45%);
+    --bs-link-active-bg: "transparent";
+
+    --bs-code-color: #d63384;
+
+    --bs-primary: hsl(202, 58%, 38%);
+    --bs-primary-rgb: 41, 113, 155;
+    --bs-secondary: hsl(0, 0%, 23%);
+    --bs-secondary-rgb: 59, 59, 59;
+    --bs-success: hsl(125, 72%, 30%);
+    --bs-info: hsl(190, 86%, 50%);
+    --bs-warning: hsl(45, 93%, 40%);
+    --bs-warning-rgb: 197, 149, 7;
+    --bs-danger: hsl(354, 70%, 40%);
+
+    --bs-secondary-color: rgba(255, 255, 255);
+    --bs-secondary-color-rgb: 255, 255, 255;
+    --bs-aside-bg: rgba(var(--bs-secondary-rgb), 0.2);
+    --bs-secondary-bg: hsl(0, 0%, 50%);
+    --bs-secondary-bg-rgb: 128, 128, 128;
+
+
+    --bs-primary-text-emphasis: hsl(202, 58%, 43%);
+    --bs-secondary-text-emphasis: hsl(0, 0%, 30%);
+    --bs-success-text-emphasis: hsl(125, 72%, 35%);
+    --bs-info-text-emphasis: hsl(190, 86%, 45%);
+    --bs-warning-text-emphasis: hsl(45, 93%, 41%);
+    --bs-danger-text-emphasis: hsl(354, 70%, 47%);
+
+    --bs-primary-bg-subtle: hsl(202, 58%, 28%);
+    --bs-secondary-bg-subtle: hsl(0, 0%, 20%);
+    --bs-success-bg-subtle: hsl(125, 72%, 13%);
+    --bs-info-bg-subtle: hsl(190, 86%, 15%);
+    --bs-warning-bg-subtle: hsl(45, 93%, 15%);
+    --bs-danger-bg-subtle: hsl(354, 70%, 15%);
+
+    --bs-primary-border-subtle: hsl(202, 58%, 60%);
+    --bs-secondary-border-subtle: #c4c8cb;
+    --bs-success-border-subtle: #a3cfbb;
+    --bs-info-border-subtle: #9eeaf9;
+    --bs-warning-border-subtle: #ffe69c;
+    --bs-danger-border-subtle: #f1aeb5;
+
+
+    --bs-modal-bg: var(--bs-body-bg);
+    --bs-modal-color:  var(--bs-emphasis-color);
+
+    --error-row-color: var(--bs-danger-bg-subtle);
+    --disabled-row-color: var(--bs-secondary-bg-subtle);
+    --confirmed-row-color: var(--bs-success-bg-subtle);
+    --new-row-color: var(--bs-warning-bg-subtle);
+    --updated-row-color: var(--bs-warning-bg-subtle);
+    --active-row-color: var(--bs-tertiary-bg);
+    --selected-row-color: var(--bs-info-bg-subtle);
+
+
+    --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+
+}
