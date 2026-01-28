@@ -1,7 +1,17 @@
 from __future__ import annotations
-from quart import Quart, render_template, redirect, url_for, request, session
+from quart import (
+    Quart,
+    render_template,
+    redirect,
+    url_for,
+    request,
+    session,
+    abort,
+)
 import httpx
 from functools import wraps
+import secrets
+from .forms import InviteForm
 
 
 app = Quart(__name__)
@@ -14,7 +24,18 @@ def login_required(view):
         if "Authorization" not in session:
             return redirect(url_for("login", next=request.url))
         return await view(*args, **kwargs)
+
     return wrapper
+
+
+def generate_csrf():
+    session["csrf"] = secrets.token_hex(16)
+
+
+async def check_csrf(form):
+    token = form.get("csrf")
+    if not token or token != session["csrf"]:
+        abort(403)
 
 
 @app.context_processor
@@ -59,7 +80,7 @@ async def login():
             )
             return redirect(url_for("index"))
         error = token.get("detail")
-    return await render_template("login.html", error=error)
+    return await render_template("login.html", error=error), 400
 
 
 @app.route("/logout")
@@ -72,15 +93,38 @@ async def logout():
 @app.get("/invite")
 @login_required
 async def invite_get():
-    return await render_template("invite.html")
+    generate_csrf()
+    return await render_template(
+        "invite.html", csrf=session["csrf"], form={}, errors={}
+    )
 
 
-# @app.post("/invite")
-# @login_required
-# async def invite_post():
+@app.post("/invite")
+@login_required
+async def invite_post():
+    form = await request.form
+    await check_csrf(form)
+    data, errors = InviteForm.parse_form(form)
 
-#     form = await request.form
-#     params = {"project_id": int(form.get("pro"))}
+    if data:
+        async with httpx.AsyncClient() as client:
+            url_res = await client.post(
+                "http://127.0.0.1:8000/invite",
+                headers={"Authorization": session["Authorization"]},
+                data=data.model_dump(),
+            )
+            url = url_res.json()
+            if url_res.status_code == 200:
+                return await render_template(
+                    "invite_result.html", url_key=url["url_key"]
+                )
+            errors = url["detail"]
+    return (
+        await render_template(
+            "invite.html", csrf=session["csrf"], form=form, errors=errors
+        ),
+        400,
+    )
 
 
 app.run()
