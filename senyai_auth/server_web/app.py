@@ -11,11 +11,13 @@ from quart import (
 import httpx
 from functools import wraps
 import secrets
-from .forms import InviteForm
+from .forms import InviteForm, RegisterFormHTML, LoginFormHTML
 
 
 app = Quart(__name__)
 app.secret_key = "flGsgDGgukHFyuK"
+
+API_HOST = "http://127.0.0.1:8000"
 
 
 def login_required(view):
@@ -52,12 +54,12 @@ async def index():
     if "Authorization" in session:
         async with httpx.AsyncClient() as client:
             user_res = await client.get(
-                "http://127.0.0.1:8000/ui/main",
+                f"{API_HOST}/ui/main",
                 headers={"Authorization": session["Authorization"]},
             )
             if user_res.status_code == 200:
                 return await render_template("user.html", data=user_res.json())
-            return redirect(url_for("logout"))
+            session.clear()
     return await render_template("login.html")
 
 
@@ -70,9 +72,7 @@ async def login():
         "password": form.get("password", ""),
     }
     async with httpx.AsyncClient() as client:
-        token_res = await client.post(
-            "http://127.0.0.1:8000/token", data=params
-        )
+        token_res = await client.post("{API_HOST}/token", data=params)
         token = token_res.json()
         if token_res.status_code == 200:
             session["Authorization"] = get_authorization_str(
@@ -109,21 +109,53 @@ async def invite_post():
     if data:
         async with httpx.AsyncClient() as client:
             url_res = await client.post(
-                "http://127.0.0.1:8000/invite",
+                f"{API_HOST}/invite",
                 headers={"Authorization": session["Authorization"]},
                 data=data.model_dump(),
             )
-            url = url_res.json()
-            if url_res.status_code == 200:
-                return await render_template(
-                    "invite_result.html", url_key=url["url_key"]
-                )
-            errors = url["detail"]
+        url = url_res.json()
+        if url_res.status_code == 200:
+            return await render_template(
+                "invite_result.html", url_key=url["url_key"]
+            )
+        errors = url["detail"]
     return (
         await render_template(
             "invite.html", csrf=session["csrf"], form=form, errors=errors
         ),
         400,
+    )
+
+
+@app.get("/invite/<key>")
+async def use_invite_get(key: str):
+    async with httpx.AsyncClient() as client:
+        form_res = await client.get(f"{API_HOST}/invite/{key}")
+    form = form_res.json()
+    if form_res.status_code == 200:
+        generate_csrf()
+        return await render_template(
+            "register.html", form=form, csrf=session["csrf"], errors={}
+        )
+    return form
+
+
+@app.post("/invite/<key>")
+async def use_invite_post(key: str):
+    form = await request.form
+    await check_csrf(form)
+    data, errors = RegisterFormHTML.parse_form(form)
+    if data:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{API_HOST}/register/{key}", json=data.to_api().model_dump()
+            )
+        if resp.status_code == 201:
+            return redirect(url_for("index"))
+        errors = resp.json()["detail"]
+
+    return await render_template(
+        "register.html", form=form, csrf=session["csrf"], errors=errors
     )
 
 

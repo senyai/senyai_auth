@@ -1,7 +1,44 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<div class="container">
+<div class="col-md-6 container-fluid text-center">
+    <div class="row">
+        <div class="col-md-12">
+            user ID: {{ data.id }}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" value="{{ data.username }}" id="username" readonly>
+                <label for="username">username:</label>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-floating">
+                <input type="email" class="form-control" value="{{ data.email }}" id="email" readonly>
+                <label for="email">email:</label>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" value="{{ data.contacts }}" id="contacts" readonly>
+                <label for="contacts">Contacts:</label>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" value="{{ data.display_name }}" id="display_name" readonly>
+                <label for="display_name">Display name:</label>
+            </div>
+        </div>
+    </div>
 
 </div>
 {% endblock content %}
