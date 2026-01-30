@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid col-md-6">
+    <div class="input-group">
+        <input id="url" class="form-control" type="text" value="{{ url_key }}" readonly>
+        <button class="btn btn-outline-secondary" id="copyBtn">
+            <i class="bi bi-clipboard"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+document.getElementById("copyBtn").addEventListener("click", async () => {
+    const text = document.getElementById("url").value;
+    await navigator.clipboard.writeText(text);
+});
+</script>
+
+{% endblock content %}

@@ -11,8 +11,7 @@ from quart import (
 import httpx
 from functools import wraps
 import secrets
-from .forms import InviteForm, RegisterFormHTML, LoginFormHTML
-
+from .forms import InviteFormHTML, RegisterFormHTML, LoginFormHTML
 
 app = Quart(__name__)
 app.secret_key = "flGsgDGgukHFyuK"
@@ -35,7 +34,7 @@ def generate_csrf():
 
 
 async def check_csrf(form):
-    token = form.get("csrf")
+    token = form.get("csrf_token")
     if not token or token != session["csrf"]:
         abort(403)
 
@@ -57,30 +56,35 @@ async def index():
                 f"{API_HOST}/ui/main",
                 headers={"Authorization": session["Authorization"]},
             )
-            if user_res.status_code == 200:
-                return await render_template("user.html", data=user_res.json())
-            session.clear()
+        if user_res.status_code == 200:
+            data = user_res.json()
+            user = data["user"]
+            projects = data["projects"]
+            return await render_template(
+                "user.html", user=user, projects=projects
+            )
+        session.clear()
     return await render_template("login.html")
 
 
 @app.post("/")
 async def login():
-    error = None
+    errors = None
     form = await request.form
     params = {
         "username": form.get("username", ""),
         "password": form.get("password", ""),
     }
     async with httpx.AsyncClient() as client:
-        token_res = await client.post("{API_HOST}/token", data=params)
+        token_res = await client.post(f"{API_HOST}/token", data=params)
         token = token_res.json()
         if token_res.status_code == 200:
             session["Authorization"] = get_authorization_str(
                 token["token_type"], token["access_token"]
             )
             return redirect(url_for("index"))
-        error = token.get("detail")
-    return await render_template("login.html", error=error), 400
+        errors = token.get("detail")
+    return await render_template("login.html", errors=errors), 400
 
 
 @app.route("/logout")
@@ -104,21 +108,22 @@ async def invite_get():
 async def invite_post():
     form = await request.form
     await check_csrf(form)
-    data, errors = InviteForm.parse_form(form)
+    data, errors = InviteFormHTML.parse_form(dict(form))
 
     if data:
         async with httpx.AsyncClient() as client:
             url_res = await client.post(
                 f"{API_HOST}/invite",
                 headers={"Authorization": session["Authorization"]},
-                data=data.model_dump(),
+                json=data.to_api().model_dump(),
             )
         url = url_res.json()
-        if url_res.status_code == 200:
+        if url_res.status_code == 201:
             return await render_template(
                 "invite_result.html", url_key=url["url_key"]
             )
         errors = url["detail"]
+        print(errors)
     return (
         await render_template(
             "invite.html", csrf=session["csrf"], form=form, errors=errors
@@ -153,7 +158,7 @@ async def use_invite_post(key: str):
         if resp.status_code == 201:
             return redirect(url_for("index"))
         errors = resp.json()["detail"]
-
+    print(errors)
     return await render_template(
         "register.html", form=form, csrf=session["csrf"], errors=errors
     )

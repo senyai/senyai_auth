@@ -26,16 +26,39 @@ class InviteForm(BaseForm):
         str,
         constr(
             max_length=32,
-            to_lower=True,
             strip_whitespace=True,
-            pattern=r"^[a-z_-]+$",
         ),
     ]
-    default_email: EmailStr
+    default_email: str
     default_display_name: Annotated[
-        str, constr(max_length=79, strip_whitespace=True, pattern=r"^[\W ]*$")
+        str, constr(max_length=79, strip_whitespace=True)
     ]
+
+
+class InviteFormAPI(InviteForm):
     roles: list[str]
+
+
+class InviteFormHTML(InviteForm):
+    is_manager: bool = False
+    is_admin: bool = False
+    csrf_token: str
+
+    def to_api(self):
+        roles = ["user"]
+        if self.is_manager:
+            roles.append("manager")
+        if self.is_admin:
+            roles.append("admin")
+
+        return InviteFormAPI(
+            project_id=self.project_id,
+            prompt=self.prompt,
+            default_username=self.default_username,
+            default_email=self.default_email,
+            default_display_name=self.default_display_name,
+            roles=roles,
+        )
 
 
 # class RegisterForm(BaseModel):
@@ -65,8 +88,8 @@ class RegisterFormAPI(RegisterForm):
 
 
 class RegisterFormHTML(RegisterForm):
-    phone: str
-    address: str
+    phone: Annotated[str, constr(min_length=0, max_length=15)]
+    address: Annotated[str, constr(min_length=0, max_length=1024)]
     csrf_token: str
 
     def to_api(self):
@@ -77,6 +100,7 @@ class RegisterFormHTML(RegisterForm):
             display_name=self.display_name,
             contacts="\n".join([self.phone, self.address]),
         )
+
 
 class LoginForm(BaseForm):
     username: str

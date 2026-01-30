@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+<div class="container-fluid col-md-6">
+    <div class="row">
+        <form role="form" method="POST" class="form-control">
+            <input type="hidden" value="{{ csrf }}" name="csrf_token">
+            <legend>{{ form["prompt"] }}</legend>
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="username" name="username" value="{{ form['username'] }}" required>
+                <label for="username">Username:</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="display_name" name="display_name" value="{{ form['display_name'] }}" required>
+                <label for="display_name">Display name:</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="email" name="email" value="{{ form['email'] }}" required>
+                <label for="email">email:</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" name="password" value="" required>
+                <label for="password">Password:</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="tel" class="form-control" id="phone" name="phone" value="{{ form['phone'] if 'phone' in form }}" required>
+                <label for="default_display_name">Phone:</label>
+            </div>
+            <div class="form-floating mb-3">
+                <textarea rows="5" class="form-control" id="address" name="address">{{ form['contacts'] if 'contacts' in form }}</textarea>
+                <label for="address">Contacts:</label>
+            </div>
+            <div class="d-grid pt-3">
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+{% endblock content %}
