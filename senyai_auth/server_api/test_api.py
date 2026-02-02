@@ -27,7 +27,7 @@ class UnauthorizedTest(TestCase):
             ("/user", "post"),
             ("/user/1", "delete"),
             ("/user/1", "patch"),
-            ("/ui/users/1", "get"),
+            ("/ui/project/1", "get"),
             ("/ui/main", "get"),
             ("/project", "post"),
             ("/project/1", "patch"),
@@ -297,6 +297,61 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                     "url_key": invitation_str,
                 }
             ],
+        )
+
+    async def test_12_ui_main(self):
+        assert isinstance(authorization_str, str), authorization_str
+        response = client.get(
+            f"/ui/main",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json(),
+            {
+                "projects": [
+                    {
+                        "display_name": "root",
+                        "id": 1,
+                        "name": "root",
+                        "parent": None,
+                    },
+                    {
+                        "display_name": "General Markup Creator",
+                        "id": 2,
+                        "name": "gmc",
+                        "parent": 1,
+                    },
+                ],
+                "user": {
+                    "contacts": "",
+                    "display_name": "Test Admin",
+                    "email": "test_admin@example.com",
+                    "id": 1,
+                    "username": "test_admin",
+                },
+            },
+        )
+
+    async def test_13_ui_project(self):
+        assert isinstance(authorization_str, str), authorization_str
+        response = client.get(
+            f"/ui/project/2",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json(),
+            {
+                "members": [
+                    {
+                        "display_name": "Invited User",
+                        "id": 3,
+                        "username": "invited_user",
+                    }
+                ],
+                "roles": [{"id": 2, "name": "test_role"}],
+            },
         )
 
     async def test_20_delete_admin_from_project(self):
