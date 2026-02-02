@@ -343,3 +343,9 @@ legend {
     border: none;
     border-radius: 0;
 }
+
+
+.toast-error{
+  --bs-toast-color: var(--bs-danger-text-emphasis);
+  --bs-toast-bg: var(--bs-danger-bg-subtle);
+}

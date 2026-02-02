@@ -5,7 +5,7 @@
 <div class="container-fluid col-md-6">
     <div class="row">
         <form role="form" method="POST" class="form-control">
-            <input type="hidden" value="{{ csrf }}" name="csrf_token">
+            <!-- <input type="hidden" value="{{ csrf }}" name="csrf_token"> -->
             <legend>{{ form["prompt"] }}</legend>
             <div class="form-floating mb-3">
                 <input type="text" class="form-control" id="username" name="username" value="{{ form['username'] }}" required>

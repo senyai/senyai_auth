@@ -2,11 +2,8 @@ from __future__ import annotations
 from typing import Annotated
 from pydantic import (
     BaseModel,
-    EmailStr,
-    Field,
     constr,
     ValidationError,
-    SecretStr,
 )
 
 
@@ -25,13 +22,14 @@ class InviteForm(BaseForm):
     default_username: Annotated[
         str,
         constr(
+            min_length=0,
             max_length=32,
             strip_whitespace=True,
         ),
     ]
     default_email: str
     default_display_name: Annotated[
-        str, constr(max_length=79, strip_whitespace=True)
+        str, constr(min_length=0, max_length=79, strip_whitespace=True)
     ]
 
 
@@ -42,7 +40,7 @@ class InviteFormAPI(InviteForm):
 class InviteFormHTML(InviteForm):
     is_manager: bool = False
     is_admin: bool = False
-    csrf_token: str
+    # csrf_token: str
 
     def to_api(self):
         roles = ["user"]
@@ -90,7 +88,6 @@ class RegisterFormAPI(RegisterForm):
 class RegisterFormHTML(RegisterForm):
     phone: Annotated[str, constr(min_length=0, max_length=15)]
     address: Annotated[str, constr(min_length=0, max_length=1024)]
-    csrf_token: str
 
     def to_api(self):
         return RegisterFormAPI(
@@ -107,8 +104,8 @@ class LoginForm(BaseForm):
     password: str
 
 
-class LoginFormHTML(LoginForm):
-    csrf_token: str
+# class LoginFormHTML(LoginForm):
+#     csrf_token: str
 
-    def to_api(self):
-        return LoginForm(username=self.username, password=self.password)
+#     def to_api(self):
+#         return LoginForm(username=self.username, password=self.password)

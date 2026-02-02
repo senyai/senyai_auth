@@ -3,14 +3,14 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
-        <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', filename='css/bootstrap-icons.min.css') }}" rel="stylesheet">
         <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
         <link href="{{ url_for('static', filename='css/themes/light.css') }}" rel="stylesheet">
         <link href="{{ url_for('static', filename='css/themes/dark.css') }}" rel="stylesheet">
 
         <!-- <script src="/static/js/jquery-3.7.1.min.js"></script> -->
-        <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+        <!-- <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script> -->
         <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/switch_theme.js') }}"></script>
     </head>
@@ -21,5 +21,6 @@
                 {% block content %}{% endblock %}
             </div>
         </div>
+        {% include "toasts.html" %}
     </body>
 </html>
