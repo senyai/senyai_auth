@@ -10,9 +10,10 @@ from quart import (
     make_response,
 )
 import httpx
+
 # from functools import wraps
 # import secrets
-from .forms import InviteFormHTML, RegisterFormHTML
+from .forms import InviteFormHTML, RegisterFormHTML, LoginForm
 
 app = Quart(__name__)
 # app.secret_key = "flGsgDGgukHFyuK"
@@ -84,22 +85,24 @@ async def index():
 async def login():
     errors = {}
     form = await request.form
-    params = {
-        "username": form.get("username", ""),
-        "password": form.get("password", ""),
-    }
-    async with httpx.AsyncClient() as client:
-        token_res = await client.post(f"{API_HOST}/token", data=params)
-    token = token_res.json()
-    if token_res.status_code == 200:
-        resp = await make_response(redirect(url_for("index")))
-        resp.set_cookie(
-            "Authorization",
-            get_authorization_str(token["token_type"], token["access_token"]),
-        )
-        return resp
-        # errors = token.get("detail")
-    errors = parse_errors(token)
+    data, errors = LoginForm.parse_form(dict(form))
+    if data:
+        async with httpx.AsyncClient() as client:
+            token_res = await client.post(
+                f"{API_HOST}/token", data=data.model_dump()
+            )
+        token = token_res.json()
+        if token_res.status_code == 200:
+            resp = await make_response(redirect(url_for("index")))
+            resp.set_cookie(
+                "Authorization",
+                get_authorization_str(
+                    token["token_type"], token["access_token"]
+                ),
+            )
+            return resp
+            # errors = token.get("detail")
+        errors = parse_errors(token)
     return await render_template("login.html", errors=errors), 400
 
 
@@ -141,9 +144,7 @@ async def invite_post():
             )
         errors = url["detail"]
     return (
-        await render_template(
-            "invite.html", form=form, errors=errors
-        ),
+        await render_template("invite.html", form=form, errors=errors),
         400,
     )
 
@@ -172,9 +173,7 @@ async def use_invite_post(key: str):
         if resp.status_code == 201:
             return redirect(url_for("index"))
         errors = parse_errors(resp.json())
-    return await render_template(
-        "register.html", form=form, errors=errors
-    )
+    return await render_template("register.html", form=form, errors=errors)
 
 
 app.run()
