@@ -300,7 +300,7 @@ async def update_user(
     user: UpdateUserModel,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-) -> Response:
+) -> None:
     """
     ## Update user attributes
 
@@ -315,7 +315,6 @@ async def update_user(
     user.update(auth_user, is_superadmin)
     session.add(auth_user)
     await session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete(

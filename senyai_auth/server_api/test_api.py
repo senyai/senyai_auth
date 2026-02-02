@@ -192,7 +192,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def test_05_update_role(self):
         assert isinstance(authorization_str, str), authorization_str
         role = {
-            "description": "Update",
+            "description": "Updated description",
         }
         response = client.patch(
             "/role/2",
@@ -350,7 +350,13 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                         "username": "invited_user",
                     }
                 ],
-                "roles": [{"id": 2, "name": "test_role"}],
+                "roles": [
+                    {
+                        "description": "Updated description",
+                        "id": 2,
+                        "name": "test_role",
+                    }
+                ],
             },
         )
 
@@ -392,6 +398,7 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
         new_display_name = client.get(
             "/user", headers={"Authorization": authorization_str}
         ).json()["display_name"]
