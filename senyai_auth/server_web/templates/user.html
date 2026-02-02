@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="col-md-8 justify-content-left">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="row p-2">
+                <div class="col-md-12">
+                    user ID: {{ user['id'] }}
+                </div>
+            </div>
+            <div class="row p-2">
+                <div class="col-md-12">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" value="{{ user['username'] }}" id="username" readonly>
+                        <label for="username">username:</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row p-2">
+                <div class="col-md-12">
+                    <div class="form-floating">
+                        <input type="email" class="form-control" value="{{ user['email'] }}" id="email" readonly>
+                        <label for="email">email:</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row p-2">
+                <div class="col-md-12">
+                    <div class="form-floating">
+                        <textarea rows="5" class="form-control" id="contacts" readonly>{{ user['contacts'] }}</textarea>
+                        <label for="contacts">Contacts:</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row p-2">
+                <div class="col-md-12">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" value="{{ user['display_name'] }}" id="display_name" readonly>
+                        <label for="display_name">Display name:</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="row p-2">
+                {% if projects %}
+                <div class="accordion" id="accordionProjects">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                Projects    
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionProjects">
+                            <div class="accordion-body">
+                            {% for project in projects%}
+                                <div class="row">
+                                    <div class="col-md-2">id: {{ project["id"]}}</div>
+                                    <div class="col-md-5">{{ project["name"] }}</div>
+                                    <div class="col-md-5">
+                                        {% if project["parent"] %}
+                                        {{ project["parent"] }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

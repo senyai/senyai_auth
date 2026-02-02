@@ -1,0 +1,43 @@
+<nav class="navbar navbar-expand-lg fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand align-items-center" href="/">
+      <div class="row">
+        <div class="col-md-4">
+          <i class="bi bi-git fs-3"></i>
+        </div>
+        <div class="col-md-8 align-self-center px-2">
+          <div id="brand-name" class="brand-name">API</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 brand-version">
+          <div id="version" class="text-version">v.0.0.0</div>
+        </div>
+      </div>
+    </a>
+    <div class="d-flex align-items-center">
+      <!-- Profile Dropdown -->
+      {% if is_auth %}
+      <div id="status" class="me-3 align-self-center text-status"></div>
+
+      <div class="dropdown me-3">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="profileDropdown"
+          data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-person-circle"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+          <!-- <li><a class="dropdown-item" href="#">Change Password</a></li> -->
+          <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+              <i class="bi bi-door-open-fill me-1"></i>Logout
+            </a></li>
+        </ul>
+
+      </div>
+      {% endif %}
+      <!-- Theme Toggle Button -->
+      <button class="btn btn-outline-secondary" id="themeToggle">
+        <i class="bi bi-moon-stars-fill"></i>
+      </button>
+    </div>
+  </div>
+</nav>

@@ -1,0 +1,73 @@
+[data-bs-theme="light"] {
+    --bs-body-color: rgb(54, 54, 54);
+    --bs-body-color-rgb: 54, 54, 54;
+    --bs-body-bg: rgb(245, 245, 247);
+
+    --bs-emphasis-color: rgb(50, 50, 50);
+    --bs-emphasis-color-rgb: 50, 50, 50;
+
+    --bs-tertiary-color: #272829;
+    --bs-tertiary-bg: rgb(255, 255, 255);
+    --bs-tertiary-bg-rgb: 255, 255, 255;
+
+    --bs-link-color: hsl(203, 15%, 42%);
+    --bs-link-hover-color: hsl(202, 58%, 38%);
+    --bs-link-active-color: hsl(202, 58%, 45%);
+    --bs-link-active-bg: "transparent";
+
+    --bs-code-color: #d63384;
+
+    --bs-primary: hsl(202, 58%, 38%);
+    --bs-primary-rgb: 41, 113, 155;
+    --bs-secondary: hsl(0, 0%, 23%);
+    --bs-secondary-rgb: 59, 59, 59;
+    --bs-success: #16851f;
+    --bs-info: #0dcaf0;
+    --bs-warning: rgb(197, 149, 7);
+    --bs-warning-rgb: 197, 149, 7;
+    --bs-danger: hsl(354, 70%, 40%);
+
+    --bs-secondary-color: rgba(255, 255, 255);
+    --bs-secondary-color-rgb: 255, 255, 255;
+    --bs-aside-bg: rgba(var(--bs-secondary-rgb), 0.2);
+    --bs-secondary-bg: hsl(0, 0%, 50%);
+    --bs-secondary-bg-rgb: 128, 128, 128;
+
+
+    --bs-primary-text-emphasis: hsl(202, 58%, 35%);
+    --bs-secondary-text-emphasis: #6b6b6b;
+    --bs-success-text-emphasis: #0b6321;
+    --bs-info-text-emphasis: #085b6b;
+    --bs-warning-text-emphasis: hsl(45, 94%, 31%);
+    --bs-danger-text-emphasis: #7e1923;
+
+    --bs-primary-bg-subtle: hsl(202, 58%, 90%);
+    --bs-secondary-bg-subtle: #ececec;
+    --bs-success-bg-subtle: #caf5d4;
+    --bs-info-bg-subtle: #cff4fc;
+    --bs-warning-bg-subtle: #e2ca7b;
+    --bs-danger-bg-subtle: #f7d9db;
+
+    --bs-primary-border-subtle: hsl(202, 58%, 60%);
+    --bs-secondary-border-subtle: #c4c8cb;
+    --bs-success-border-subtle: #a3cfbb;
+    --bs-info-border-subtle: #9eeaf9;
+    --bs-warning-border-subtle: #ffe69c;
+    --bs-danger-border-subtle: #f1aeb5;
+
+
+    --bs-modal-bg: var(--bs-body-bg);
+    --bs-modal-color:  var(--bs-emphasis-color);
+
+    --error-row-color: var(--bs-danger-bg-subtle);
+    --disabled-row-color: var(--bs-secondary-bg-subtle);
+    --confirmed-row-color: var(--bs-success-bg-subtle);
+    --new-row-color: var(--bs-warning-bg-subtle);
+    --updated-row-color: var(--bs-warning-bg-subtle);
+    --active-row-color: var(--bs-tertiary-bg);
+    --selected-row-color: var(--bs-info-bg-subtle);
+
+
+    --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+
+}
