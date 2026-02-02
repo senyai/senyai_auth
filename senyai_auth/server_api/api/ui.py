@@ -8,6 +8,7 @@ from ..db import (
     auth_for_project_stmt,
     list_projects_stmt,
     Member,
+    MemberRole,
     PermissionsAPI,
     Role,
     User,
@@ -17,6 +18,7 @@ from .user import UserInfo
 from .. import get_async_session
 from pydantic import BaseModel
 from .exceptions import not_authorized_exception, response_with_perm_check
+from collections import defaultdict
 
 
 router = APIRouter(tags=["ui"], prefix="/ui")
@@ -32,6 +34,7 @@ class RoleItem(BaseModel, strict=True):
     id: int
     name: str
     description: str
+    users: list[int]
 
 
 class ProjectInfo(BaseModel, strict=True):
@@ -69,13 +72,23 @@ async def project(
     roles_stmt = select(Role.id, Role.name, Role.description).where(
         Role.project_id == project_id
     )
+    role_users_stmt = (
+        select(Role.id, MemberRole.user_id)
+        .join(MemberRole)
+        .where(Role.project_id == project_id)
+    )
+    roles_dict: defaultdict[int, list[int]] = defaultdict(list)
+    for role_id, user_id in await session.execute(role_users_stmt):
+        roles_dict[role_id].append(user_id)
 
     member = [
         UserItem(id=id, username=username, display_name=display_name)
         for id, username, display_name in await session.execute(users_stmt)
     ]
     roles = [
-        RoleItem(id=id, name=name, description=description)
+        RoleItem(
+            id=id, name=name, description=description, users=roles_dict[id]
+        )
         for id, name, description in await session.execute(roles_stmt)
     ]
     return ProjectInfo(
