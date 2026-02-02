@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 from sqlalchemy import select
-from fastapi import Depends, APIRouter
+from fastapi import status, Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import (
     auth_for_project_stmt,
@@ -16,7 +16,7 @@ from .auth import get_current_user
 from .user import UserInfo
 from .. import get_async_session
 from pydantic import BaseModel
-from .exceptions import not_authorized_exception
+from .exceptions import not_authorized_exception, response_with_perm_check
 
 
 router = APIRouter(tags=["ui"], prefix="/ui")
@@ -31,6 +31,7 @@ class UserItem(BaseModel, strict=True):
 class RoleItem(BaseModel, strict=True):
     id: int
     name: str
+    description: str
 
 
 class ProjectInfo(BaseModel, strict=True):
@@ -38,16 +39,20 @@ class ProjectInfo(BaseModel, strict=True):
     roles: list[RoleItem]
 
 
-@router.get("/project/{project_id}")
+@router.get(
+    "/project/{project_id}",
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
 async def project(
     project_id: int,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> ProjectInfo:
     """
     ## List users and roles of a project
 
-    Ensures that user has "user" role in the project specified by `project_id`
+    Will succeed only if user have at least "user" role
+    in the project specified by `project_id`
     """
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -61,7 +66,7 @@ async def project(
         .join(Member)
         .where(Member.project_id == project_id)
     )
-    roles_stmt = select(Role.id, Role.name).where(
+    roles_stmt = select(Role.id, Role.name, Role.description).where(
         Role.project_id == project_id
     )
 
@@ -70,8 +75,8 @@ async def project(
         for id, username, display_name in await session.execute(users_stmt)
     ]
     roles = [
-        RoleItem(id=id, name=name)
-        for id, name in await session.execute(roles_stmt)
+        RoleItem(id=id, name=name, description=description)
+        for id, name, description in await session.execute(roles_stmt)
     ]
     return ProjectInfo(
         members=member,
@@ -91,7 +96,9 @@ class MainModel(BaseModel, strict=True):
     projects: list[ProjectItem]
 
 
-@router.get("/main")
+@router.get(
+    "/main", responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check}
+)
 async def projects(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
