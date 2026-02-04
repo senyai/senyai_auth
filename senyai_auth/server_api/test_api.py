@@ -355,7 +355,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                         "description": "Updated description",
                         "id": 2,
                         "name": "test_role",
-                        "users": [2, 3],
+                        "users": [3],
                     }
                 ],
             },

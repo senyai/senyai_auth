@@ -2,10 +2,17 @@ from __future__ import annotations
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from fastapi import APIRouter, Depends, status, HTTPException, Response
-from sqlalchemy import delete
+from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..db import Role, User, auth_for_project_stmt, PermissionsAPI, MemberRole
+from ..db import (
+    auth_for_project_stmt,
+    Member,
+    MemberRole,
+    PermissionsAPI,
+    Role,
+    User,
+)
 from .auth import get_current_user
 from .. import get_async_session
 from .project import Name, Description
@@ -178,6 +185,13 @@ async def add_users_to_a_role(
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
+    """
+    ## Add users to a group
+
+    * Only managers can perform this action
+    * `user_ids` must be existing members of Role's project
+    """
+
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -188,9 +202,18 @@ async def add_users_to_a_role(
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
-    # ToDo: uid are unchecked - fix that
-    member_roles = [MemberRole(user_id=uid, role=role_db) for uid in user_ids]
-    session.add_all(member_roles)
+    await session.execute(
+        insert(MemberRole).from_select(
+            ("user_id", "role_id"),
+            select(User.id, literal(role_id).label("role_id"))
+            .join(Member)
+            .where(
+                Member.project_id == role_db.project_id,
+                Member.user_id.in_(user_ids),
+            ),
+        )
+    )
+
     await session.commit()
     return Response(status_code=status.HTTP_201_CREATED)
 
