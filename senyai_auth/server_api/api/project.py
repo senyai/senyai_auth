@@ -6,7 +6,7 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     Field,
-    constr,
+    StringConstraints,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -27,18 +27,20 @@ router = APIRouter(tags=["project"])
 type Name = Annotated[
     str,
     Field(description="Name as it will be used in url string"),
-    constr(min_length=2, max_length=32, to_lower=True, strip_whitespace=True),
+    StringConstraints(
+        min_length=2, max_length=32, to_lower=True, strip_whitespace=True
+    ),
     AfterValidator(not_in_blocklist),
 ]
 
 type DisplayName = Annotated[
     str,
     Field(description="Name as it will be displayed in the title"),
-    constr(min_length=3, max_length=79, strip_whitespace=True),
+    StringConstraints(min_length=3, max_length=79, strip_whitespace=True),
     AfterValidator(not_in_blocklist),
 ]
 
-type Description = Annotated[str, constr(max_length=1024)]
+type Description = Annotated[str, StringConstraints(max_length=1024)]
 
 
 class ProjectCreate(BaseModel, strict=True):

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Annotated
 from pydantic import (
     BaseModel,
-    constr,
+    StringConstraints,
     ValidationError,
 )
 
@@ -18,10 +18,12 @@ class BaseForm(BaseModel):
 
 class InviteForm(BaseForm):
     project_id: int
-    prompt: Annotated[str, constr(max_length=1024, strip_whitespace=True)]
+    prompt: Annotated[
+        str, StringConstraints(max_length=1024, strip_whitespace=True)
+    ]
     default_username: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=32,
             strip_whitespace=True,
@@ -29,7 +31,8 @@ class InviteForm(BaseForm):
     ]
     default_email: str
     default_display_name: Annotated[
-        str, constr(min_length=0, max_length=79, strip_whitespace=True)
+        str,
+        StringConstraints(min_length=0, max_length=79, strip_whitespace=True),
     ]
 
 
@@ -69,9 +72,9 @@ class InviteFormHTML(InviteForm):
 
 # class RegisterFormPost(RegisterFormGet):
 #     password: Annotated[
-#         SecretStr, constr(min_length=8, max_length=64, strip_whitespace=True)
+#         SecretStr, StringConstraints(min_length=8, max_length=64, strip_whitespace=True)
 #     ]
-#     contacts: Annotated[str, constr(min_length=0, max_length=1500)]
+#     contacts: Annotated[str, StringConstraints(min_length=0, max_length=1500)]
 
 
 class RegisterForm(BaseForm):
@@ -86,8 +89,8 @@ class RegisterFormAPI(RegisterForm):
 
 
 class RegisterFormHTML(RegisterForm):
-    phone: Annotated[str, constr(min_length=0, max_length=15)]
-    address: Annotated[str, constr(min_length=0, max_length=1024)]
+    phone: Annotated[str, StringConstraints(min_length=0, max_length=15)]
+    address: Annotated[str, StringConstraints(min_length=0, max_length=1024)]
 
     def to_api(self):
         return RegisterFormAPI(

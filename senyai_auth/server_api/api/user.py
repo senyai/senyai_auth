@@ -5,7 +5,7 @@ import base64
 from pydantic import (
     AfterValidator,
     BaseModel,
-    constr,
+    StringConstraints,
     Field,
     model_validator,
     SecretStr,
@@ -59,7 +59,7 @@ def check_password(
 class CreateUserModel(BaseModel, strict=True, frozen=True):
     username: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=2,
             max_length=32,
             to_lower=True,
@@ -68,21 +68,19 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
         ),
         AfterValidator(not_in_blocklist),
     ]
-    password: Annotated[
-        SecretStr, constr(min_length=8, max_length=64, strip_whitespace=True)
-    ] = Field(exclude=True)
+    password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
     email: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=3,
             max_length=500,
             strip_whitespace=True,
-            pattern=r"^\W*$",
+            pattern=r"^\S*$",
         ),
     ]
     contacts: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=1500,
         ),
@@ -90,11 +88,11 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
     ]
     display_name: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=3,
             max_length=79,
             strip_whitespace=True,
-            pattern=r"^[\W ]*$",
+            pattern=r"^[\w ]*$",
         ),
     ]
 
@@ -169,18 +167,14 @@ async def create_user(
 
 
 class PasswordModel(BaseModel, strict=True, frozen=True):
-    old: Annotated[
-        SecretStr, constr(min_length=8, max_length=64, strip_whitespace=True)
-    ] = Field(exclude=True)
-    new: Annotated[
-        SecretStr, constr(min_length=8, max_length=64, strip_whitespace=True)
-    ] = Field(exclude=True)
+    old: SecretStr = Field(min_length=8, max_length=64, exclude=True)
+    new: SecretStr = Field(min_length=8, max_length=64, exclude=True)
 
 
 class UpdateUserModel(BaseModel, strict=True, frozen=True):
     username: Annotated[
         str | None,
-        constr(
+        StringConstraints(
             min_length=2,
             max_length=32,
             to_lower=True,
@@ -192,16 +186,16 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True):
     password: PasswordModel | None = None
     email: Annotated[
         str | None,
-        constr(
+        StringConstraints(
             min_length=3,
             max_length=500,
             strip_whitespace=True,
-            pattern=r"^\W*$",
+            pattern=r"^\S*$",
         ),
     ] = None
     contacts: Annotated[
         str | None,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=1500,
         ),
@@ -209,11 +203,11 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True):
     ] = None
     display_name: Annotated[
         str | None,
-        constr(
+        StringConstraints(
             min_length=3,
             max_length=79,
             strip_whitespace=True,
-            pattern=r"^[\W ]*$",
+            pattern=r"^[\w ]*$",
         ),
     ] = None
     disabled: Annotated[
