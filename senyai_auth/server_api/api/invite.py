@@ -5,7 +5,7 @@ import base64
 from pydantic import (
     AfterValidator,
     BaseModel,
-    constr,
+    StringConstraints,
     Field,
 )
 from .blocklist import not_in_blocklist
@@ -44,12 +44,12 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
     ]
     prompt: Annotated[
         str,
-        constr(max_length=1024, strip_whitespace=True),
+        StringConstraints(max_length=1024, strip_whitespace=True),
         Field(description="Show invitation above user registration form."),
     ]
     default_username: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=32,
             to_lower=True,
@@ -63,22 +63,22 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
     ]
     default_email: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=500,
             strip_whitespace=True,
-            pattern=r"^\W*$",
+            pattern=r"^\S*$",
         ),
         Field(description="For convenience. Should be left empty."),
     ]
 
     default_display_name: Annotated[
         str,
-        constr(
+        StringConstraints(
             min_length=0,
             max_length=79,
             strip_whitespace=True,
-            pattern=r"^[\W ]*$",
+            pattern=r"^[\w ]*$",
         ),
         Field(
             description="User will have display_name field filled "
