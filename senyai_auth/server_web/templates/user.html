@@ -1,79 +1,74 @@
 {% extends 'base.html' %}
 {% block content %}
-
-<div class="col-md-8 justify-content-left">
+<div class="col-md-6 justify-content-center">
     <div class="row">
-        <div class="col-md-6">
-            <div class="row p-2">
-                <div class="col-md-12">
-                    user ID: {{ user['id'] }}
-                </div>
-            </div>
-            <div class="row p-2">
-                <div class="col-md-12">
-                    <div class="form-floating">
-                        <input type="text" class="form-control" value="{{ user['username'] }}" id="username" readonly>
-                        <label for="username">username:</label>
-                    </div>
-                </div>
-            </div>
-            <div class="row p-2">
-                <div class="col-md-12">
-                    <div class="form-floating">
-                        <input type="email" class="form-control" value="{{ user['email'] }}" id="email" readonly>
-                        <label for="email">email:</label>
-                    </div>
-                </div>
-            </div>
-            <div class="row p-2">
-                <div class="col-md-12">
-                    <div class="form-floating">
-                        <textarea rows="5" class="form-control" id="contacts" readonly>{{ user['contacts'] }}</textarea>
-                        <label for="contacts">Contacts:</label>
-                    </div>
-                </div>
-            </div>
-            <div class="row p-2">
-                <div class="col-md-12">
-                    <div class="form-floating">
-                        <input type="text" class="form-control" value="{{ user['display_name'] }}" id="display_name" readonly>
-                        <label for="display_name">Display name:</label>
-                    </div>
-                </div>
-            </div>
+        <div class="col-md-2">
+            user ID: {{ user['id'] }}
+        </div>
+        <div class="col-md-4" title="{{ user['username'] }}">
+            {{ user['display_name'] }}
         </div>
         <div class="col-md-6">
-            <div class="row p-2">
-                {% if projects %}
-                <div class="accordion" id="accordionProjects">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                Projects    
-                            </button>
-                        </h2>
-                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordionProjects">
-                            <div class="accordion-body">
-                            {% for project in projects%}
-                                <div class="row">
-                                    <div class="col-md-2">id: {{ project["id"]}}</div>
-                                    <div class="col-md-5">{{ project["name"] }}</div>
-                                    <div class="col-md-5">
-                                        {% if project["parent"] %}
-                                        {{ project["parent"] }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
+            {{ user['email'] }}
         </div>
     </div>
 </div>
+<div class="row">
+    <div class="col-md-2">
+        {% if projects %}
+        {% for project in projects %}
+        <div class="row">
+            <a class="icon-link icon-link-hover" href="#" hx-get="/project/{{ project['id'] }}" hx-trigger="click" hx-target="#parent-div">
+                {{ project['display_name'] }}
+                <svg xmlns="http://www.w3.org/2000/svg" class="bi" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                </svg>
+            </a>
+        </div>
+
+
+        {% endfor %}
+        <!-- <div class="accordion" id="accordionProjects">
+            {% for project in projects %}
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#project_{{ project['id'] }}" aria-expanded="true"
+                        aria-controls="project_{{ project['id'] }}">
+                        {{ project['name'] }}
+                    </button>
+                </h2>
+                <div id="project_{{ project['id'] }}" class="accordion-collapse collapse"
+                    data-bs-parent="#accordionProjects">
+                    <div class="accordion-body">
+                        <div>
+                            <a class="" href="#" hx-get="" hx-trigger="" hx-target="#parent-div">
+                                <i class="bi bi-people-fill"></i> Users
+                            </a>
+                        </div>
+                        <div>
+                            <a class="" href="#" hx-get="" hx-trigger="" hx-target="#parent-div">
+                                <i class="bi bi-envelope-arrow-up-fill"></i> Invitation
+                            </a>
+                        </div>
+                        <div>
+                            <a class="" href="#" hx-get="/invite?project_id={{ project['id'] }}&project_name={{ project['name'] }}" hx-trigger="click" hx-target="#parent-div">
+                                <i class="bi bi-person-fill-add"></i> Invite
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div> -->
+        {% endif %}
+    </div>
+    <div class="col-md-10">
+        <div id="parent-div">
+
+        </div>
+    </div>
+</div>
+
 {% endblock content %}

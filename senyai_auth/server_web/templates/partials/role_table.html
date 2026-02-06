@@ -1,0 +1,35 @@
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th class="col-md-2">Role</th>
+            <th>Description</th>
+            <th>
+                <button class="btn btn-table" hx-get="/role" hx-vals='{"project_id": {{ project_id }}}'
+                    hx-trigger="click" hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </button>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for role in roles %}
+        <tr title="id:{{ role['id'] }}">
+            <td>{{ role['name'] }}</td>
+            <td>{{ role['description'] }}</td>
+            <td>
+                <button class="btn btn-table pe-3" hx-get="/role_manage_form"
+                    hx-vals='{"users": {{ members }}, "role": {{ role }}}' hx-trigger="click" hx-target="#modalContent"
+                    data-bs-toggle="modal" data-bs-target="#baseModal" disabled>
+                    <i class="bi bi-people-fill"></i>
+                </button>
+                <button class="btn btn-table pe-3">
+                    <i class="bi bi-pen-fill"></i>
+                </button>
+                <button class="btn btn-table">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,31 @@
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">
+        Create Invite to {{ project_name }} (Project ID: {{ project_id }})
+    </h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body" id="invite-form">
+    <form role="form" method="POST" class="form-control">
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form['prompt'] if form }}" required>
+            <label for="prompt">Prompt:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form['default_username'] if form }}" required>
+            <label for="default_username">Username:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form['default_email'] if form }}" required>
+            <label for="default_email">email:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}" required>
+            <label for="default_display_name">Display name:</label>
+        </div>
+        <input type="hidden" name="project_id" value="{{ project_id }}">
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="button" class="btn btn-primary" hx-post="/invite" hx-include="#invite-form" hx-target="#modalContent">Create Invite</button>
+</div>

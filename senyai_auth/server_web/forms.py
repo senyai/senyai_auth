@@ -112,3 +112,33 @@ class LoginForm(BaseForm):
 
 #     def to_api(self):
 #         return LoginForm(username=self.username, password=self.password)
+
+
+class RoleForm(BaseForm):
+    project_id: int
+    name: str
+    description: Annotated[
+        str, StringConstraints(min_length=0, max_length=1024)
+    ]
+    permissions_api: str
+    permissions_git: str
+    permissions_storage: str
+    permissions_extra: str
+
+
+class UserData(BaseForm):
+    id: int
+    username: str
+    display_name: str
+
+
+class RoleData(BaseForm):
+    id: int
+    name: str
+    description: str
+    users: list[int]
+
+
+class RoleManageData(BaseForm):
+    users: list[UserData]
+    role: RoleData

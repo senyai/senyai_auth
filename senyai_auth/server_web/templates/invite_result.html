@@ -1,7 +1,11 @@
-{% extends 'base.html' %}
-{% block content %}
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">
+        Invite created!
+    </h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
 
-<div class="container-fluid col-md-6">
+<div class="modal-body">
     <div class="input-group">
         <input id="url" class="form-control" type="text" value="{{ url_key }}" readonly>
         <button class="btn btn-outline-secondary" id="copyBtn">
@@ -9,12 +13,12 @@
         </button>
     </div>
 </div>
-
+<div class="modal-footer">
+    <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
+</div>
 <script>
 document.getElementById("copyBtn").addEventListener("click", async () => {
     const text = document.getElementById("url").value;
     await navigator.clipboard.writeText(text);
 });
 </script>
-
-{% endblock content %}

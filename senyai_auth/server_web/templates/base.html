@@ -11,16 +11,24 @@
 
         <!-- <script src="/static/js/jquery-3.7.1.min.js"></script> -->
         <!-- <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script> -->
+        <script src="{{ url_for('static', filename='js/htmx.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/switch_theme.js') }}"></script>
+
     </head>
     <body>
-        {% include "navigation.html" %}
+        {% include "includes/navigation.html" %}
         <div class="" style="margin-top: 56px;">
             <div class="content flex-grow-1 p-4">
                 {% block content %}{% endblock %}
+                {% include "includes/toasts.html" %}
             </div>
         </div>
-        {% include "toasts.html" %}
+        {% include "forms/base_modal.html" %}
     </body>
+    <script>
+        document.body.addEventListener("successEvent", event => {
+            alert(event.detail.message);
+        })
+    </script>
 </html>
