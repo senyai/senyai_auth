@@ -61,6 +61,14 @@ else
   echo "Bootstrap Icons WOFF Font already exists."
 fi
 
+# Download htmx
+if [ ! -f "$JS_DIR/htmx.min.js" ]; then
+  echo "Downloading htmx..."
+  curl -L "https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" -o "$JS_DIR/htmx.min.js"
+else
+  echo "htmx already exists."
+fi
+
 
 echo "----------------------------------------"
 echo "Installation complete."

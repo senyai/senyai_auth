@@ -1,0 +1,58 @@
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">
+        {{ role['name'] }}
+    </h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form method="POST" class="form-control" id="permissions-form">
+        <div class="row">
+            <div class="col">
+                <label class="form-label">Without</label>
+                <select id="without-role" class="form-select" multiple size="10">
+                    {% for user in users_without %}
+                    <option value="{{ user['id'] }}">
+                        {{ user['display_name'] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 justify-content-center">
+                <button class="btn btn-table">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+                <button class="btn btn-table">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+            </div>
+            <div class="col">
+                <label class="form-label">With</label>
+                <select id="with-role" name="add_user" class="form-select" multiple size="10">
+                    {% for user in users_with %}
+                    <option value="{{ user['id'] }}">
+                        {{ user['display_name'] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="button" class="btn btn-primary" hx-post="/role" hx-include="#permissions-form">Save Role</button>
+</div>
+
+<script>
+    function moveSelected(fromId, toId) {
+
+    const from = document.getElementById(fromId);
+    const to = document.getElementById(toId);
+
+    Array.from(from.selectedOptions).forEach(option => {
+        to.appendChild(option);
+    });
+
+}
+
+</script>

@@ -1,0 +1,48 @@
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">
+        {% if form %}
+        Update Role
+        {% else %}
+        Create Role
+        {% endif %}
+    </h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form role="form" method="POST" class="form-control" id="role-form">
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="name" name="name" value="{{ form['name'] if form }}" required>
+            <label for="name">Role name:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="description" name="description" value="{{ form['description'] if form}}" required>
+            <label for="description">Description:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <select class="form-select" id="permissions_api" name="permissions_api">
+                {% for option in api_options %}
+                <option value="{{ option['name'] }}">{{ option['name'] }}</option>
+                {% endfor %}
+            </select>
+            <label for="permissions_api">API permissions:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <textarea rows="5" class="form-control" id="permissions_git" name="permissions_git">{{ form['permissions_git'] if 'permissions_git' in form }}</textarea>
+            <label for="address">Git permissions:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <textarea rows="5" class="form-control" id="permissions_storage" name="permissions_storage">{{ form['permissions_storage'] if 'permissions_storage' in form }}</textarea>
+            <label for="address">Storage permissions:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <textarea rows="5" class="form-control" id="permissions_extra" name="permissions_extra">{{ form['permissions_extra'] if 'permissions_extra' in form }}</textarea>
+            <label for="address">Extra permissions:</label>
+        </div>
+
+        <input type="hidden" name="project_id" value="{{ project_id }}">
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="button" class="btn btn-primary" hx-post="/role" hx-include="#role-form">Save Role</button>
+</div>

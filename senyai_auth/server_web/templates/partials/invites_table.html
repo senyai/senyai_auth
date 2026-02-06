@@ -1,0 +1,33 @@
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Display name</th>
+            <th class="col"></th>
+            <th>
+                <button class="btn btn-table" hx-get="/invite" hx-vals='{"project_id": {{ project_id }}, "project_name": {{project_name }}}'
+                    hx-trigger="click" hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </button>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for invite in invites %}
+        <tr>
+            <th>{{ invite['display_name'] }}</th>
+            <th class="text-center">
+                {% if invite['accepted_id'] %}
+                <i class="bi bi-envelope-check fs-2 text-success"></i>
+                {% else %}
+                <a href="/{{ invite['url_key'] }}"><i class="bi bi-envelope fs-2"></i></a>
+                {% endif %}
+            </th>
+            <th>
+                <button class="btn btn-table">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </th>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

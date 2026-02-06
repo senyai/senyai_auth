@@ -1,0 +1,17 @@
+<div class="modal fade" id="baseModal" tabindex="-1" aria-labelledby="baseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" id="modalContent">
+
+        </div>
+    </div>
+</div>
+<script>
+    const modalEl = document.getElementById("baseModal");
+    document.body.addEventListener("successEvent", () => {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    });
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('modalContent').innerHTML = '';
+    });
+
+</script>
