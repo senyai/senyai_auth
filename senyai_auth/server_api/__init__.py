@@ -13,7 +13,7 @@ class AppSettings(BaseModel, strict=True, frozen=True):
     # openssl rand -hex 32
     secret_key: str
     algorithm: Literal["HS256"] = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 60 * 24 * 31  # 1 month
     echo: bool = False
 
 
