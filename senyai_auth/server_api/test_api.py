@@ -358,6 +358,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                         "users": [3],
                     }
                 ],
+                "permission": 8,
             },
         )
 

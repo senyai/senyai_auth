@@ -40,6 +40,7 @@ class RoleItem(BaseModel, strict=True):
 class ProjectInfo(BaseModel, strict=True):
     members: list[UserItem]
     roles: list[RoleItem]
+    permission: PermissionsAPI
 
 
 @router.get(
@@ -61,6 +62,7 @@ async def project(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.user:
         raise not_authorized_exception
 
@@ -94,6 +96,7 @@ async def project(
     return ProjectInfo(
         members=member,
         roles=roles,
+        permission=permission,
     )
 
 
