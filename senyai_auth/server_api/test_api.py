@@ -299,7 +299,16 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             ],
         )
 
-    async def test_12_ui_main(self):
+    async def test_12_admin_deletes_invitation(self):
+        assert isinstance(authorization_str, str), authorization_str
+        response = client.delete(
+            f"/invite/{invitation_str}",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
+
+    async def test_13_ui_main(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
             f"/ui/main",
@@ -333,7 +342,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             },
         )
 
-    async def test_13_ui_project(self):
+    async def test_14_ui_project(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
             f"/ui/project/2",
