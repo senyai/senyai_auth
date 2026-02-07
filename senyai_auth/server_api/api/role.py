@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Annotated
-from pydantic import BaseModel, BeforeValidator
+from typing import Annotated, Literal
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
@@ -25,23 +25,13 @@ from .exceptions import (
 router = APIRouter(tags=["role"])
 
 
-def validate_api(value: str) -> PermissionsAPI:
-    try:
-        return PermissionsAPI[value]
-    except KeyError:
-        raise ValueError(
-            f"Invalid permission: {value}. "
-            f"Must be one of: {', '.join(p.name for p in PermissionsAPI)}"
-        )
-
-
 class RoleCreate(BaseModel, strict=True, frozen=True):
     project_id: int
     name: Name
     description: Description = ""
-    permissions_api: Annotated[
-        PermissionsAPI, BeforeValidator(validate_api)
-    ] = PermissionsAPI.none
+    permissions_api: Literal["none", *[p.name for p in PermissionsAPI]] = (
+        "none"
+    )
     permissions_git: str = ""
     permissions_storage: str = ""
     permissions_extra: str = ""
@@ -51,7 +41,7 @@ class RoleCreate(BaseModel, strict=True, frozen=True):
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            permissions_api=self.permissions_api,
+            permissions_api=PermissionsAPI[self.permissions_api],
             permissions_git=self.permissions_git,
             permissions_storage=self.permissions_storage,
             permissions_extra=self.permissions_extra,
