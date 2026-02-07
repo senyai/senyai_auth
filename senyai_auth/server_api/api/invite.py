@@ -192,7 +192,7 @@ async def get_invitation(
 
 
 @router.delete(
-    "/invite/{invitation_id}",
+    "/invite/{key}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -202,7 +202,7 @@ async def get_invitation(
     },
 )
 async def delete_invitation(
-    invitation_id: int,
+    key: str,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
@@ -211,22 +211,25 @@ async def delete_invitation(
 
     Only superadmins can do it
     """
-    permission = await session.scalar(
-        auth_for_project_stmt,
-        {"user_id": auth_user.id, "project_id": user.project_id},
+    invitation = await session.scalar(
+        select(Invitation).where(
+            Invitation.url_key == key,
+        )
     )
-    if permission < PermissionsAPI.superadmin:
-        raise not_authorized_exception
-
-    affected = await session.execute(
-        delete(Invitation).where(Invitation.id == invitation_id)
-    )
-    await session.commit()
-    if affected.rowcount == 0:
+    if invitation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": invitation.project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    await session.delete(invitation)
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
