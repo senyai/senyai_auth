@@ -65,7 +65,7 @@ async def init():
             description="Special role for superusers",
             permissions_api=PermissionsAPI.superadmin,
         )
-        role.users.append(user)
+        role.members.append(user)
         session.add(role)
         await session.commit()
     print("stop")
