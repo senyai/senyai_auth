@@ -54,7 +54,7 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
             max_length=32,
             to_lower=True,
             strip_whitespace=True,
-            pattern=r"^[a-z_-]+$",
+            pattern=r"^[a-z_-]*$",
         ),
         AfterValidator(not_in_blocklist),
         Field(
