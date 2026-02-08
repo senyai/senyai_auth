@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import AsyncGenerator, cast
+from typing import AsyncGenerator, cast, NamedTuple
 
 # https://lapo.it/asn1js/#MEICAQFgPQIBAwQqY249TWFuYWdlcixkYz1jc2M5NSxkYz1zZS12aS1zY2llbmNlLGRjPXJ1gAxyMDB0UGFTc3cwckQ
 # https://raw.githubusercontent.com/emrig/w4156-PEAS-Oktave/76d0cce1ab4c8e529ad49dd20b50ab73ca018ce2/g/pyasn1_modules/rfc2251.py
@@ -12,6 +12,23 @@ from pyasn1.error import EndOfStreamError, PyAsn1Error
 from .ldap import parse_dn
 
 maxInt = univ.Integer(2147483647)
+
+
+class Domain(NamedTuple):
+    name: str  # example.com
+    components: tuple[bytes, ...]  # (b"example", b"com")
+    dc: str  # "dc=example,dc=com"
+
+    @classmethod
+    def make(cls, name: str):
+        return Domain(
+            name=name,
+            components=tuple(name.encode().split(b".")),
+            dc=",".join(f"dc={part}" for part in name.split(".")),
+        )
+
+
+DOMAIN = Domain.make("example.com")
 
 
 # --- Minimal ASN.1 types (very reduced) ---
@@ -110,33 +127,36 @@ class BindRequest(univ.Sequence):
     )
 
     async def process(self, msgid: int) -> AsyncGenerator[bytes, None]:
-        dn = parse_dn(self.getComponentByName("name").asOctets())
+        dn_bytes = self.getComponentByName("name").asOctets()
+        dn = parse_dn(dn_bytes)
         password: bytes = (
             self.getComponentByName("authentication")
             .getComponentByName("simple")
             .asOctets()
         )
-        if dn.domain_components == (b"csc95", b"se-vi-science", b"ru"):
+        if dn.domain_components == DOMAIN.components:
             if dn.user_name == b"manager" and password == b"r00tPaSsw0rD":
-                print("SUCCESS for manager")
+                print("BIND SUCCESS for manager")
                 yield encode_bind_response(
                     msgid,
                     result=0,
-                    matchedDN=self.getComponentByName("name").asOctets(),
+                    matchedDN=dn_bytes,
                     diag=b"",
                 )
                 return
             elif (
                 dn.user_name is None
+                and dn.common_name is not None
                 and dn.common_name.lower() == b"search"
                 and password == b"bindpassword"
             ):
-                print("SUCCESS for search")
+                print("OK. BINDED using password")
                 yield encode_bind_response(
-                    msgid, result=0, matchedDN=b"", diag=b""
+                    msgid, result=0, matchedDN=dn_bytes, diag=b""
                 )
                 return
-        print("FAILURE", self.getComponentByName("name").asOctets())
+        print(f"FAILURE {dn} `{dn_bytes}`")
+        breakpoint()
         yield encode_bind_response(
             msgid,
             result=49,
@@ -284,6 +304,20 @@ class Filter3(univ.Choice):
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 9)))
     )
 
+    def build(self):
+        op = self.getName()
+        if op == "equalityMatch":
+            return {
+                "op": "=",
+                "lhs": self[op]["attributeDesc"].asOctets().decode(),
+                "rhs": self[op]["assertionValue"].asOctets().decode(),
+            }
+        if op == "present":
+            return {
+                "op": "has",
+                "attr": self[op].asOctets().decode()
+            }
+        raise NotImplementedError(op)
 
 class Filter2(univ.Choice):
     componentType = namedtype.NamedTypes(
@@ -309,6 +343,17 @@ class Filter2(univ.Choice):
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 9)))
     )
 
+    def build(self):
+        op = self.getName()
+        if op in ("and", "or"):
+            return {"op": op, "operands": [item.build() for item in self[op]]}
+        elif op == "equalityMatch":
+            return {
+                "op": "=",
+                "lhs": self[op]["attributeDesc"].asOctets().decode(),
+                "rhs": self[op]["assertionValue"].asOctets().decode(),
+            }
+        raise NotImplementedError(op)
 
 class Filter(univ.Choice):
     componentType = namedtype.NamedTypes(
@@ -333,6 +378,8 @@ class Filter(univ.Choice):
         namedtype.NamedType('extensibleMatch', MatchingRuleAssertion().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 9)))
     )
+
+    build = Filter2.build
 
 # End of Filter hack
 
@@ -422,44 +469,69 @@ class SearchRequest(univ.Sequence):
     @staticmethod
     def _error(msgid: int, diag: str) -> bytes:
         return encode_search_result_done(
-            msgid=msgid, result_code=1, matched_dn="", diag="Invalid domain"
+            msgid=msgid, result_code=1, matched_dn=""
         )
 
     async def process(self, msgid: int) -> AsyncGenerator[bytes, None]:
         dn = parse_dn(self["baseObject"].asOctets())
-        if dn.domain_components != (b"csc95", b"se-vi-science", b"ru"):
-            print("INVALID DOMAIN", dn.domain_components)
-            yield self._error(msgid, diag="Invalid domain")
-        if dn.organization_units == (b"users",):
-            async for data in self._process_users(msgid):
+        print(f"SearchRequest {dn}", self["baseObject"].asOctets())
+        if dn.domain_components != DOMAIN.components:
+            yield self._error(
+                msgid, diag=f"Invalid domain {dn.domain_components}"
+            )
+        if dn.organization_units == (b"users",) or dn.organization_units == ():
+            async for data in self._search_users(msgid):
                 yield data
         elif dn.organization_units == (b"projects",):
-            async for data in self._process_projects(msgid):
+            async for data in self._search_projects(msgid):
                 yield data
         else:
-            yield self._error(msgid, diag="Unsupported organization units")
+            yield self._error(
+                msgid,
+                diag=f"Unsupported organization units {dn.organization_units}",
+            )
 
-    async def _process_users(self, msgid: int) -> AsyncGenerator[bytes, None]:
-        if (
-            self["filter"]["and"][0]["equalityMatch"][
-                "attributeDesc"
-            ].asOctets()
-            != b"objectClass"
-        ):
-            yield self._error(msgid, diag="Unsupported request")
-            return
-        if (
-            self["filter"]["and"][0]["equalityMatch"][
-                "assertionValue"
-            ].asOctets()
-            != b"account"
-        ):
-            yield self._error(msgid, diag="Unsupported request")
-            return
+    async def _search_users(self, msgid: int) -> AsyncGenerator[bytes, None]:
+        match self["filter"].build():
+            case {
+                "op": "and",
+                "operands": [
+                    {"lhs": "objectClass", "op": "=", "rhs": "account"},
+                    {
+                        "op": "or",
+                        "operands": [
+                            {"lhs": "uid", "op": "=", "rhs": username},
+                            {"lhs": "mail", "op": "=", "rhs": username_mail},
+                        ],
+                    },
+                ],
+            } if (
+                username == username_mail
+            ):
+                async for user in self._find_user(msgid, username):
+                    yield user
+            case {
+                "op": "and",
+                "operands": [
+                    {"lhs": "objectClass", "op": "=", "rhs": "account"},
+                    {
+                        "op": "or",
+                        "operands": [
+                            {"attr": "uid", "op": "has"},
+                            {"attr": "mail", "op": "has"},
+                        ],
+                    },
+                ],
+            }:
+                async for user in self._list_all_users(msgid):
+                    yield user
+            case query:
+                print(f"query {query} not implemented")
 
+    async def _list_all_users(self, msgid: int):
         yield encode_search_result_entry(
             msgid,
-            dn="ou=users,dc=csc95.dc=se-vi-science,dc=ru",
+            dn=f"uid=manager,{DOMAIN.dc}",
             attributes={
                 b"mail": [b"manager@example.com"],
                 b"objectClass": [b"account", b"inetOrgPerson"],
@@ -471,8 +543,50 @@ class SearchRequest(univ.Sequence):
             msgid=msgid, result_code=0, matched_dn="", diag=""  # success
         )
 
-    async def _process_projects(self, msgid: int) -> AsyncGenerator[bytes, None]:
-        raise NotImplementedError("aaaa")
+    async def _find_user(self, msgid: int, username_or_email: str):
+        if username_or_email in ("manager@example.com", "manager"):
+            yield encode_search_result_entry(
+                msgid,
+                dn=f"uid=manager,{DOMAIN.dc}",
+                attributes={
+                    b"mail": [b"manager@example.com"],
+                    b"objectClass": [b"account", b"inetOrgPerson"],
+                    b"uid": [b"manager"],
+                    b"cn": ["Тестовый Пользователь 1".encode()],
+                },
+            )
+        yield encode_search_result_done(
+            msgid=msgid, result_code=0, matched_dn="", diag=""  # success
+        )
+
+    async def _search_projects(
+        self, msgid: int
+    ) -> AsyncGenerator[bytes, None]:
+        x = self["filter"].build()
+        print(f"ANSWERING with a project {x}")
+        yield encode_search_result_entry(
+            msgid,
+            dn=f"cn=gittest,{DOMAIN.dc}",
+            attributes={
+                b"objectClass": [b"top", b"groupOfNames"],
+                b"cn": b"gittest",
+                b"gidNumber": [b"1001"],
+                b"memberUid": [b"manager", b"devel"],
+            },
+        )
+        yield encode_search_result_entry(
+            msgid,
+            dn=f"cn=technoskol,{DOMAIN.dc}",
+            attributes={
+                b"objectClass": [b"top", b"groupOfNames"],
+                b"cn": b"technoskol",
+                b"gidNumber": [b"1002"],
+                b"memberUid": [b"manager", b"devel"],
+            },
+        )
+        yield encode_search_result_done(
+            msgid=msgid, result_code=0, matched_dn="", diag=""  # success
+        )
 
 
 class SearchResultEntry(univ.Sequence):
@@ -642,6 +756,8 @@ class LDAPProtocol:
                     tuple[LDAPMessage, bytes],
                     decoder.decode(buf, asn1Spec=LDAPMessage()),
                 )
+                print("=" * 40)
+                print(str(lm))
                 yield lm
             except EndOfStreamError:
                 # need more data; continue reading
@@ -654,6 +770,7 @@ class LDAPProtocol:
     async def _handle_message(self, lm: LDAPMessage) -> None:
         msgid = int(lm.getComponentByName("messageID"))
         op = lm.getComponentByName("protocolOp")
+        print(f"PROCESSING {type(op.getComponent())}")
         async for response in op.getComponent().process(msgid):
             self.writer.write(response)
         await self.writer.drain()
@@ -670,7 +787,7 @@ async def handle_client(
 async def server_main(host: str, port: int) -> None:
     server = await asyncio.start_server(handle_client, host, port)
     addr = server.sockets[0].getsockname()
-    print(f"senyai_ldap server listening on {addr}")
+    print(f"senyai_ldap server listening on {addr} and serving {DOMAIN.name}")
     async with server:
         await server.serve_forever()
 
@@ -681,9 +798,12 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", "-p", type=int, default=10389)
+    parser.add_argument("--domain", "-d", type=Domain.make, required=True)
     args = parser.parse_args()
+    global DOMAIN
+    DOMAIN = args.domain
 
-    asyncio.run(server_main(**vars(args)))
+    asyncio.run(server_main(host=args.host, port=args.port))
 
 
 if __name__ == "__main__":
