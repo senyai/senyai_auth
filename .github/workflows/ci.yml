@@ -21,4 +21,5 @@ jobs:
           cache: 'pip'
       - uses: psf/black@25.1.0
       - run: pip install -e .
+      - run: cd senyai_auth/server_api && ./download_static.sh
       - run: python -m unittest -v

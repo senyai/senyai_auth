@@ -2,9 +2,13 @@ from __future__ import annotations
 from typing import Literal, AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
 
 
 class AppSettings(BaseModel, strict=True, frozen=True):
@@ -59,5 +63,32 @@ app = FastAPI(
         "email": "senyai@gmail.com",
     },
     lifespan=lifespan,
+    docs_url=None,
 )
+app.mount(
+    "/static",
+    StaticFiles(directory=__file__[: -len("__init__.py")] + "static"),
+    name="static",
+)
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html(req: Request) -> HTMLResponse:
+    root_path = req.scope.get("root_path", "").rstrip("/")
+    openapi_url = root_path + app.openapi_url
+    oauth2_redirect_url = app.swagger_ui_oauth2_redirect_url
+    if oauth2_redirect_url:
+        oauth2_redirect_url = root_path + oauth2_redirect_url
+    return get_swagger_ui_html(
+        openapi_url=openapi_url,
+        title=f"{app.title} - Swagger UI",
+        oauth2_redirect_url=oauth2_redirect_url,
+        init_oauth=app.swagger_ui_init_oauth,
+        swagger_ui_parameters=app.swagger_ui_parameters,
+        swagger_js_url="/static/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui.css",
+        swagger_favicon_url="/static/favicon.png",
+    )
+
+
 from . import api as api
