@@ -352,6 +352,3 @@ async def manage_role_form():
 
     # data, errors = RoleManageData.parse_form(form)
     return await render_template("forms/add_roles_form.html")
-
-
-app.run()
