@@ -1,0 +1,43 @@
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Roles</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        
+    </tbody>
+
+</table>
+
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th class="col-md-2">Name</th>
+            {% if roles %}
+            {% for role in roles %}
+            <th class="text-center">{{ role['name'] }}</th>
+            {% endfor %}
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for member in members %}
+        <tr title="{{ member['id'] }}:{{ member['username'] }}">
+            <td> {{ member['display_name'] }}</td>
+            {% if roles %}
+            {% for role in roles %}
+            <td class="text-center">
+                {% if member['id'] in role['users'] %}
+                <i class="bi bi-check-lg"></i>
+                {% endif %}
+            </td>
+            {% endfor %}
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
