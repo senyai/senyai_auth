@@ -76,26 +76,6 @@ async def handle_connect_error(error):
     return "", 503
 
 
-# def login_required(view):
-#     @wraps(view)
-#     async def wrapper(*args, **kwargs):
-#         if "Authorization" not in session:
-#             return redirect(url_for("login", next=request.url))
-#         return await view(*args, **kwargs)
-
-#     return wrapper
-
-
-# def generate_csrf():
-#     session["csrf"] = secrets.token_hex(16)
-
-
-# async def check_csrf(form):
-#     token = form.get("csrf_token")
-#     if not token or token != session["csrf"]:
-#         abort(403)
-
-
 @app.context_processor
 async def inject_auth():
     return {"is_auth": request.cookies.get("Authorization", False)}
@@ -156,13 +136,6 @@ async def logout():
     resp = await make_response(redirect(url_for("index")))
     resp.set_cookie("Authorization", "")
     return resp
-
-
-# @app.get("/invite")
-# # @login_required
-# async def invite_get():
-#     # generate_csrf()
-#     return await render_template("invite.html", form={}, errors={})
 
 
 @app.get("/invites_table")
@@ -233,7 +206,7 @@ async def invite_post():
     )
 
 
-@app.get("/<key>")
+@app.get("/register/<key>")
 async def use_invite_get(key: str):
     async with httpx.AsyncClient() as client:
         form_res = await client.get(f"{API_HOST}/invite/{key}")
@@ -244,7 +217,7 @@ async def use_invite_get(key: str):
     return form
 
 
-@app.post("/<key>")
+@app.post("/register/<key>")
 async def use_invite_post(key: str):
     form = await request.form
     # await check_csrf(form)

@@ -1,0 +1,37 @@
+<form class="form-control roles-form">
+    {% for role in roles %}
+    <div class="form-check">
+        <input type="hidden" name="user_id" value="{{ user['id'] }}">
+        <input type="hidden" name="added_roles" value="">
+        <input type="hidden" name="removed_roles" value="">
+
+        <label class="form-check-label"> 
+            <input 
+                class="form-check-input roles-item" 
+                type="checkbox" 
+                name="{{ role['id'] }}" 
+                value="{{ role['id'] }}" 
+                id="{{ role['id'] }}"
+                data-initial="{{ 'true' if user['id'] in role['users'] else 'false }}"
+                {% if user['id'] in role['users'] %}checked{% endif %}
+            >
+            {{ role['name'] }}
+        </label>
+    </div>
+    {% endfor %}
+    <button class="btn btn-success" type="submit" disabled>
+        Save
+    </button>
+</form>
+
+<script>
+    document.addEventListener("change", e => {
+        if (!e.target.matches(".roles-form input[type=checkbox]")) return;
+        const form = e.target.closest(".roles-form");
+        updateDiff(form);
+    })
+
+    function updateDiff(form) {
+        
+    }
+</script>
