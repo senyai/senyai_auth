@@ -37,7 +37,6 @@ from .exceptions import (
     response_description,
 )
 
-
 router = APIRouter(tags=["user"])
 
 

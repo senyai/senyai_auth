@@ -11,7 +11,6 @@ from ..db import User
 from .exceptions import response_description
 from sqlalchemy import select
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
