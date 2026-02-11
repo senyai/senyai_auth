@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import base64
 from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -87,6 +89,10 @@ class User(Base):
     )
 
     @staticmethod
+    def make_salt() -> str:
+        return base64.b85encode(os.urandom(16)).decode()
+
+    @staticmethod
     def create_password_hash(password: str, salt: str):
         """
         Convenient method for when a new user is created or
@@ -103,6 +109,12 @@ class User(Base):
         return self.password_hash == self.create_password_hash(
             password, self.salt
         )
+
+    def update_password(self, password: str) -> None:
+        new_salt = User.make_salt()
+        new_password_hash = self.create_password_hash(password, new_salt)
+        self.salt = new_salt
+        self.password_hash = new_password_hash
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} username={self.username!r}>"

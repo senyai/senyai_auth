@@ -106,12 +106,8 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
         )
         return self
 
-    @staticmethod
-    def make_salt() -> str:
-        return base64.b85encode(os.urandom(16)).decode()
-
     def make_user(self) -> User:
-        salt = self.make_salt()
+        salt = User.make_salt()
         password_hash = User.create_password_hash(
             password=self.password.get_secret_value(), salt=salt
         )
@@ -225,12 +221,7 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Current password does not match",
                 )
-            new_salt = CreateUserModel.make_salt()
-            new_password_hash = user.create_password_hash(
-                self.password.new.get_secret_value(), new_salt
-            )
-            user.salt = new_salt
-            user.password_hash = new_password_hash
+            user.update_password(self.password.new.get_secret_value())
         if self.username is not None and not is_superadmin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
