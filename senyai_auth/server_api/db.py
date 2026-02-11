@@ -53,8 +53,10 @@ class MemberRole(Base):
 
     __table_args__ = (UniqueConstraint(user_id, role_id),)
 
-    role: Mapped[Role] = relationship()
-    user: Mapped[User] = relationship(back_populates="member_roles")
+    role: Mapped[Role] = relationship(foreign_keys=[role_id])
+    user: Mapped[User] = relationship(
+        foreign_keys=[user_id], back_populates="member_roles"
+    )
     # member: Mapped[Member] = relationship()
 
 
