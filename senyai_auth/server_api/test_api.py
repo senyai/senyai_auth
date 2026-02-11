@@ -10,7 +10,7 @@ from .db import Project, Role, User, PermissionsAPI
 
 def test_get_settings():
     return AppSettings(
-        db_url="sqlite+aiosqlite:///:memory:", secret_key="debug" * 6
+        db_url="sqlite+aiosqlite:///:memory:", secret_key="debug_" * 6
     )
 
 
