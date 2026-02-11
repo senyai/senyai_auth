@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 from fastapi import status, Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import (
@@ -10,6 +11,7 @@ from ..db import (
     Member,
     MemberRole,
     PermissionsAPI,
+    Project,
     Role,
     User,
 )
@@ -19,7 +21,6 @@ from .. import get_async_session
 from pydantic import BaseModel
 from .exceptions import not_authorized_exception, response_with_perm_check
 from collections import defaultdict
-
 
 router = APIRouter(tags=["ui"], prefix="/ui")
 
@@ -38,6 +39,8 @@ class RoleItem(BaseModel, strict=True):
 
 
 class ProjectInfo(BaseModel, strict=True):
+    display_name: str
+    name: str
     members: list[UserItem]
     roles: list[RoleItem]
     permission: PermissionsAPI
@@ -83,6 +86,12 @@ async def project(
     for role_id, user_id in await session.execute(role_users_stmt):
         roles_dict[role_id].append(user_id)
 
+    project = await session.get_one(
+        Project,
+        project_id,
+        options=[load_only(Project.name, Project.display_name)],
+    )
+
     member = [
         UserItem(id=id, username=username, display_name=display_name)
         for id, username, display_name in await session.execute(users_stmt)
@@ -94,6 +103,8 @@ async def project(
         for id, name, description in await session.execute(roles_stmt)
     ]
     return ProjectInfo(
+        display_name=project.display_name,
+        name=project.name,
         members=member,
         roles=roles,
         permission=permission,

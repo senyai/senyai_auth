@@ -21,7 +21,6 @@ from .exceptions import (
     response_with_perm_check,
 )
 
-
 router = APIRouter(tags=["project"])
 
 type Name = Annotated[

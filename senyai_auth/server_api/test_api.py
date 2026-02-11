@@ -352,6 +352,8 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         self.assertEqual(
             response.json(),
             {
+                "display_name": "General Markup Creator",
+                "name": "gmc",
                 "members": [
                     {
                         "display_name": "Invited User",

@@ -23,7 +23,6 @@ from .exceptions import (
 from .. import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
 
-
 router = APIRouter(tags=["invite"])
 
 
