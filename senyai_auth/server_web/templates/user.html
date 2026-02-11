@@ -15,54 +15,42 @@
 </div>
 <div class="row">
     <div class="col-md-2">
-        {% if projects %}
-        {% for project in projects %}
-        <div class="row">
-            <a class="icon-link icon-link-hover" href="#" hx-get="/project/{{ project['id'] }}" hx-trigger="click" hx-target="#parent-div">
-                {{ project['display_name'] }}
-                <svg xmlns="http://www.w3.org/2000/svg" class="bi" viewBox="0 0 16 16" aria-hidden="true">
-                    <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-                </svg>
-            </a>
-        </div>
+        {% macro render_tree(node) %}
+        <li>
+            {% if node.children %}
+                <span class="toggle" data-bs-toggle="collapse" data-bs-target="#node{{ node.id }}">
+                    <i class="bi bi-folder-plus folder-check fs-4"></i>
+                </span>
+                <a class="icon-link icon-link-hover" href="#" hx-get="/project/{{ node.id }}" hx-trigger="click" hx-target="#parent-div">
+                    {{ node.display_name }}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="bi" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                    </svg>
+                </a>
+
+                <ul id="node{{ node.id }}" class="collapse list-unstyled ms-4">
+                    {% for child in node.children %}
+                        {{ render_tree(child) }}
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <i class="bi bi-folder fs-4"></i>
+                <a class="icon-link icon-link-hover" href="#" hx-get="/project/{{ node.id }}" hx-trigger="click" hx-target="#parent-div">
+                    {{ node.display_name }}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="bi" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                    </svg>
+                </a>
+            {% endif %}
+        </li>
+        {% endmacro %}
 
 
-        {% endfor %}
-        <!-- <div class="accordion" id="accordionProjects">
-            {% for project in projects %}
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#project_{{ project['id'] }}" aria-expanded="true"
-                        aria-controls="project_{{ project['id'] }}">
-                        {{ project['name'] }}
-                    </button>
-                </h2>
-                <div id="project_{{ project['id'] }}" class="accordion-collapse collapse"
-                    data-bs-parent="#accordionProjects">
-                    <div class="accordion-body">
-                        <div>
-                            <a class="" href="#" hx-get="" hx-trigger="" hx-target="#parent-div">
-                                <i class="bi bi-people-fill"></i> Users
-                            </a>
-                        </div>
-                        <div>
-                            <a class="" href="#" hx-get="" hx-trigger="" hx-target="#parent-div">
-                                <i class="bi bi-envelope-arrow-up-fill"></i> Invitation
-                            </a>
-                        </div>
-                        <div>
-                            <a class="" href="#" hx-get="/invite?project_id={{ project['id'] }}&project_name={{ project['name'] }}" hx-trigger="click" hx-target="#parent-div">
-                                <i class="bi bi-person-fill-add"></i> Invite
-                            </a>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
+        <ul class="folder-tree list-unstyled">
+            {% for node in projects %}
+                {{ render_tree(node) }}
             {% endfor %}
-        </div> -->
-        {% endif %}
+        </ul>
     </div>
     <div class="col-md-10">
         <div id="parent-div">

@@ -372,6 +372,29 @@ legend {
     background-color: var(--bs-body-color)
 } */
 
-.icon-table {
-    font-size: inherit;
+.role-changed {
+    background-color: orange;
+}
+
+
+.folder-tree {
+    font-family: monospace;
+    user-select: none;
+}
+
+.folder-tree li {
+    line-height: 1.6;
+}
+
+.folder-tree .toggle {
+    cursor: pointer;
+}
+
+.folder-tree .icon {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    border: 1px solid #999;
+    font-size: 12px;
+    margin-right: 4px;
 }

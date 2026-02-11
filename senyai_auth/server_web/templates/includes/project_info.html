@@ -13,7 +13,7 @@
                 Roles
             </button>
         </li>
-        {% if can_manager %}
+        {% if context.can_manager %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
                 type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false">
@@ -25,24 +25,24 @@
     <div class="tab-content" id="projectTabContent">
         <div class="tab-pane fade show active" id="members-tab-pane" role="tabpanel" aria-labelledby="members-tab"
             tabindex="0">
-            {% if members %}
+            {% if context.members %}
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th class="col-md-2">Name</th>
-                        {% if roles %}
-                        {% for role in roles %}
-                        <th class="text-center">{{ role['name'] }}</th>
+                        {% if context.roles %}
+                        {% for role in context.roles %}
+                        <th class="text-center">{{ role.name }}</th>
                         {% endfor %}
                         {% endif %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% for member in members %}
-                    <tr title="{{ member['id'] }}:{{ member['username'] }}">
-                        <td> {{ member['display_name'] }}</td>
-                        {% if roles %}
-                        {% for role in roles %}
+                    {% for member in context.members %}
+                    <tr title="{{ member.id }}:{{ member.username }}">
+                        <td> {{ member.display_name }}</td>
+                        {% if context.roles %}
+                        {% for role in context.roles %}
                         <td class="text-center">
                             {% if member['id'] in role['users'] %}
                             <i class="bi bi-check-lg"></i>
@@ -57,14 +57,15 @@
             {% endif %}
         </div>
         <div class="tab-pane fade" id="roles-tab-pane" role="tabpanel" aria-labelledby="roles-tab" tabindex="0">
-            {% if roles %}
+            {% if context.roles %}
             {% include "partials/role_table.html" %}
             {% endif %}
 
         </div>
-        {% if can_manager %}
+        {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
-            hx-get="/invites_table" hx-trigger="load delay:500ms" hx-target="#invites-tab-pane" hx-vals='{"project_id": {{ project_id }}}'>
+            hx-get="/invites_table" hx-trigger="load delay:500ms" hx-target="#invites-tab-pane"
+            hx-vals='{"project_id":{{ context.project_id }},"project_name":"{{context.display_name}}"}'>
         </div>
         {% endif %}
     </div>
