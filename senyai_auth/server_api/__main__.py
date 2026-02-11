@@ -71,6 +71,32 @@ async def init():
     print("stop")
 
 
+async def password():
+    from . import get_settings
+    from .db import User
+    from sqlalchemy import select
+
+    settings = get_settings()
+    async_engine = create_async_engine(settings.db_url, echo=settings.echo)
+    async_session = sessionmaker[AsyncSession](
+        async_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        while True:
+            username = input("Username: ")
+            password = getpass(prompt=f"New strong password: ")
+            user = await session.scalar(
+                select(User).where(User.username == username)
+            )
+            if user is None:
+                print(f"user {username} does not exist")
+                continue
+            user.update_password(password)
+            session.add(user)
+            await session.commit()
+            break
+
+
 def main():
     parser = ArgumentParser()
     subparsers = parser.add_subparsers(required=True)
@@ -78,6 +104,8 @@ def main():
         "init", help="Create superuser and root project"
     )
     subparser.set_defaults(func=init)
+    subparser = subparsers.add_parser("password", help="Force user password")
+    subparser.set_defaults(func=password)
     args = parser.parse_args()
     asyncio.run(args.func())
 
