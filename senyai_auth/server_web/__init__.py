@@ -98,7 +98,7 @@ async def index():
             user = data["user"]
             projects = data["projects"]
             return await render_template(
-                "user.html", user=user, projects=projects
+                "user.html", user=user, projects=parse_projects(projects)
             )
     resp = await make_response(await render_template("login.html"))
     resp.set_cookie("Authorization", "")
@@ -141,6 +141,7 @@ async def logout():
 @app.get("/invites_table")
 async def invites_table_get():
     project_id = request.args.get("project_id")
+    project_name = request.args.get("project_name")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{API_HOST}/invites/{project_id}",
@@ -150,7 +151,10 @@ async def invites_table_get():
         )
     if resp.status_code == 200:
         return await render_template(
-            "partials/invites_table.html", invites=resp.json()
+            "partials/invites_table.html",
+            invites=resp.json(),
+            project_id=project_id,
+            project_name=project_name,
         )
     return await render_template(
         "includes/toasts.html", errors=parse_errors(resp.json())
@@ -245,20 +249,22 @@ async def project_get(project_id: int):
         )
     project_info = resp.json()
     if resp.status_code == 200:
-        members = project_info.get("members")
-        roles = project_info.get("roles")
-        permission = project_info.get("permission")
-        can_user = permission >= Permissions.USER
-        can_manager = permission >= Permissions.MANAGER
-        can_admin = permission >= Permissions.ADMIN
+        # context = namedtuple("Context", ["members", "roles", "permission", "display"])
+        permission = project_info.get("permission", 0)
+
+        context = {
+            "members": project_info.get("members"),
+            "roles": project_info.get("roles"),
+            "display_name": project_info.get("display_name"),
+            "project_name": project_info.get("name"),
+            "can_user": permission >= Permissions.USER,
+            "can_manager": permission >= Permissions.MANAGER,
+            "can_admin": permission >= Permissions.ADMIN,
+            "project_id": project_id,
+        }
+
         return await render_template(
-            "includes/project_info.html",
-            members=members,
-            roles=roles,
-            project_id=project_id,
-            can_user=can_user,
-            can_manager=can_manager,
-            can_admin=can_admin,
+            "includes/project_info.html", context=context
         )
     return await render_template(
         "includes/toasts.html", errors=parse_errors(project_info)
@@ -325,3 +331,34 @@ async def manage_role_form():
 
     # data, errors = RoleManageData.parse_form(form)
     return await render_template("forms/add_roles_form.html")
+
+
+def parse_projects(projects: list[dict]):
+    def rec_leaf(project):
+        if project["parent"] not in idxs:
+            if project["id"] in to_check:
+                project["children"] = []
+                trees.append(project)
+                to_check.remove(project["id"])
+        else:
+            parent = projects[idxs.index(project["parent"])]
+
+            if parent["id"] in to_check:
+                rec_leaf(parent)
+
+            if project["id"] in to_check:
+                project["children"] = []
+                parent["children"].append(project)
+                to_check.remove(project["id"])
+
+        return
+
+    idxs = [project["id"] for project in projects]
+    to_check = idxs[:]
+    trees = []
+
+    while to_check:
+        project = next(filter(lambda x: x["id"] == to_check[0], projects))
+        rec_leaf(project)
+
+    return trees
