@@ -16,6 +16,7 @@ from .project import router as project_router
 from .role import router as role_router
 from .invite import router as invite_router
 from .ui import router as ui_router
+from .ldap import router as ldap_router
 from .. import get_async_session
 
 app.include_router(user_router)
@@ -23,6 +24,7 @@ app.include_router(project_router)
 app.include_router(role_router)
 app.include_router(invite_router)
 app.include_router(ui_router)
+app.include_router(ldap_router)
 
 
 @app.get("/")
