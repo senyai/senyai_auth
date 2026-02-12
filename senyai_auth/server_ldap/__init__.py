@@ -6,12 +6,14 @@ from typing import AsyncGenerator, cast, NamedTuple
 # https://raw.githubusercontent.com/pyasn1/pyasn1-modules/02f9c577bcd0ad9fedfb0fd5dc598d323f7984bf/pyasn1_modules/rfc2251.py
 
 import asyncio
+from httpx import AsyncClient
 from pyasn1.type import univ, tag, namedtype, namedval, constraint
 from pyasn1.codec.ber import decoder, encoder
 from pyasn1.error import EndOfStreamError, PyAsn1Error
 from .ldap import parse_dn
 
 maxInt = univ.Integer(2147483647)
+api_client: AsyncClient
 
 
 class Domain(NamedTuple):
@@ -135,8 +137,25 @@ class BindRequest(univ.Sequence):
             .asOctets()
         )
         if dn.domain_components == DOMAIN.components:
-            if dn.user_name == b"manager" and password == b"r00tPaSsw0rD":
-                print("BIND SUCCESS for manager")
+            if (
+                dn.user_name is None
+                and dn.common_name is not None
+                and dn.common_name.lower() == b"search"
+                and password == b"bindpassword"
+            ):
+                print("OK. BINDED search using password")
+                yield encode_bind_response(
+                    msgid, result=0, matchedDN=dn_bytes, diag=b""
+                )
+                return
+            response = api_client.post(
+                "/token",
+                data={
+                    "username": dn.user_name,
+                    "password": password,
+                },
+            )
+            if response.status_code == 200:
                 yield encode_bind_response(
                     msgid,
                     result=0,
@@ -144,19 +163,7 @@ class BindRequest(univ.Sequence):
                     diag=b"",
                 )
                 return
-            elif (
-                dn.user_name is None
-                and dn.common_name is not None
-                and dn.common_name.lower() == b"search"
-                and password == b"bindpassword"
-            ):
-                print("OK. BINDED using password")
-                yield encode_bind_response(
-                    msgid, result=0, matchedDN=dn_bytes, diag=b""
-                )
-                return
         print(f"FAILURE {dn} `{dn_bytes}`")
-        breakpoint()
         yield encode_bind_response(
             msgid,
             result=49,
@@ -525,34 +532,42 @@ class SearchRequest(univ.Sequence):
             }:
                 async for user in self._list_all_users(msgid):
                     yield user
-            case query:
-                print(f"query {query} not implemented")
+            case unknown_query:
+                print(f"query {unknown_query} not implemented")
 
     async def _list_all_users(self, msgid: int):
-        yield encode_search_result_entry(
-            msgid,
-            dn=f"uid=manager,{DOMAIN.dc}",
-            attributes={
-                b"mail": [b"manager@example.com"],
-                b"objectClass": [b"account", b"inetOrgPerson"],
-                b"uid": [b"manager"],
-                b"cn": ["Тестовый Пользователь 1".encode()],
-            },
-        )
+        res = await api_client.get(f"/ldap/users")
+        for user in res.json():
+            username = user["username"]
+            yield encode_search_result_entry(
+                msgid,
+                dn=f"uid={username},{DOMAIN.dc}",  # todo: escape
+                attributes={
+                    b"mail": [user["email"].encode()],
+                    b"objectClass": [b"account", b"inetOrgPerson"],
+                    b"uid": username.encode(),
+                    b"cn": [user["display_name"].encode()],
+                },
+            )
         yield encode_search_result_done(
             msgid=msgid, result_code=0, matched_dn="", diag=""  # success
         )
 
     async def _find_user(self, msgid: int, username_or_email: str):
-        if username_or_email in ("manager@example.com", "manager"):
+        res = await api_client.post(
+            f"/ldap/find_user", json={username_or_email: username_or_email}
+        )
+        user = res.json()
+        if user is not None:
+            username = user["username"]
             yield encode_search_result_entry(
                 msgid,
-                dn=f"uid=manager,{DOMAIN.dc}",
+                dn=f"uid={username},{DOMAIN.dc}",  # todo: escape
                 attributes={
-                    b"mail": [b"manager@example.com"],
+                    b"mail": [user["email"].encode()],
                     b"objectClass": [b"account", b"inetOrgPerson"],
-                    b"uid": [b"manager"],
-                    b"cn": ["Тестовый Пользователь 1".encode()],
+                    b"uid": username.encode(),
+                    b"cn": [user["display_name"].encode()],
                 },
             )
         yield encode_search_result_done(
@@ -562,28 +577,25 @@ class SearchRequest(univ.Sequence):
     async def _search_projects(
         self, msgid: int
     ) -> AsyncGenerator[bytes, None]:
-        x = self["filter"].build()
-        print(f"ANSWERING with a project {x}")
-        yield encode_search_result_entry(
-            msgid,
-            dn=f"cn=gittest,{DOMAIN.dc}",
-            attributes={
-                b"objectClass": [b"top", b"groupOfNames"],
-                b"cn": b"gittest",
-                b"gidNumber": [b"1001"],
-                b"memberUid": [b"manager", b"devel"],
-            },
-        )
-        yield encode_search_result_entry(
-            msgid,
-            dn=f"cn=technoskol,{DOMAIN.dc}",
-            attributes={
-                b"objectClass": [b"top", b"groupOfNames"],
-                b"cn": b"technoskol",
-                b"gidNumber": [b"1002"],
-                b"memberUid": [b"manager", b"devel"],
-            },
-        )
+        match self["filter"].build():
+            case {"op": "=", "lhs": "memberUid", "rhs": username}:
+                print(f"PROJECTS FOR {username}")
+                res = await api_client.get(
+                    f"/ldap/roles/", params={username: username}
+                )
+                for project in res.json():
+                    name = project["project"]
+                    yield encode_search_result_entry(
+                        msgid,
+                        dn=f"cn={name},{DOMAIN.dc}",  # todo: escape or remove
+                        attributes={
+                            b"objectClass": [b"top", b"groupOfNames"],
+                            b"cn": name,
+                            b"memberUid": project["members"],
+                        },
+                    )
+            case unknown_query:
+                print(f"project query {unknown_query} not implemented")
         yield encode_search_result_done(
             msgid=msgid, result_code=0, matched_dn="", diag=""  # success
         )
@@ -597,22 +609,6 @@ class SearchResultEntry(univ.Sequence):
         namedtype.NamedType("objectName", LDAPDN()),
         namedtype.NamedType("attributes", PartialAttributeList()),
     )
-
-
-class LDAPOID(univ.OctetString):
-    pass
-
-
-class Control(univ.Sequence):
-    componentType = namedtype.NamedTypes(
-        namedtype.NamedType("controlType", LDAPOID()),
-        namedtype.DefaultedNamedType("criticality", univ.Boolean("False")),
-        namedtype.OptionalNamedType("controlValue", univ.OctetString()),
-    )
-
-
-class Controls(univ.SequenceOf):
-    componentType = Control()
 
 
 class LDAPMessage(univ.Sequence):
@@ -645,15 +641,7 @@ class LDAPMessage(univ.Sequence):
                 )
             ),
         ),
-        namedtype.OptionalNamedType(
-            "controls",
-            univ.Any(),
-            # Controls().subtype(
-            #     implicitTag=tag.Tag(
-            #         tag.tagClassContext, tag.tagFormatConstructed, 0
-            #     )
-            # ),
-        ),
+        namedtype.OptionalNamedType("controls", univ.Any()),
     )
 
 
@@ -723,11 +711,6 @@ def encode_search_result_done(
     return encoder.encode(lm)
 
 
-# from pyasn1 import debug
-
-# debug.setLogger(debug.Debug("all"))
-
-
 # --- Connection handler ---
 class LDAPProtocol:
     def __init__(
@@ -756,8 +739,6 @@ class LDAPProtocol:
                     tuple[LDAPMessage, bytes],
                     decoder.decode(buf, asn1Spec=LDAPMessage()),
                 )
-                print("=" * 40)
-                print(str(lm))
                 yield lm
             except EndOfStreamError:
                 # need more data; continue reading
@@ -784,12 +765,16 @@ async def handle_client(
     await p.run()
 
 
-async def server_main(host: str, port: int) -> None:
+async def server_main(host: str, port: int, api_url: str) -> None:
     server = await asyncio.start_server(handle_client, host, port)
     addr = server.sockets[0].getsockname()
+    base_url = api_url.rstrip("/")
     print(f"senyai_ldap server listening on {addr} and serving {DOMAIN.name}")
-    async with server:
-        await server.serve_forever()
+    print(f"with api at {base_url}")
+    global api_client
+    async with AsyncClient(base_url=base_url) as api_client:
+        async with server:
+            await server.serve_forever()
 
 
 def main():
@@ -799,6 +784,7 @@ def main():
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", "-p", type=int, default=10389)
     parser.add_argument("--domain", "-d", type=Domain.make, required=True)
+    parser.add_argument("--api-url", "-a", default="http://127.0.0.1:8000")
     args = parser.parse_args()
     global DOMAIN
     DOMAIN = args.domain
