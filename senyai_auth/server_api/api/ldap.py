@@ -103,7 +103,7 @@ class LDAPProject(BaseModel, strict=True, frozen=True):
 
 
 @router.get(
-    "/roles/{username}",
+    "/roles",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
