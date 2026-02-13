@@ -16,6 +16,6 @@ quart -A senyai_auth.server_web:app run
 ## production
 
 ```bash
-hypercorn senyai_auth.server_api:app
-hypercorn senyai_auth.server_web:app
+hypercorn senyai_auth.server_api:app --bind 127.0.0.1:8000
+hypercorn senyai_auth.server_web:app --bind 127.0.0.1:5000 --root-path /root-path
 ```
