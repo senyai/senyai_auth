@@ -8,11 +8,18 @@ from pydantic import (
     Field,
     StringConstraints,
 )
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from .blocklist import not_in_blocklist
-from ..db import Project, User, auth_for_project_stmt, PermissionsAPI
+from ..db import (
+    auth_for_project_stmt,
+    permissions_api_stmt,
+    PermissionsAPI,
+    Project,
+    User,
+)
 from .. import get_async_session
 from .auth import get_current_user
 from .exceptions import (
@@ -61,10 +68,18 @@ class ProjectUpdate(BaseModel, strict=True):
     name: Name | None = None
     display_name: DisplayName | None = None
     description: Description | None = None
+    parent: Annotated[
+        int | str | None,
+        Field(
+            description="Only superadmin can reparent a project. Parent can "
+            "be Project.id or Project.name. Changing parent can cause project "
+            "to be missing in project list"
+        ),
+    ] = None
 
     def update(self, project: Project):
         for key, value in self.model_dump(
-            exclude_unset=True, exclude_none=True
+            exclude_unset=True, exclude_none=True, exclude={"parent"}
         ).items():
             setattr(project, key, value)
 
@@ -132,10 +147,27 @@ async def update_project(
     project_db = await session.get(Project, project_id)
     if project_db is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    if "parent" in project.model_fields_set:
+        user_permissions = await session.scalar(
+            permissions_api_stmt, {"user_id": user.id}
+        )
+        if not user_permissions & PermissionsAPI.superadmin:
+            raise not_authorized_exception
+        parent = project.parent
+        if isinstance(parent, str):
+            parent_by_name = await session.scalar(
+                select(Project.id).where(Project.name == parent)
+            )
+            if parent_by_name is None:
+                raise HTTPException(
+                    status_code=404, detail="Parent project not found"
+                )
+            parent = parent_by_name
+        project_db.parent_id = parent
+
     project.update(project_db)
     session.add(project_db)
     await session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class ProjectModel(BaseModel, strict=True):
