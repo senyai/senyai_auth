@@ -49,7 +49,7 @@ class Permissions:
     """
     SUPERADMIN = 8
 
-    api_options = [
+    api_options: list[dict[str, str | int]] = [
         {"name": "none", "value": 0},
         {"name": "user", "value": 1},
         {"name": "manager", "value": 2},
@@ -131,7 +131,6 @@ async def login():
 
 
 @app.route("/logout")
-# @login_required
 async def logout():
     resp = await make_response(redirect(url_for("index")))
     resp.set_cookie("Authorization", "")
@@ -140,7 +139,7 @@ async def logout():
 
 @app.get("/invites_table")
 async def invites_table():
-    project_id = request.args.get("project_id")
+    project_id = request.args.get("project_id", type=int)
     project_name = request.args.get("project_name")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
@@ -163,7 +162,7 @@ async def invites_table():
 
 @app.get("/invite")
 async def invite():
-    project_id = request.args.get("project_id")
+    project_id = request.args.get("project_id", type=int)
     project_name = request.args.get("project_name")
     return await render_template(
         "forms/invite_form.html",
@@ -240,7 +239,7 @@ async def use_invite_post(key: str):
 @app.get("/project/<project_id>")
 async def project(project_id: int):
     token = request.cookies.get("Authorization", "")
-    headers = request.headers
+    # headers = request.headers
     # print(headers)
     async with httpx.AsyncClient() as client:
         resp = await client.get(
@@ -273,7 +272,7 @@ async def project(project_id: int):
 
 @app.get("/role")
 async def role():
-    project_id = request.args.get("project_id", 0)
+    project_id = request.args.get("project_id", 0, type=int)
     return await render_template(
         "forms/upsert_role_form.html",
         form={},
