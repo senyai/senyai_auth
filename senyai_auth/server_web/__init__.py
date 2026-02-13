@@ -72,7 +72,7 @@ def parse_errors(msg: dict):
 
 
 @app.errorhandler(httpx.ConnectError)
-async def handle_connect_error(error):
+async def handle_connect_error(error: httpx.ConnectError):
     return "", 503
 
 
@@ -139,7 +139,7 @@ async def logout():
 
 
 @app.get("/invites_table")
-async def invites_table_get():
+async def invites_table():
     project_id = request.args.get("project_id")
     project_name = request.args.get("project_name")
     async with httpx.AsyncClient() as client:
@@ -162,7 +162,7 @@ async def invites_table_get():
 
 
 @app.get("/invite")
-async def invite_get():
+async def invite():
     project_id = request.args.get("project_id")
     project_name = request.args.get("project_name")
     return await render_template(
@@ -173,7 +173,7 @@ async def invite_get():
 
 
 @app.post("/invite")
-async def invite_post():
+async def invite_new():
     form = await request.form
     data, errors = InviteFormHTML.parse_form(dict(form))
     if data:
@@ -238,7 +238,7 @@ async def use_invite_post(key: str):
 
 
 @app.get("/project/<project_id>")
-async def project_get(project_id: int):
+async def project(project_id: int):
     token = request.cookies.get("Authorization", "")
     headers = request.headers
     # print(headers)
@@ -272,7 +272,7 @@ async def project_get(project_id: int):
 
 
 @app.get("/role")
-async def role_get():
+async def role():
     project_id = request.args.get("project_id", 0)
     return await render_template(
         "forms/upsert_role_form.html",
@@ -283,7 +283,7 @@ async def role_get():
 
 
 @app.post("/role")
-async def role_post():
+async def role_new():
     form = await request.form
 
     data, errors = RoleForm.parse_form(dict(form))
