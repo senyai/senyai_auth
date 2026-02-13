@@ -44,5 +44,5 @@
 </div>
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-    <button type="button" class="btn btn-primary" hx-post="/role" hx-include="#role-form">Save Role</button>
+    <button type="button" class="btn btn-primary" hx-post="{{ url_for('role_new') }}" hx-include="#role-form">Save Role</button>
 </div>

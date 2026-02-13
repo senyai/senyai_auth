@@ -1,4 +1,4 @@
-<div class="container-fluid" hx-get="/project/{{ project_id }}" hx-trigger="objectCreated from:body"
+<div class="container-fluid" hx-get="{{ url_for('project', project_id=project_id) }}" hx-trigger="objectCreated from:body"
     ht-target="#parent-div">
     <ul class="nav nav-tabs" id="projectTab" role="tablist">
         <li class="nav-item" role="presentation">
@@ -64,7 +64,7 @@
         </div>
         {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
-            hx-get="/invites_table" hx-trigger="load delay:500ms" hx-target="#invites-tab-pane"
+            hx-get="{{ url_for('invites_table') }}" hx-trigger="load delay:500ms" hx-target="#invites-tab-pane"
             hx-vals='{"project_id":{{ context.project_id }},"project_name":"{{context.display_name}}"}'>
         </div>
         {% endif %}

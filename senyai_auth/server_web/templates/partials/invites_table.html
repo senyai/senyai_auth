@@ -4,7 +4,7 @@
             <th>Display name</th>
             <th class="col"></th>
             <th>
-                <button class="btn btn-table" hx-get="/invite" hx-vals='{"project_id":{{ project_id }},"project_name":"{{ project_name }}"}'
+                <button class="btn btn-table" hx-get="{{ url_for('invite') }}" hx-vals='{"project_id":{{ project_id }},"project_name":"{{ project_name }}"}'
                     hx-trigger="click" hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
