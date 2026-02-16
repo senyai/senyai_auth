@@ -7,7 +7,7 @@
 
 <div class="modal-body">
     <div class="input-group">
-        <input id="url" class="form-control" type="text" value="{{ url_key }}" readonly>
+        <input id="url" class="form-control" type="text" value="{{ url_for( 'register', key=url_key, _external=True, _scheme='https' ) }}" readonly>
         <button class="btn btn-outline-secondary" id="copyBtn">
             <i class="bi bi-clipboard"></i>
         </button>
