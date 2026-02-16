@@ -210,7 +210,7 @@ async def invite_new():
 
 
 @app.get("/register/<key>")
-async def use_invite_get(key: str):
+async def register(key: str):
     async with httpx.AsyncClient() as client:
         form_res = await client.get(f"{API_HOST}/invite/{key}")
     form = form_res.json()
