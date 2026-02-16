@@ -57,10 +57,7 @@
             {% endif %}
         </div>
         <div class="tab-pane fade" id="roles-tab-pane" role="tabpanel" aria-labelledby="roles-tab" tabindex="0">
-            {% if context.roles %}
             {% include "partials/role_table.html" %}
-            {% endif %}
-
         </div>
         {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
