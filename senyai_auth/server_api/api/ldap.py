@@ -48,11 +48,13 @@ async def find_user(
 ) -> LDAPUser | None:
     """
     ## Find user for LDAP server
+
+    * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.superadmin:
+    if not permissions & PermissionsAPI.admin:
         raise not_authorized_exception
 
     for username, display_name, email in await session.execute(
@@ -82,11 +84,13 @@ async def all_users(
 ) -> list[LDAPUser]:
     """
     ## List all enabled users for LDAP server
+
+    * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.superadmin:
+    if not permissions & PermissionsAPI.admin:
         raise not_authorized_exception
 
     return [
@@ -116,11 +120,13 @@ async def user_roles(
 ) -> list[LDAPProject]:
     """
     ## List all enabled users for LDAP server
+
+    * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.superadmin:
+    if not permissions & PermissionsAPI.admin:
         raise not_authorized_exception
 
     # this statement is crazy. debug then we have more info on what LDAP needs
