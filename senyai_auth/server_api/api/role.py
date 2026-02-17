@@ -88,6 +88,52 @@ async def new_role(
     return RoleModel(role_id=role_db.id)
 
 
+class RoleInfo(BaseModel, strict=True, frozen=True):
+    id: int
+    name: str
+    description: str
+    permissions_api: str
+    permissions_git: str
+    permissions_storage: str
+    permissions_extra: str
+
+    @classmethod
+    def from_role(cls, role: Role):
+        return cls(
+            id=role.id,
+            name=role.name,
+            description=role.description,
+            permissions_api=role.permissions_api.name or "",
+            permissions_git=role.permissions_git,
+            permissions_storage=role.permissions_storage,
+            permissions_extra=role.permissions_extra,
+        )
+
+
+@router.get(
+    "/role/{role_id}",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Role not found"),
+    },
+)
+async def role(
+    role_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> RoleInfo:
+    role_db = await session.get(Role, role_id)
+    if role_db is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": role_db.project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    return RoleInfo.from_role(role_db)
+
+
 class RoleUpdate(BaseModel, strict=True, frozen=True):
     name: Name | None = None
     description: Description | None = None
