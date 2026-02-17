@@ -82,24 +82,7 @@ class RegisterForm(BaseForm):
     password: str
     email: str
     display_name: str
-
-
-class RegisterFormAPI(RegisterForm):
-    contacts: str
-
-
-class RegisterFormHTML(RegisterForm):
-    phone: Annotated[str, StringConstraints(min_length=0, max_length=15)]
-    address: Annotated[str, StringConstraints(min_length=0, max_length=1024)]
-
-    def to_api(self):
-        return RegisterFormAPI(
-            username=self.username,
-            password=self.password,
-            email=self.email,
-            display_name=self.display_name,
-            contacts="\n".join([self.phone, self.address]),
-        )
+    contacts: Annotated[str, StringConstraints(min_length=0, max_length=1024)]
 
 
 class LoginForm(BaseForm):
