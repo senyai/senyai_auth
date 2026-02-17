@@ -6,6 +6,7 @@ from typing import AsyncGenerator, cast, NamedTuple
 # https://raw.githubusercontent.com/pyasn1/pyasn1-modules/02f9c577bcd0ad9fedfb0fd5dc598d323f7984bf/pyasn1_modules/rfc2251.py
 
 import asyncio
+import json
 from httpx import AsyncClient
 from pyasn1.type import univ, tag, namedtype, namedval, constraint
 from pyasn1.codec.ber import decoder, encoder
@@ -148,11 +149,12 @@ class BindRequest(univ.Sequence):
                     msgid, result=0, matchedDN=dn_bytes, diag=b""
                 )
                 return
-            response = api_client.post(
+            response = await api_client.post(
                 "/token",
+                headers={},
                 data={
-                    "username": dn.user_name,
-                    "password": password,
+                    "username": dn.user_name.decode(),
+                    "password": password.decode(),
                 },
             )
             if response.status_code == 200:
@@ -163,6 +165,7 @@ class BindRequest(univ.Sequence):
                     diag=b"",
                 )
                 return
+            print(f"ERROR: {response}")
         print(f"FAILURE {dn} `{dn_bytes}`")
         yield encode_bind_response(
             msgid,
@@ -537,6 +540,7 @@ class SearchRequest(univ.Sequence):
 
     async def _list_all_users(self, msgid: int):
         res = await api_client.get(f"/ldap/users")
+        assert res.status_code == 200, (res.status_code, res)
         for user in res.json():
             username = user["username"]
             yield encode_search_result_entry(
@@ -555,10 +559,12 @@ class SearchRequest(univ.Sequence):
 
     async def _find_user(self, msgid: int, username_or_email: str):
         res = await api_client.post(
-            f"/ldap/find_user", json={username_or_email: username_or_email}
+            f"/ldap/find_user", json={"username_or_email": username_or_email}
         )
         user = res.json()
+        assert res.status_code == 200, (res.status_code, user)
         if user is not None:
+            assert "username" in user, user
             username = user["username"]
             yield encode_search_result_entry(
                 msgid,
@@ -579,10 +585,11 @@ class SearchRequest(univ.Sequence):
     ) -> AsyncGenerator[bytes, None]:
         match self["filter"].build():
             case {"op": "=", "lhs": "memberUid", "rhs": username}:
-                print(f"PROJECTS FOR {username}")
+                print(f"PROJECTS FOR {username!r}")
                 res = await api_client.get(
-                    f"/ldap/roles/", params={username: username}
+                    f"/ldap/roles", params={"username": username}
                 )
+                assert res.status_code == 200, res
                 for project in res.json():
                     name = project["project"]
                     yield encode_search_result_entry(
@@ -765,7 +772,23 @@ async def handle_client(
     await p.run()
 
 
-async def server_main(host: str, port: int, api_url: str) -> None:
+async def _authorize(client: AsyncClient, password: str) -> None:
+    response = await client.post(
+        "/token",
+        data={"username": "ldap", "password": password},
+    )
+    if response.status_code != 200:
+        raise ValueError(f"authorization failed: {response}")
+    token_body = response.json()
+    authorization_str = (
+        f"{token_body['token_type'].capitalize()} {token_body['access_token']}"
+    )
+    client.headers = {"Authorization": authorization_str}
+
+
+async def _server_main(
+    host: str, port: int, api_url: str, password: str
+) -> None:
     server = await asyncio.start_server(handle_client, host, port)
     addr = server.sockets[0].getsockname()
     base_url = api_url.rstrip("/")
@@ -773,6 +796,8 @@ async def server_main(host: str, port: int, api_url: str) -> None:
     print(f"with api at {base_url}")
     global api_client
     async with AsyncClient(base_url=base_url) as api_client:
+        await _authorize(api_client, password)
+        print("API authenticated")
         async with server:
             await server.serve_forever()
 
@@ -785,11 +810,13 @@ def main():
     parser.add_argument("--port", "-p", type=int, default=10389)
     parser.add_argument("--domain", "-d", type=Domain.make, required=True)
     parser.add_argument("--api-url", "-a", default="http://127.0.0.1:8000")
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
+    with open("settings_ldap.json") as f:
+        args.update(json.load(f))
     global DOMAIN
-    DOMAIN = args.domain
+    DOMAIN = args.pop("domain")
 
-    asyncio.run(server_main(host=args.host, port=args.port))
+    asyncio.run(_server_main(**args))
 
 
 if __name__ == "__main__":
