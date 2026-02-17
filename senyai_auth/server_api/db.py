@@ -23,6 +23,7 @@ from sqlalchemy import (
 )
 from enum import IntFlag
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm import load_only
 
 
 class Base(DeclarativeBase):
@@ -370,9 +371,32 @@ def _create_list_projects_stmt():
     )
 
 
+def _create_get_user_by_username_stmt():
+    """
+    Use session to get user by `username`
+
+    Disabled users will be returned too
+    """
+    username = bindparam("username", type_=String)
+    return (
+        select(User)
+        .where(User.username == username)
+        .options(
+            load_only(
+                User.id,
+                User.username,
+                User.password_hash,
+                User.salt,
+                User.disabled,
+            )
+        )
+    )
+
+
 auth_for_project_stmt = _create_auth_for_project_stmt()
 permissions_api_stmt = _create_permissions_api_stmt()
 permissions_extra_stmt = _create_permissions_stmt(Role.permissions_extra)
 permissions_storage_stmt = _create_permissions_stmt(Role.permissions_storage)
 permissions_git_stmt = _create_permissions_stmt(Role.permissions_git)
 list_projects_stmt = _create_list_projects_stmt()
+get_user_by_username_stmt = _create_get_user_by_username_stmt()

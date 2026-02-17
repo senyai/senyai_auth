@@ -138,7 +138,9 @@ async def projects(
     """
     projects = await session.execute(list_projects_stmt, {"user_id": user.id})
     user = await session.merge(user)
-    await session.refresh(user, attribute_names=("contacts",))
+    await session.refresh(
+        user, attribute_names=("contacts", "email", "display_name")
+    )
     return MainModel(
         user=UserInfo.from_user(user),
         projects=[
