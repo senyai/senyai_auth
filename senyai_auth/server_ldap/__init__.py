@@ -778,7 +778,7 @@ async def _authorize(client: AsyncClient, password: str) -> None:
         data={"username": "ldap", "password": password},
     )
     if response.status_code != 200:
-        raise ValueError(f"authorization failed: {response}")
+        raise ValueError(f"authorization failed: {response.content.decode()}")
     token_body = response.json()
     authorization_str = (
         f"{token_body['token_type'].capitalize()} {token_body['access_token']}"
@@ -804,17 +804,30 @@ async def _server_main(
 
 def main():
     from argparse import ArgumentParser
+    import os
 
+    settings_path = os.getenv("AUTH_LDAP_SETTINGS_PATH", "settings_ldap.json")
+
+    with open(settings_path) as f:
+        default_settings = json.load(f)
     parser = ArgumentParser()
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", "-p", type=int, default=10389)
-    parser.add_argument("--domain", "-d", type=Domain.make, required=True)
-    parser.add_argument("--api-url", "-a", default="http://127.0.0.1:8000")
+    help = "default: %(default)s"
+    parser.set_defaults(
+        host=default_settings.pop("host", "127.0.0.1"),
+        port=default_settings.pop("port", 10389),
+        api_url=default_settings.pop("api_url", "http://127.0.0.1:8000"),
+        domain=default_settings.pop("domain", "example.com"),
+    )
+    parser.add_argument("--host", help=help)
+    parser.add_argument("--port", "-p", type=int, help=help)
+    parser.add_argument("--domain", "-d", help=help)
+    parser.add_argument("--api-url", "-a", help=help)
     args = vars(parser.parse_args())
-    with open("settings_ldap.json") as f:
-        args.update(json.load(f))
+
     global DOMAIN
-    DOMAIN = args.pop("domain")
+    DOMAIN = Domain.make(args.pop("domain"))
+    args["password"] = default_settings.pop("password", "")
+    assert not default_settings, f"Extra settings {default_settings}"
 
     asyncio.run(_server_main(**args))
 
