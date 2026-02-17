@@ -21,6 +21,27 @@ class AppSettings(BaseModel, strict=True, frozen=True):
     # arguments for `create_async_engine`, for example {"echo": True}
     engine: dict[str, bool | int] = {}
 
+    def create_engine(self):
+        engine_kwargs = self.engine
+        if self.db_url.startswith("postgresql+asyncpg://"):
+            engine_kwargs: dict[str, str | int] = {
+                "pool_size": 10,  # max DB connections in pool
+                "max_overflow": 5,  # extra connections beyond pool_size
+                "pool_timeout": 30,  # seconds to wait for connection from pool
+                "pool_recycle": 1800,  # recycle after 30m to avoid stale conns
+                "pool_pre_ping": True,  # test connections before use
+                **engine_kwargs,
+            }
+
+        async_engine = create_async_engine(self.db_url, **engine_kwargs)
+        async_session = sessionmaker[AsyncSession](
+            bind=async_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+        )
+        return async_engine, async_session
+
 
 def get_settings():
     import os
@@ -35,24 +56,7 @@ async def lifespan(app: FastAPI):
     settings: AppSettings = app.dependency_overrides.get(
         get_settings, get_settings
     )()
-    engine_kwargs = settings.engine
-    if settings.db_url.startswith("postgresql+asyncpg://"):
-        engine_kwargs: dict[str, str | int] = {
-            "pool_size": 10,  # max DB connections in pool
-            "max_overflow": 5,  # extra connections beyond pool_size
-            "pool_timeout": 30,  # seconds to wait for connection from pool
-            "pool_recycle": 1800,  # recycle after 30m to avoid stale conns
-            "pool_pre_ping": True,  # test connections before use
-            **engine_kwargs,
-        }
-
-    async_engine = create_async_engine(settings.db_url, **engine_kwargs)
-    app.state.async_session = sessionmaker[AsyncSession](
-        bind=async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-    )
+    async_engine, app.state.async_session = settings.create_engine()
     app.state.secret_key = settings.secret_key
     app.state.algorithm = settings.algorithm
     app.state.access_token_expire_minutes = (

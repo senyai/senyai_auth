@@ -17,10 +17,7 @@ async def init():
     from .api.user import check_password
 
     settings = get_settings()
-    async_engine = create_async_engine(settings.db_url, echo=settings.echo)
-    async_session = sessionmaker[AsyncSession](
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_engine, async_session = settings.create_engine()
     username = "superadmin"
     password = base64.b85encode(os.urandom(10)).decode()
     display_name = "Administrator"
@@ -77,20 +74,17 @@ async def password():
     from sqlalchemy import select
 
     settings = get_settings()
-    async_engine = create_async_engine(settings.db_url, echo=settings.echo)
-    async_session = sessionmaker[AsyncSession](
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    _async_engine, async_session = settings.create_engine()
     async with async_session() as session:
         while True:
             username = input("Username: ")
-            password = getpass(prompt=f"New strong password: ")
             user = await session.scalar(
                 select(User).where(User.username == username)
             )
             if user is None:
                 print(f"user {username} does not exist")
                 continue
+            password = getpass(prompt=f"New strong password: ")
             user.update_password(password)
             session.add(user)
             await session.commit()
