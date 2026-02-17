@@ -14,6 +14,7 @@ import json
 
 # from functools import wraps
 # import secrets
+from .. import __version__
 from .forms import (
     InviteFormHTML,
     RegisterForm,
@@ -75,7 +76,10 @@ async def handle_connect_error(error: httpx.ConnectError):
 
 @app.context_processor
 async def inject_auth():
-    return {"is_auth": request.cookies.get("Authorization", False)}
+    return {
+        "is_auth": request.cookies.get("Authorization", False),
+        "version": __version__,
+    }
 
 
 def get_authorization_str(token_type, access_token):
