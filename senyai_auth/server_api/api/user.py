@@ -1,7 +1,5 @@
 from __future__ import annotations
 from typing import Annotated, Literal
-import os
-import base64
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -63,7 +61,7 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
             max_length=32,
             to_lower=True,
             strip_whitespace=True,
-            pattern=r"^[a-z_-]+$",
+            pattern=r"^[a-z0-9_-]+$",
         ),
         AfterValidator(not_in_blocklist),
     ]
