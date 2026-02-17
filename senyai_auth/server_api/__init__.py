@@ -18,23 +18,40 @@ class AppSettings(BaseModel, strict=True, frozen=True):
     secret_key: str
     algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 31  # 1 month
-    echo: bool = False
+    # arguments for `create_async_engine`, for example {"echo": True}
+    engine: dict[str, bool | int] = {}
 
 
 def get_settings():
     import os
 
-    settings_path = os.getenv("SENYAI_AUTH_SETTINGS_PATH", "settings.json")
+    settings_path = os.getenv("AUTH_API_SETTINGS_PATH", "settings_api.json")
     with open(settings_path) as f:
         return AppSettings.model_validate_json(f.read())
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = app.dependency_overrides.get(get_settings, get_settings)()
-    async_engine = create_async_engine(settings.db_url, echo=settings.echo)
+    settings: AppSettings = app.dependency_overrides.get(
+        get_settings, get_settings
+    )()
+    engine_kwargs = settings.engine
+    if settings.db_url.startswith("postgresql+asyncpg://"):
+        engine_kwargs: dict[str, str | int] = {
+            "pool_size": 10,  # max DB connections in pool
+            "max_overflow": 5,  # extra connections beyond pool_size
+            "pool_timeout": 30,  # seconds to wait for connection from pool
+            "pool_recycle": 1800,  # recycle after 30m to avoid stale conns
+            "pool_pre_ping": True,  # test connections before use
+            **engine_kwargs,
+        }
+
+    async_engine = create_async_engine(settings.db_url, **engine_kwargs)
     app.state.async_session = sessionmaker[AsyncSession](
-        async_engine, class_=AsyncSession, expire_on_commit=False
+        bind=async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
     )
     app.state.secret_key = settings.secret_key
     app.state.algorithm = settings.algorithm
