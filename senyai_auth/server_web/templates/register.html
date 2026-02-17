@@ -24,12 +24,8 @@
                 <label for="password">Password:</label>
             </div>
             <div class="form-floating mb-3">
-                <input type="tel" class="form-control" id="phone" name="phone" value="{{ form['phone'] if 'phone' in form }}" required>
-                <label for="default_display_name">Phone:</label>
-            </div>
-            <div class="form-floating mb-3">
-                <textarea rows="5" class="form-control" id="address" name="address">{{ form['contacts'] if 'contacts' in form }}</textarea>
-                <label for="address">Contacts:</label>
+                <textarea rows="5" class="form-control" id="contacts" name="contacts">{{ form['contacts'] if 'contacts' in form }}</textarea>
+                <label for="contacts">Contacts:</label>
             </div>
             <div class="d-grid pt-3">
                 <button type="submit" class="btn btn-primary">Sign Up</button>

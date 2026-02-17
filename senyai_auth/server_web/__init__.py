@@ -16,7 +16,7 @@ import json
 # import secrets
 from .forms import (
     InviteFormHTML,
-    RegisterFormHTML,
+    RegisterForm,
     LoginForm,
     RoleForm,
     RoleManageData,
@@ -66,9 +66,6 @@ def parse_errors(msg: dict):
                 result.add(d.get("msg"))
         return result
     return {detail}
-
-
-# def parse_projects():
 
 
 @app.errorhandler(httpx.ConnectError)
@@ -224,11 +221,12 @@ async def register(key: str):
 async def use_invite_post(key: str):
     form = await request.form
     # await check_csrf(form)
-    data, errors = RegisterFormHTML.parse_form(form)
+    data, errors = RegisterForm.parse_form(form)
+    print("error", errors)
     if data:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                f"{API_HOST}/register/{key}", json=data.to_api().model_dump()
+                f"{API_HOST}/register/{key}", json=data.model_dump()
             )
         if resp.status_code == 201:
             return redirect(url_for("index"))
@@ -310,7 +308,6 @@ async def role_new():
                 },
             )
         errors = parse_errors(res.json())
-        # print(res.json())
     return (
         await render_template(
             "forms/upsert_role_form.html",
