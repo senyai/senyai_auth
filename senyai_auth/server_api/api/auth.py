@@ -7,9 +7,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from . import app
-from ..db import User
+from .. import get_async_session
+from ..db import User, get_user_by_username_stmt
 from .exceptions import response_description
-from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -39,16 +40,18 @@ def _create_access_token(
     return encoded_jwt
 
 
-async def _get_user_by_username(username: str) -> User | None:
-    # Will check for 'disabled' later to ensure better error message
-    stmt = select(User).where(User.username == username)
-    async with app.state.async_session() as session:
-        user = (await session.execute(stmt)).scalar_one_or_none()
-    return user
+async def _get_user_by_username(
+    username: str, session: AsyncSession
+) -> User | None:
+    return await session.scalar(
+        get_user_by_username_stmt, params={"username": username}
+    )
 
 
-async def authenticate_user(username: str, password: str) -> User | None:
-    user = await _get_user_by_username(username)
+async def authenticate_user(
+    username: str, password: str, session: AsyncSession
+) -> User | None:
+    user = await _get_user_by_username(username, session)
     if not user:
         return
     if not user.validate_password(password):
@@ -68,8 +71,11 @@ async def authenticate_user(username: str, password: str) -> User | None:
 )
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: AsyncSession = Depends(get_async_session),
 ) -> Token:
-    user = await authenticate_user(form_data.username, form_data.password)
+    user = await authenticate_user(
+        form_data.username, form_data.password, session
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,6 +95,7 @@ async def login_for_access_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
+    session: AsyncSession = Depends(get_async_session),
 ) -> User:
     try:
         payload = cast(
@@ -104,7 +111,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     # we must fetch user on every request, because user information update
-    user = await _get_user_by_username(payload["username"])
+    user = await _get_user_by_username(payload["username"], session)
     # we must check salt because user password can change
     if user is None or user.salt != payload["salt"] or user.disabled:
         raise HTTPException(

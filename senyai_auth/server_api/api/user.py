@@ -262,7 +262,9 @@ async def get_user(
     ## Information for "Update User" form
     """
     auth_user = await session.merge(auth_user)
-    await session.refresh(auth_user, attribute_names=("contacts",))
+    await session.refresh(
+        auth_user, attribute_names=("contacts", "email", "display_name")
+    )
     return UserInfo.from_user(auth_user)
 
 
