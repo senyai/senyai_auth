@@ -22,6 +22,9 @@ class AppSettings(BaseModel, strict=True, frozen=True):
     engine: dict[str, bool | int] = {}
 
     def create_engine(self):
+        """
+        Notice: dispose async_engine after usage
+        """
         engine_kwargs = self.engine
         if self.db_url.startswith("postgresql+asyncpg://"):
             engine_kwargs: dict[str, str | int] = {
@@ -68,6 +71,7 @@ async def lifespan(app: FastAPI):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
+    await async_engine.dispose()
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

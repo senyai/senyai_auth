@@ -9,7 +9,7 @@ Work in progress.
 cd senyai_auth/server_api && ./download_static.sh && cd ../..
 cd senyai_auth/server_web && ./download_static.sh && cd ../..
 python -m senyai_auth.server_api init
-fastapi dev --no-reload -e 'senyai_auth.server_api:app'
+fastapi dev -e 'senyai_auth.server_api:app'
 quart -A senyai_auth.server_web:app run
 ```
 
