@@ -163,6 +163,7 @@ class Project(Base):
     members: Mapped[list[User]] = relationship(
         User,
         secondary=Member.__table__,
+        overlaps="user,project",
     )
     children: Mapped[list[Project]] = relationship(
         back_populates="parent", cascade="all, delete-orphan"
@@ -253,6 +254,7 @@ class Role(Base):
     members: Mapped[list[User]] = relationship(
         User,
         secondary=MemberRole.__table__,
+        overlaps="member_roles,user,role",
     )
 
     def __repr__(self) -> str:
@@ -354,6 +356,9 @@ def _create_permissions_stmt(field: InstrumentedAttribute[str]):
 
 
 def _create_list_projects_stmt():
+    """
+    For a user `user_id` recursively select all users's projects
+    """
     user_id = bindparam("user_id", type_=Integer)
     id_name_parent = select(
         Project.id, Project.name, Project.display_name, Project.parent_id
