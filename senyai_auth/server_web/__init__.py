@@ -69,8 +69,8 @@ def parse_errors(msg: dict):
     return {detail}
 
 
-@app.errorhandler(httpx.ConnectError)
-async def handle_connect_error(error: httpx.ConnectError):
+@app.errorhandler(httpx.NetworkError)
+async def handle_connect_error(error: httpx.NetworkError):
     return "", 503
 
 
