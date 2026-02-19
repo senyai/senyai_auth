@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
+from senyai_auth import __version__
 
 
 class AppSettings(BaseModel, strict=True, frozen=True):
@@ -80,7 +81,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 app = FastAPI(
-    version="0.1.1",
+    version=__version__,
     title="Senyai Auth API",
     contact={
         "name": "Arseniy Terekhin",
