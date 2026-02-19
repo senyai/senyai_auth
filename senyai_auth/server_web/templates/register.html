@@ -4,7 +4,7 @@
 
 <div class="container-fluid col-md-6">
     <div class="row">
-        <form role="form" method="POST" class="form-control">
+        <form role="form" class="form-control" hx-post="{{ url_for('register_post', key=key) }}">
             <!-- <input type="hidden" value="{{ csrf }}" name="csrf_token"> -->
             <legend>{{ form["prompt"] }}</legend>
             <div class="form-floating mb-3">

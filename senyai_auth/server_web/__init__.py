@@ -5,68 +5,35 @@ from quart import (
     redirect,
     url_for,
     request,
-    # session,
-    # abort,
     make_response,
 )
 import httpx
 import json
 
-# from functools import wraps
-# import secrets
 from .. import __version__
-from .forms import (
-    InviteFormHTML,
-    RegisterForm,
-    LoginForm,
-    RoleForm,
-    RoleManageData,
-)
 
-app = Quart(__name__)
-# app.secret_key = "flGsgDGgukHFyuK"
+from .helpers import Permissions, HXTrigger, parse_projects
+
+
+class App(Quart):
+    client: httpx.AsyncClient
+
+
+app = App(__name__)
 
 API_HOST = "http://127.0.0.1:8000"
 
 
-class Permissions:
-    NONE = 0
-    USER = 1
-    """
-    * Change password
-    * Change display_name
-    * List projects
-    """
-    MANAGER = 2
-    """
-    * Create and edit roles
-    * Manage users
-    * Send invites
-    """
-
-    ADMIN = 4
-    """
-    * Create projects
-    """
-    SUPERADMIN = 8
-
-    api_options: list[dict[str, str | int]] = [
-        {"name": "none", "value": 0},
-        {"name": "user", "value": 1},
-        {"name": "manager", "value": 2},
-        {"name": "admin", "value": 4},
-    ]
+@app.before_serving
+async def startup():
+    print("create httpx client")
+    app.client = httpx.AsyncClient(base_url=API_HOST)
 
 
-def parse_errors(msg: dict):
-    detail = msg.get("detail")
-    result = set()
-    if isinstance(detail, list):
-        for d in detail:
-            if "msg" in d:
-                result.add(d.get("msg"))
-        return result
-    return {detail}
+@app.after_serving
+async def shutdown():
+    await app.client.aclose()
+    print("close httpx client")
 
 
 @app.errorhandler(httpx.NetworkError)
@@ -77,7 +44,7 @@ async def handle_connect_error(error: httpx.NetworkError):
 @app.context_processor
 async def inject_auth():
     return {
-        "is_auth": request.cookies.get("Authorization", False),
+        "has_auth": "Authorization" in request.cookies,
         "version": __version__,
     }
 
@@ -89,11 +56,10 @@ def get_authorization_str(token_type, access_token):
 @app.get("/")
 async def index():
     if token := request.cookies.get("Authorization"):
-        async with httpx.AsyncClient() as client:
-            user_res = await client.get(
-                f"{API_HOST}/ui/main",
-                headers={"Authorization": token},
-            )
+        user_res = await app.client.get(
+            "/ui/main",
+            headers={"Authorization": token},
+        )
         if user_res.status_code == 200:
             data = user_res.json()
             user = data["user"]
@@ -108,33 +74,24 @@ async def index():
 
 @app.post("/")
 async def login():
-    errors = {}
     form = await request.form
-    data, errors = LoginForm.parse_form(dict(form))
-    if data:
-        async with httpx.AsyncClient() as client:
-            token_res = await client.post(
-                f"{API_HOST}/token", data=data.model_dump()
-            )
-        token = token_res.json()
-        if token_res.status_code == 200:
-            resp = await make_response(redirect(url_for("index")))
-            resp.set_cookie(
-                "Authorization",
-                get_authorization_str(
-                    token["token_type"], token["access_token"]
-                ),
-            )
-            return resp
-            # errors = token.get("detail")
-        errors = parse_errors(token)
-    return await render_template("login.html", errors=errors), 400
+    api_resp = await app.client.post("/token", data=dict(form))
+    if api_resp.status_code == 200:
+        token = api_resp.json()
+        resp = await make_response("", 200)
+        resp.set_cookie(
+            "Authorization",
+            get_authorization_str(token["token_type"], token["access_token"]),
+        )
+        resp.headers["HX-Redirect"] = url_for("index")
+        return resp
+    return ("", api_resp.status_code, HXTrigger.send_errors(api_resp))
 
 
 @app.route("/logout")
 async def logout():
     resp = await make_response(redirect(url_for("index")))
-    resp.set_cookie("Authorization", "")
+    resp.delete_cookie("Authorization")
     return resp
 
 
@@ -142,13 +99,10 @@ async def logout():
 async def invites_table():
     project_id = request.args.get("project_id", type=int)
     project_name = request.args.get("project_name")
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{API_HOST}/invites/{project_id}",
-            headers={
-                "Authorization": request.cookies.get("Authorization", "")
-            },
-        )
+    resp = await app.client.get(
+        f"/invites/{project_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
     if resp.status_code == 200:
         return await render_template(
             "partials/invites_table.html",
@@ -156,9 +110,7 @@ async def invites_table():
             project_id=project_id,
             project_name=project_name,
         )
-    return await render_template(
-        "includes/toasts.html", errors=parse_errors(resp.json())
-    )
+    return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
 @app.get("/invite")
@@ -175,82 +127,60 @@ async def invite():
 @app.post("/invite")
 async def invite_new():
     form = await request.form
-    data, errors = InviteFormHTML.parse_form(dict(form))
-    if data:
-        async with httpx.AsyncClient() as client:
-            url_res = await client.post(
-                f"{API_HOST}/invite",
-                headers={
-                    "Authorization": request.cookies.get("Authorization", "")
-                },
-                json=data.to_api().model_dump(),
-            )
-        url = url_res.json()
-        if url_res.status_code == 201:
-            return (
-                await render_template(
-                    "invite_result.html", url_key=url["url_key"]
-                ),
-                201,
-                {
-                    "HX-Trigger": json.dumps(
-                        {
-                            "objectCreated": {},
-                        }
-                    )
-                },
-            )
-        errors = url["detail"]
-    print(errors)
-    return (
-        await render_template(
-            "includes/toasts.html", form=form, errors=errors
-        ),
-        400,
+    data = dict(form)
+    data["roles"] = []
+    resp = await app.client.post(
+        "/invite",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
     )
+    if resp.status_code == 201:
+        trigger = HXTrigger()
+        print(trigger.events)
+        url = resp.json()
+        trigger.add_update_project_info()
+        # trigger.add_success_event("Invite created!")
+        print(trigger.events)
+        return (
+            await render_template(
+                "invite_result.html", url_key=url["url_key"]
+            ),
+            201,
+            trigger.build(),
+        )
+    return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
 @app.get("/register/<key>")
 async def register(key: str):
-    async with httpx.AsyncClient() as client:
-        form_res = await client.get(f"{API_HOST}/invite/{key}")
+    form_res = await app.client.get("/invite/{key}")
     form = form_res.json()
     if form_res.status_code == 200:
-        # generate_csrf()
-        return await render_template("register.html", form=form, errors={})
-    return form
+        return await render_template("register.html", form=form, key=key)
+    return form, 404
 
 
 @app.post("/register/<key>")
-async def use_invite_post(key: str):
+async def register_post(key: str):
     form = await request.form
-    # await check_csrf(form)
-    data, errors = RegisterForm.parse_form(form)
-    print("error", errors)
-    if data:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{API_HOST}/register/{key}", json=data.model_dump()
-            )
-        if resp.status_code == 201:
-            return redirect(url_for("index"))
-        errors = parse_errors(resp.json())
-    return await render_template("register.html", form=form, errors=errors)
+    api_resp = await app.client.post("/register/{key}", json=dict(form))
+    if api_resp.status_code == 201:
+        # trigger = HXTrigger()
+        resp = await make_response("", 201)
+        resp.headers["HX-Redirect"] = url_for("index")
+        return resp
+    return ("", api_resp.status_code, HXTrigger.send_errors(api_resp))
 
 
 @app.get("/project/<project_id>")
 async def project(project_id: int):
     token = request.cookies.get("Authorization", "")
-    # headers = request.headers
-    # print(headers)
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{API_HOST}/ui/project/{project_id}",
-            headers={"Authorization": token},
-        )
-    project_info = resp.json()
+    resp = await app.client.get(
+        f"{API_HOST}/ui/project/{project_id}",
+        headers={"Authorization": token},
+    )
     if resp.status_code == 200:
-        # context = namedtuple("Context", ["members", "roles", "permission", "display"])
+        project_info = resp.json()
         permission = project_info.get("permission", 0)
 
         context = {
@@ -261,15 +191,49 @@ async def project(project_id: int):
             "can_user": permission >= Permissions.USER,
             "can_manager": permission >= Permissions.MANAGER,
             "can_admin": permission >= Permissions.ADMIN,
+            "project_id": int(project_id),
+            "description": project_info.get("description"),
+            "parent_id": project_info.get("parent_id"),
             "project_id": project_id,
         }
 
         return await render_template(
             "includes/project_info.html", context=context
         )
-    return await render_template(
-        "includes/toasts.html", errors=parse_errors(project_info)
+
+    return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.post("/project")
+async def create_project():
+    form = await request.form
+    resp = await app.client.post(
+        "/project",
+        json=dict(form),
+        headers={"Authorization": request.cookies.get("Authorization", "")},
     )
+    if resp.status_code == 201:
+        trigger = HXTrigger()
+        trigger.add_update_projects_tree()
+        trigger.add_success_event("Project created!")
+        return ("", 201, trigger.build())
+    return ("", resp.status_code, HXTrigger.send_errors(resp))
+
+
+@app.patch("/project/<project_id>")
+async def update_project(project_id: str):
+    form = await request.form
+    resp = await app.client.patch(
+        f"/project/{project_id}",
+        json=dict(form),
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_update_project_info()
+        trigger.add_success_event("Project updated!")
+        return "", resp.status_code, trigger.build()
+    return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
 @app.get("/role")
@@ -286,42 +250,20 @@ async def role():
 @app.post("/role")
 async def role_new():
     form = await request.form
+    data = dict(form)
 
-    data, errors = RoleForm.parse_form(dict(form))
-
-    if data:
-        async with httpx.AsyncClient() as client:
-            res = await client.post(
-                f"{API_HOST}/role",
-                headers={
-                    "Authorization": request.cookies.get("Authorization", "")
-                },
-                json=data.model_dump(),
-            )
-        if res.status_code == 201:
-            return (
-                "",
-                201,
-                {
-                    "HX-Trigger": json.dumps(
-                        {
-                            "objectCreated": {},
-                            "successEvent": {"message": "Role created"},
-                        }
-                    )
-                },
-            )
-        errors = parse_errors(res.json())
-    return (
-        await render_template(
-            "forms/upsert_role_form.html",
-            form=form,
-            project_id=form.get("project_id", 0),
-            api_options=Permissions.api_options,
-            errors=errors,
-        ),
-        400,
+    resp = await app.client.post(
+        "/role",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
     )
+    if resp.status_code == 201:
+        trigger = HXTrigger()
+        trigger.add_success_event("Role created!")
+        trigger.add_update_project_info()
+        return ("", 201, trigger.build())
+    print(resp.json())
+    return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
 @app.get("/role_manage_form")
@@ -333,32 +275,23 @@ async def manage_role_form():
     return await render_template("forms/add_roles_form.html")
 
 
-def parse_projects(projects: list[dict]):
-    def rec_leaf(project):
-        if project["parent"] not in idxs:
-            if project["id"] in to_check:
-                project["children"] = []
-                trees.append(project)
-                to_check.remove(project["id"])
-        else:
-            parent = projects[idxs.index(project["parent"])]
+@app.get("/forms/new_project/<parent_id>")
+async def get_new_project_form(parent_id: str):
+    context = {"parent_id": parent_id}
+    return await render_template(
+        "forms/upsert_project_form.html", context=context
+    )
 
-            if parent["id"] in to_check:
-                rec_leaf(parent)
 
-            if project["id"] in to_check:
-                project["children"] = []
-                parent["children"].append(project)
-                to_check.remove(project["id"])
-
-        return
-
-    idxs = [project["id"] for project in projects]
-    to_check = idxs[:]
-    trees = []
-
-    while to_check:
-        project = next(filter(lambda x: x["id"] == to_check[0], projects))
-        rec_leaf(project)
-
-    return trees
+@app.get("/forms/edit_project/<project_id>")
+async def get_edit_project_form(project_id: str):
+    resp = await app.client.get(
+        f"/project/{project_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        context = {"project_id": project_id, **resp.json()}
+        return await render_template(
+            "forms/upsert_project_form.html", context=context, edit_mode=True
+        )
+    return "", resp.status_code, HXTrigger.send_errors(resp)
