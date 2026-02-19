@@ -539,7 +539,7 @@ class SearchRequest(univ.Sequence):
                 print(f"query {unknown_query} not implemented")
 
     async def _list_all_users(self, msgid: int):
-        res = await api_client.get(f"/ldap/users", params={"domain": "git"})
+        res = await api_client.get(f"/ldap/users/git")
         assert res.status_code == 200, (res.status_code, res)
         for user in res.json():
             username = user["username"]
@@ -559,8 +559,8 @@ class SearchRequest(univ.Sequence):
 
     async def _find_user(self, msgid: int, username_or_email: str):
         res = await api_client.get(
-            f"/ldap/find_user",
-            params={"domain": "git", "username_or_email": username_or_email},
+            f"/ldap/find_user/git",
+            params={"username_or_email": username_or_email},
         )
         if res.status_code != 404:
             user = res.json()
@@ -588,8 +588,8 @@ class SearchRequest(univ.Sequence):
             case {"op": "=", "lhs": "memberUid", "rhs": username}:
                 print(f"PROJECTS FOR {username!r}")
                 res = await api_client.get(
-                    f"/ldap/roles",
-                    params={"domain": "git", "username": username},
+                    f"/ldap/roles/git",
+                    params={"username": username},
                 )
                 assert res.status_code == 200, res
                 for name in res.json():  # list os strings
