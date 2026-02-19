@@ -7,14 +7,19 @@ from sqlalchemy.exc import IntegrityError
 from . import app, get_settings, AppSettings
 from .db import Project, Role, User, PermissionsAPI
 
+import logging
 
-def test_get_settings():
+logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+logging.getLogger("python_multipart.multipart").setLevel(logging.WARNING)
+
+
+def _test_get_settings():
     return AppSettings(
         db_url="sqlite+aiosqlite:///:memory:", secret_key="debug_" * 6
     )
 
 
-app.dependency_overrides[get_settings] = test_get_settings
+app.dependency_overrides[get_settings] = _test_get_settings
 client = TestClient(app)
 client.__enter__()
 
