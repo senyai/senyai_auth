@@ -1,74 +1,91 @@
 from __future__ import annotations
-from typing import Annotated
+from typing import Annotated, Literal
 from pydantic import BaseModel, StringConstraints
-from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import (
     permissions_api_stmt,
+    get_user_by_username_or_email_stmt,
+    permissions_extra_stmt,
+    permissions_git_stmt,
+    permissions_storage_stmt,
+    all_users_extra_stmt,
+    all_users_storage_stmt,
+    all_users_git_stmt,
+    select_userid_by_username_stmt,
     PermissionsAPI,
-    Project,
-    Role,
-    MemberRole,
     User,
 )
 from .auth import get_current_user
 from .. import get_async_session
 from .exceptions import (
     not_authorized_exception,
+    response_description,
     response_with_perm_check,
 )
 
 router = APIRouter(prefix="/ldap", tags=["ldap"])
-
-
-class FindUser(BaseModel, strict=True, frozen=True):
-    username_or_email: Annotated[
-        str, StringConstraints(min_length=1, max_length=32)
-    ]
+Domain = Literal["git", "storage", "extra"]
 
 
 class LDAPUser(BaseModel, strict=True, frozen=True):
     username: str
     display_name: str
     email: str
+    permissions: list[str]
 
 
-@router.post(
+@router.get(
     "/find_user",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("User not found"),
     },
 )
 async def find_user(
-    find_user: FindUser,
+    username_or_email: Annotated[
+        str, StringConstraints(min_length=1, max_length=32)
+    ],
+    domain: Domain,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-) -> LDAPUser | None:
+) -> LDAPUser:
     """
     ## Find user for LDAP server
 
+    * Return user that has git permissions assigned
     * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.admin:
+    if permissions < PermissionsAPI.admin:
         raise not_authorized_exception
 
-    for username, display_name, email in await session.execute(
-        select(User.username, User.display_name, User.email).where(
-            (User.username == find_user.username_or_email)
-            | (User.email == find_user.username_or_email)
+    user = await session.scalar(
+        get_user_by_username_or_email_stmt,
+        {"username_or_email": username_or_email},
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
-        # technically, multiple users can have the same email,
-        # but are discouraged to do so
-        .limit(1)
-    ):
-        return LDAPUser(
-            username=username, display_name=display_name, email=email
-        )
+    permissions_stmt = {
+        "extra": permissions_extra_stmt,
+        "git": permissions_git_stmt,
+        "storage": permissions_storage_stmt,
+    }[domain]
+    permissions_str = await session.scalar(
+        permissions_stmt, {"user_id": user.id}
+    )
+    return LDAPUser(
+        username=user.username,
+        display_name=user.display_name,
+        email=user.email,
+        permissions=list(set((permissions_str or "").split("|"))),
+    )
 
 
 @router.get(
@@ -79,31 +96,43 @@ async def find_user(
     },
 )
 async def all_users(
+    domain: Domain,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LDAPUser]:
     """
-    ## List all enabled users for LDAP server
+    ## List all enabled users that have non empty specified domain
 
     * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.admin:
+    if permissions < PermissionsAPI.admin:
         raise not_authorized_exception
 
+    domain_field = {
+        "extra": all_users_extra_stmt,
+        "storage": all_users_storage_stmt,
+        "git": all_users_git_stmt,
+    }[domain]
+
     return [
-        LDAPUser(username=username, display_name=display_name, email=email)
-        for username, display_name, email in await session.execute(
-            select(User.username, User.display_name, User.email)
+        LDAPUser(
+            username=username,
+            display_name=display_name,
+            email=email,
+            permissions=list(set((permissions_str or "").split("|"))),
+        )
+        for username, display_name, email, permissions_str in await session.execute(
+            domain_field
         )
     ]
 
 
-class LDAPProject(BaseModel, strict=True, frozen=True):
-    project: str  # project-role format
-    members: list[str]
+# class LDAPProject(BaseModel, strict=True, frozen=True):
+#     project: str  # project-role format
+#     members: list[str]
 
 
 @router.get(
@@ -111,32 +140,40 @@ class LDAPProject(BaseModel, strict=True, frozen=True):
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("User not found"),
     },
 )
 async def user_roles(
     username: str,
+    domain: Domain,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-) -> list[LDAPProject]:
+) -> list[str]:
     """
-    ## List all enabled users for LDAP server
+    ## This is exact like `find_user` by output is just roles
 
     * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.admin:
+    if permissions < PermissionsAPI.admin:
         raise not_authorized_exception
 
-    # this statement is crazy. debug then we have more info on what LDAP needs
-    return [
-        LDAPProject(project=f"{role_name}-{project_name}", members=[username])
-        for role_name, project_name, username in await session.execute(
-            select(Role.name, Project.name, User.username)
-            .join(Project)
-            .join(MemberRole)
-            .join(User)
-            .where(User.username == username)
+    user_id = await session.scalar(
+        select_userid_by_username_stmt, {"username": username}
+    )
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
-    ]
+    permissions_stmt = {
+        "extra": permissions_extra_stmt,
+        "git": permissions_git_stmt,
+        "storage": permissions_storage_stmt,
+    }[domain]
+    permissions_str = await session.scalar(
+        permissions_stmt, {"user_id": user_id}
+    )
+    return list(set((permissions_str or "").split("|")))
