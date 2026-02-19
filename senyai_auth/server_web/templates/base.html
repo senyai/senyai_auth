@@ -10,6 +10,7 @@
         <link href="{{ url_for('static', filename='css/themes/dark.css') }}" rel="stylesheet">
         <script src="{{ url_for('static', filename='js/htmx.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+        <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
         <script src="{{ url_for('static', filename='js/switch_theme.js') }}"></script>
     </head>
     <body>
@@ -17,16 +18,11 @@
         <div class="" style="margin-top: 56px;">
             <div class="content flex-grow-1 p-4">
                 {% block content %}{% endblock %}
-                {% include "includes/toasts.html" %}
+                {% include "includes/toast_container.html" %}
             </div>
         </div>
         {% include "forms/base_modal.html" %}
     </body>
-    <script>
-        document.body.addEventListener("successEvent", event => {
-            alert(event.detail.message);
-        })
-    </script>
 
     <script>
         document.addEventListener("show.bs.collapse", e => {

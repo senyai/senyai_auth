@@ -1,0 +1,42 @@
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">
+        {% if edit_mode %}
+        Update Project info
+        {% else %}
+        Create Project
+        {% endif %}
+    </h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form id="project-form" role="form" class="form-control" {% if edit_mode
+        %}hx-patch="{{ url_for('update_project', project_id=context.project_id) }}" {% else
+        %}hx-post="{{ url_for('create_project')}}"
+        {% endif %}>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="project_name" name="name"
+                value="{{ context.name if context.name }}" required autofocus>
+            <label for="project_name">Name:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="display_name" name="display_name"
+                value="{{ context.display_name if context.display_name }}" required>
+            <label for="display_name">Display name:</label>
+        </div>
+        <div class="form-floating mb-3">
+            <textarea rows="5" class="form-control" id="description"
+                name="description">{{ context.description if context.description }}</textarea>
+            <label for="description">Description:</label>
+        </div>
+        {% if not edit_mode %}
+        <div class="form-floating mb-3">
+            <input type="hidden" class="form-control" name="parent_id"
+                value="{{ context.parent_id if context.parent_id }}" required>
+        </div>
+        {% endif %}
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-primary" form="project-form">{% if edit_mode %}Update{% else %}Create{% endif %}</button>
+</div>

@@ -1,4 +1,4 @@
-<div class="container-fluid" hx-get="{{ url_for('project', project_id=project_id) }}" hx-trigger="objectCreated from:body"
+<div class="container-fluid" hx-get="{{ url_for('project', project_id=context.project_id) }}" hx-trigger="updateProjectInfo from:body"
     ht-target="#parent-div">
     <ul class="nav nav-tabs" id="projectTab" role="tablist">
         <li class="nav-item" role="presentation">
@@ -18,6 +18,11 @@
             <button class="nav-link" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
                 type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false">
                 Invitations
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false">
+                Manage
             </button>
         </li>
         {% endif %}
@@ -63,6 +68,9 @@
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
             hx-get="{{ url_for('invites_table', project_id=context.project_id, project_name=context.display_name ) }}"
             hx-trigger="load delay:500ms" hx-target="#invites-tab-pane">
+        </div>
+        <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
+            {% include "partials/project_management.html" %}
         </div>
         {% endif %}
     </div>
