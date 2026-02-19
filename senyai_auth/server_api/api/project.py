@@ -53,7 +53,7 @@ class ProjectCreate(BaseModel, strict=True):
     name: Name
     display_name: DisplayName
     description: Description
-    parent_id: int
+    parent_id: Annotated[int, Field(strict=False)]
 
     def make_project(self):
         return Project(

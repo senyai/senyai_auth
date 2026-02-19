@@ -37,8 +37,9 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
     project_id: Annotated[
         int,
         Field(
+            strict=False,
             description="After user accepts invitation,"
-            "it will be added to the project. No roles will be assigned"
+            "it will be added to the project. No roles will be assigned",
         ),
     ]
     prompt: Annotated[
