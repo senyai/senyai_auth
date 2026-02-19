@@ -49,7 +49,7 @@ async def inject_auth():
     }
 
 
-def get_authorization_str(token_type, access_token):
+def get_authorization_str(token_type: str, access_token: str):
     return f"{token_type.capitalize()} {access_token}"
 
 
