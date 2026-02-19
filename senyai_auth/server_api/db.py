@@ -386,7 +386,8 @@ def _create_get_user_by_username_stmt():
     """
     Use session to get user by `username`
 
-    Disabled users will be returned too
+    Disabled users will be returned too, and for disabled user an error
+    'User is not available anymore' will be shown
     """
     username = bindparam("username", type_=String)
     return (
