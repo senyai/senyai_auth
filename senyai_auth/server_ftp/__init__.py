@@ -34,17 +34,6 @@ class Config(BaseModel, strict=True):
     api_url: str = "http://127.0.0.1:8000"
 
 
-# configure root logger
-logging.basicConfig(
-    level=logging.DEBUG,  # DEBUG to see detailed protocol events
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-
-# optionally tune specific loggers
-logging.getLogger("aioftp").setLevel(logging.DEBUG)
-logging.getLogger("asyncio").setLevel(logging.INFO)
-
-
 def create_ssl_context(config: SSLConfig):
     # Create a context for server-side sockets
     ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
@@ -102,6 +91,16 @@ def main():
     args = parser.parse_args()
     with open(args.config) as f:
         config = Config.model_validate_json(f.read())
+
+    # configure root logger
+    logging.basicConfig(
+        level=logging.INFO,  # DEBUG to see detailed protocol events
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    # optionally tune specific loggers
+    logging.getLogger("aioftp").setLevel(logging.DEBUG)
+    logging.getLogger("asyncio").setLevel(logging.INFO)
+
     asyncio.run(_server_main(config))
 
 
