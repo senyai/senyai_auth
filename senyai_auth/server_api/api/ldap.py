@@ -42,7 +42,7 @@ class LDAPUser(BaseModel, strict=True, frozen=True):
 
 
 @router.get(
-    "/find_user",
+    "/find_user/{domain}",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -95,7 +95,7 @@ async def find_user(
 
 
 @router.get(
-    "/users",
+    "/users/{domain}",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -142,7 +142,7 @@ async def all_users(
 
 
 @router.get(
-    "/roles",
+    "/roles/{domain}",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,

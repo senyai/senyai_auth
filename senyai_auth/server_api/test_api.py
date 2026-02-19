@@ -382,10 +382,9 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def _test_find_user(self, username_or_email: str) -> None:
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
-            "/ldap/find_user",
+            "/ldap/find_user/git",
             params={
                 "username_or_email": "invited_user",
-                "domain": "git",
             },
             headers={"Authorization": authorization_str},
         )
@@ -409,10 +408,9 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def test_17_ldap_find_user_non_existing(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
-            "/ldap/find_user",
+            "/ldap/find_user/git",
             params={
                 "username_or_email": "null",
-                "domain": "git",
             },
             headers={"Authorization": authorization_str},
         )
@@ -422,8 +420,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def test_18_ldap_find_all_git_users(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
-            "/ldap/users",
-            params={"domain": "git"},
+            "/ldap/users/git",
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -442,14 +439,23 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def test_19_ldap_roles(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.get(
-            "/ldap/roles",
-            params={"username": "invited_user", "domain": "git"},
+            "/ldap/roles/git",
+            params={"username": "invited_user"},
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), ["admin"])
 
-    async def test_20_delete_admin_from_project(self):
+    async def test_20_ldap_roles_for_current_user(self):
+        assert isinstance(authorization_str, str), authorization_str
+        response = client.get(
+            "/ldap/roles/git",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    async def test_30_delete_admin_from_project(self):
         assert isinstance(authorization_str, str), authorization_str
         users = [2]
         response = client.request(
