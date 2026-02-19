@@ -150,30 +150,34 @@ async def all_users(
     },
 )
 async def user_roles(
-    username: str,
     domain: Domain,
     auth_user: Annotated[User, Depends(get_current_user)],
+    username: str | None = None,
     session: AsyncSession = Depends(get_async_session),
 ) -> list[str]:
     """
-    ## This is exact like `find_user` by output is just roles
+    ## This is exactly like `find_user`, but the output is just list of roles
 
-    * Only admins can do this action
+    * View current user roles, acceptable for everyone
+    * Only admins can view roles of specified `username`
     """
-    permissions = await session.scalar(
-        permissions_api_stmt, {"user_id": auth_user.id}
-    )
-    if permissions < PermissionsAPI.admin:
-        raise not_authorized_exception
-
-    user_id = await session.scalar(
-        select_userid_by_username_stmt, {"username": username}
-    )
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+    if username is None:
+        user_id = auth_user.id
+    else:
+        permissions = await session.scalar(
+            permissions_api_stmt, {"user_id": auth_user.id}
         )
+        if permissions < PermissionsAPI.admin:
+            raise not_authorized_exception
+
+        user_id = await session.scalar(
+            select_userid_by_username_stmt, {"username": username}
+        )
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
     permissions_stmt = {
         "extra": permissions_extra_stmt,
         "git": permissions_git_stmt,
