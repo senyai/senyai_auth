@@ -539,7 +539,7 @@ class SearchRequest(univ.Sequence):
                 print(f"query {unknown_query} not implemented")
 
     async def _list_all_users(self, msgid: int):
-        res = await api_client.get(f"/ldap/users")
+        res = await api_client.get(f"/ldap/users", params={"domain": "git"})
         assert res.status_code == 200, (res.status_code, res)
         for user in res.json():
             username = user["username"]
@@ -558,12 +558,13 @@ class SearchRequest(univ.Sequence):
         )
 
     async def _find_user(self, msgid: int, username_or_email: str):
-        res = await api_client.post(
-            f"/ldap/find_user", json={"username_or_email": username_or_email}
+        res = await api_client.get(
+            f"/ldap/find_user",
+            params={"domain": "git", "username_or_email": username_or_email},
         )
-        user = res.json()
-        assert res.status_code == 200, (res.status_code, user)
-        if user is not None:
+        if res.status_code != 404:
+            user = res.json()
+            assert res.status_code == 200, (res.status_code, user)
             assert "username" in user, user
             username = user["username"]
             yield encode_search_result_entry(
@@ -587,18 +588,18 @@ class SearchRequest(univ.Sequence):
             case {"op": "=", "lhs": "memberUid", "rhs": username}:
                 print(f"PROJECTS FOR {username!r}")
                 res = await api_client.get(
-                    f"/ldap/roles", params={"username": username}
+                    f"/ldap/roles",
+                    params={"domain": "git", "username": username},
                 )
                 assert res.status_code == 200, res
-                for project in res.json():
-                    name = project["project"]
+                for name in res.json():  # list os strings
                     yield encode_search_result_entry(
                         msgid,
                         dn=f"cn={name},{DOMAIN.dc}",  # todo: escape or remove
                         attributes={
                             b"objectClass": [b"top", b"groupOfNames"],
                             b"cn": name,
-                            b"memberUid": project["members"],
+                            b"memberUid": [username],
                         },
                     )
             case unknown_query:

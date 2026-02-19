@@ -329,6 +329,9 @@ def _create_auth_for_project_stmt():
 
 
 def _create_permissions_api_stmt():
+    """
+    For `user_id` aggregate sum(Role.permissions_api)
+    """
     user_id = bindparam("user_id", type_=Integer)
     return select(
         type_coerce(
@@ -343,15 +346,18 @@ def _create_permissions_api_stmt():
 
 def _create_permissions_stmt(field: InstrumentedAttribute[str]):
     """
+    Find all Roles that the users is in and aggregate specified Role's `fiend`
+    using '|' delimiter
+
     :param field: Field of a `Role` class
     """
     user_id = bindparam("user_id", type_=Integer)
     return (
         select(
-            func.aggregate_strings(field, " "),
+            func.aggregate_strings(field, "|"),
         )
         .join(MemberRole, MemberRole.role_id == Role.id)
-        .where(MemberRole.user_id == user_id)
+        .where(MemberRole.user_id == user_id, field != "")
     )
 
 
@@ -398,10 +404,57 @@ def _create_get_user_by_username_stmt():
     )
 
 
+def _create_get_user_by_username_or_email_stmt():
+    username_or_email = bindparam("username_or_email", type_=String)
+    return (
+        select(User)
+        .where(
+            (
+                (User.username == username_or_email)
+                | (User.email == username_or_email)
+            )
+        )
+        .options(
+            load_only(User.id, User.username, User.display_name, User.email)
+        )
+    )
+
+
+def _create_get_all_users_for_domain(field: InstrumentedAttribute[str]):
+    """
+    This is expected to be a scan function
+    """
+    return (
+        select(
+            User.username,
+            User.display_name,
+            User.email,
+            func.aggregate_strings(field, "|"),
+        )
+        .join(MemberRole, MemberRole.user_id == User.id)
+        .join(Role, MemberRole.role_id == Role.id)
+        .where(field != "", ~User.disabled)
+        .group_by(User.username, User.display_name, User.email)
+    )
+
+
 auth_for_project_stmt = _create_auth_for_project_stmt()
 permissions_api_stmt = _create_permissions_api_stmt()
+
 permissions_extra_stmt = _create_permissions_stmt(Role.permissions_extra)
 permissions_storage_stmt = _create_permissions_stmt(Role.permissions_storage)
 permissions_git_stmt = _create_permissions_stmt(Role.permissions_git)
+all_users_extra_stmt = _create_get_all_users_for_domain(Role.permissions_extra)
+all_users_storage_stmt = _create_get_all_users_for_domain(
+    Role.permissions_storage
+)
+all_users_git_stmt = _create_get_all_users_for_domain(Role.permissions_git)
+
 list_projects_stmt = _create_list_projects_stmt()
 get_user_by_username_stmt = _create_get_user_by_username_stmt()
+get_user_by_username_or_email_stmt = (
+    _create_get_user_by_username_or_email_stmt()
+)
+select_userid_by_username_stmt = select(User.id).where(
+    User.username == bindparam("username", type_=String)
+)
