@@ -7,6 +7,7 @@ from pydantic import (
     Field,
     model_validator,
     SecretStr,
+    EmailStr,
 )
 from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
@@ -66,15 +67,7 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
         AfterValidator(not_in_blocklist),
     ]
     password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
-    email: Annotated[
-        str,
-        StringConstraints(
-            min_length=3,
-            max_length=500,
-            strip_whitespace=True,
-            pattern=r"^\S*$",
-        ),
-    ]
+    email: EmailStr
     contacts: Annotated[
         str,
         StringConstraints(
@@ -177,15 +170,7 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True):
         AfterValidator(not_in_blocklist),
     ] = None
     password: PasswordModel | None = None
-    email: Annotated[
-        str | None,
-        StringConstraints(
-            min_length=3,
-            max_length=500,
-            strip_whitespace=True,
-            pattern=r"^\S*$",
-        ),
-    ] = None
+    email: EmailStr | None = None
     contacts: Annotated[
         str | None,
         StringConstraints(

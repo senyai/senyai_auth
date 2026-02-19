@@ -74,7 +74,7 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(nullable=False)
     salt: Mapped[str] = mapped_column(nullable=False)
-    email: Mapped[str] = mapped_column(default="", nullable=False)
+    email: Mapped[str] = mapped_column(nullable=False, unique=True)
     contacts: Mapped[str] = mapped_column(
         default="", nullable=False, deferred=True
     )
