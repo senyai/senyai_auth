@@ -28,6 +28,12 @@ router = APIRouter(prefix="/ldap", tags=["ldap"])
 Domain = Literal["git", "storage", "extra"]
 
 
+def _permissions_from_str(permissions: str | None) -> list[str]:
+    if permissions:
+        return sorted(set(permissions.split("|")))
+    return []
+
+
 class LDAPUser(BaseModel, strict=True, frozen=True):
     username: str
     display_name: str
@@ -84,7 +90,7 @@ async def find_user(
         username=user.username,
         display_name=user.display_name,
         email=user.email,
-        permissions=list(set((permissions_str or "").split("|"))),
+        permissions=_permissions_from_str(permissions_str),
     )
 
 
@@ -122,7 +128,7 @@ async def all_users(
             username=username,
             display_name=display_name,
             email=email,
-            permissions=list(set((permissions_str or "").split("|"))),
+            permissions=_permissions_from_str(permissions_str),
         )
         for username, display_name, email, permissions_str in await session.execute(
             domain_field
@@ -176,4 +182,4 @@ async def user_roles(
     permissions_str = await session.scalar(
         permissions_stmt, {"user_id": user_id}
     )
-    return list(set((permissions_str or "").split("|")))
+    return _permissions_from_str(permissions_str)
