@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import aioftp
 import ssl
 import logging
 from argparse import ArgumentParser
