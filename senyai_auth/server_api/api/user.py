@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Annotated, Literal
+from typing import Annotated
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -20,9 +20,6 @@ from ..db import (
     Invitation,
     Member,
     permissions_api_stmt,
-    permissions_extra_stmt,
-    permissions_git_stmt,
-    permissions_storage_stmt,
     PermissionsAPI,
     MemberRole,
     Role,
@@ -374,32 +371,3 @@ async def create_user_by_invitation(
             detail=f"User {user.username} already exists",
         )
     return NewUserResponse(user_id=user_db.id)
-
-
-permissions_stmt = {
-    "extra": permissions_extra_stmt,
-    "git": permissions_git_stmt,
-    "storage": permissions_storage_stmt,
-}
-
-
-@router.get(
-    "/permissions/{service}",
-    tags=["auth"],
-    responses={
-        status.HTTP_401_UNAUTHORIZED: response_description(
-            "Incorrect username or password"
-        )
-    },
-)
-async def permissions_storage(
-    service: Literal["storage", "git", "extra"],
-    auth_user: Annotated[User, Depends(get_current_user)],
-    session: AsyncSession = Depends(get_async_session),
-) -> list[str]:
-    res = await session.scalar(
-        permissions_stmt[service], {"user_id": auth_user.id}
-    )
-    if res is None:
-        return []
-    return sorted(set(res.split(" ")))

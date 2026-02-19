@@ -537,14 +537,6 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
             {"detail": "Only Administrator can change user's username"},
         )
 
-    async def check_storage_permissions(self, authorization_str: str) -> None:
-        response = client.get(
-            "/permissions/storage",
-            headers={"Authorization": authorization_str},
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), [])
-
     async def test(self):
         authorization_str = await self.login(
             username="invited_user", password="milkshape3000"
@@ -552,5 +544,4 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
         my_id = await self.change_display_name(authorization_str)
         await self.must_provide_original_password(authorization_str, my_id)
         await self.cant_change_username(authorization_str, my_id)
-        await self.check_storage_permissions(authorization_str)
         await self.change_password(authorization_str, my_id)
