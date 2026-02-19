@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Annotated, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
@@ -26,7 +26,7 @@ router = APIRouter(tags=["role"])
 
 
 class RoleCreate(BaseModel, strict=True, frozen=True):
-    project_id: int
+    project_id: Annotated[int, Field(strict=False)]
     name: Name
     description: Description = ""
     permissions_api: Literal["none", *[p.name for p in PermissionsAPI]] = (
