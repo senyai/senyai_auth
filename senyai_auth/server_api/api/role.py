@@ -280,7 +280,7 @@ async def remove_users_from_role(
 
     affected = await session.execute(
         delete(MemberRole).where(
-            MemberRole.role_id == role_id, MemberRole.role_id.in_(user_ids)
+            MemberRole.role_id == role_id, MemberRole.user_id.in_(user_ids)
         )
     )
     if affected.rowcount == 0:
