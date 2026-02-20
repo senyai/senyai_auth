@@ -23,10 +23,11 @@
       <div class="dropdown me-3">
         <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="profileDropdown"
           data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-person-circle"></i>
+          <i class="bi bi-person-circle me-1"></i>{{ user.display_name }}
         </button>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-          <!-- <li><a class="dropdown-item" href="#">Change Password</a></li> -->
+          <li><a class="dropdown-item" hx-get="{{ url_for('get_change_password_form', user_id=user.id) }}"
+              hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">Change Password</a></li>
           <li><a class="dropdown-item" href="{{ url_for('logout') }}">
               <i class="bi bi-door-open-fill me-1"></i>Logout
             </a></li>

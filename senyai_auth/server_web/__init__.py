@@ -139,7 +139,6 @@ async def invite_new():
         url = resp.json()
         trigger.add_update_project_info()
         trigger.add_success_event("Invite created!")
-        trigger.add_close_modal_event()
         return (
             await render_template(
                 "invite_result.html", url_key=url["url_key"]
@@ -349,3 +348,14 @@ async def get_manage_user_roles_form():
             "forms/manage_user_roles_form.html", context=context
         )
     return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.get("/forms/change_password")
+async def get_change_password_form():
+    user_id = request.args.get("user_id", type=int)
+    return await render_template("forms/update_user_form.html", user_id=user_id)
+
+
+@app.patch("/change_password")
+async def change_password():
+    return ""
