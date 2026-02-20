@@ -1,0 +1,20 @@
+{% extends "modal/modal_template.html" %}
+{% block title %}
+Manage roles
+{% endblock title %}
+
+{% block form %}
+<form class="form-control" id="manage-form" data-role-editor-root hx-post="{{ url_for('manage_roles', user_id=context.user.id)}}" data-roles-request>
+    {% for role in context.roles %}
+    <div class="form-check">
+        <label class="form-check-label">
+            <input type="checkbox" class="form-check-input" name="{{ role.id }}" data-role-checkbox
+                data-role-id="{{ role.id }}" {% if context.user.id in role.users %}checked{% endif %}>{{ role.name }}
+        </label>
+    </div>
+    {% endfor %}
+</form>
+{% endblock form %}
+{% block buttons %}
+<button type="submit" form="manage-form" class="btn btn-primary" data-role-submit disabled>Save</button>
+{% endblock %}

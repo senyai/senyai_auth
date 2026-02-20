@@ -30,36 +30,7 @@
     <div class="tab-content" id="projectTabContent">
         <div class="tab-pane fade show active" id="members-tab-pane" role="tabpanel" aria-labelledby="members-tab"
             tabindex="0">
-            {% if context.members %}
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th class="col-md-2">Name</th>
-                        {% if context.roles %}
-                        {% for role in context.roles %}
-                        <th class="text-center">{{ role.name }}</th>
-                        {% endfor %}
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for member in context.members %}
-                    <tr title="{{ member.id }}:{{ member.username }}">
-                        <td> {{ member.display_name }}</td>
-                        {% if context.roles %}
-                        {% for role in context.roles %}
-                        <td class="text-center">
-                            {% if member['id'] in role['users'] %}
-                            <i class="bi bi-check-lg"></i>
-                            {% endif %}
-                        </td>
-                        {% endfor %}
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% endif %}
+            {% include "partials/members_table.html" %}
         </div>
         <div class="tab-pane fade" id="roles-tab-pane" role="tabpanel" aria-labelledby="roles-tab" tabindex="0">
             {% include "partials/role_table.html" %}
