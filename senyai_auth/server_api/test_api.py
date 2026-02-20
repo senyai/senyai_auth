@@ -457,7 +457,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
 
     async def test_30_delete_admin_from_project(self):
         assert isinstance(authorization_str, str), authorization_str
-        users = [2]
+        users = [3]
         response = client.request(
             "DELETE",
             "/role/2/users",
