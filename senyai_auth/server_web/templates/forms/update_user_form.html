@@ -1,0 +1,43 @@
+{% extends "modal/modal_template.html" %}
+{% block title %}
+Change password
+{% endblock title %}
+
+{% block form %}
+<form role="form" class="form-control" hx-patch="{{ url_for('change_password', user_id=user_id) }}" id="pass-form" data-password-form>
+    <div class="input-group mb-3" data-password-root>
+        <div class="form-floating">
+            <input class="form-control" type="password" id="old" name="old" required data-password-old>
+            <label for="old">Old password:</label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary" data-password-show>
+            <i class="bi bi-eye"></i>
+        </button>
+    </div>
+    <div class="input-group mb-3" data-password-root>
+        <div class="form-floating">
+            <input class="form-control" type="password" id="new" name="new" required data-password-new>
+            <label for="new">New password:</label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary" data-password-show>
+            <i class="bi bi-eye"></i>
+        </button>
+    </div>
+    <div class="input-group mb-3" data-password-root>
+        <div class="form-floating">
+            <input class="form-control" type="password" id="confirm" name="confirm" required data-password-confirm>
+            <label for="confirm">Confirm password:</label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary" data-password-show>
+            <i class="bi bi-eye"></i>
+        </button>
+    </div>
+    <div class="invalid-feedback">
+        Passwords do not match
+    </div>
+</form>
+{% endblock form %}
+
+{% block buttons %}
+ <button type="submit" form="pass-form" class="btn btn-success">OK</button>
+{% endblock buttons %}
