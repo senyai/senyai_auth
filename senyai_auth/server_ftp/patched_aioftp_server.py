@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 import httpx
 from aioftp.common import Connection, END_OF_LINE
 from aioftp.server import (
@@ -14,6 +14,7 @@ from aioftp.server import (
     worker,
 )
 from .user_manager import UserManager
+from .path_io import ProtectedPathIO
 
 
 @ConnectionConditions(
@@ -138,6 +139,7 @@ async def user(self: Server, connection: Connection, rest: str) -> bool:
 def create_patched_server(
     api_client: httpx.AsyncClient,
     *,
+    basepath: str,
     ipv4_pasv_forced_response_address: str | None = None,
     data_ports: tuple[int, int] | None = None,
     ssl: ssl.SSLContext | None = None,
@@ -145,12 +147,13 @@ def create_patched_server(
 ) -> Server:
     Server.greeting = greeting
     Server.user = user
-    user_manager = UserManager(api_client)
+    user_manager = UserManager(api_client, basepath=Path(basepath))
     server = Server(
         user_manager,
         ssl=ssl,
         ipv4_pasv_forced_response_address=ipv4_pasv_forced_response_address,
         data_ports=data_ports and range(data_ports[0], data_ports[1] + 1),
+        path_io_factory=ProtectedPathIO,
     )
     server.greeting_message = greeting_message
     Server.nlst = nlst

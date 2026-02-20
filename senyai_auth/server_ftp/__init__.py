@@ -5,7 +5,8 @@ import ssl
 import logging
 from argparse import ArgumentParser
 from pydantic import BaseModel, Field
-from .patched_aioftp_server import create_patched_server
+
+# from .patched_aioftp_server import create_patched_server
 from httpx import AsyncClient
 
 
@@ -67,15 +68,26 @@ def drop_privileges(username: str) -> None:
 
 
 async def _server_main(config: Config):
+    if not config.ssl:
+        print("[WARNING] running without SSL")
     async with AsyncClient(base_url=config.api_url) as api_client:
-        server = create_patched_server(
-            api_client,
+        # server = create_patched_server(
+        #     api_client,
+        #     basepath=config.base_path,
+        #     ssl=config.ssl and create_ssl_context(config.ssl),
+        #     ipv4_pasv_forced_response_address=config.ipv4_pasv_forced_response_address,
+        #     data_ports=config.data_ports,
+        #     greeting_message=config.greeting,
+        # )
+        from .ftps import FTPS
+
+        ftps = FTPS(
+            host=config.host,
+            port=config.port,
             ssl=config.ssl and create_ssl_context(config.ssl),
             ipv4_pasv_forced_response_address=config.ipv4_pasv_forced_response_address,
-            data_ports=config.data_ports,
-            greeting_message=config.greeting,
         )
-        await server.start(host=config.host, port=config.port)
+        server = await ftps.create_server()
         if config.drop_privileges_user is not None:
             drop_privileges(config.drop_privileges_user)
         try:
@@ -87,7 +99,7 @@ async def _server_main(config: Config):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("config", nargs="?", default="config_ftp.json")
+    parser.add_argument("config", nargs="?", default="settings_ftp.json")
     args = parser.parse_args()
     with open(args.config) as f:
         config = Config.model_validate_json(f.read())

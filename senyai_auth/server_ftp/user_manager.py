@@ -1,14 +1,15 @@
 from __future__ import annotations
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from aioftp.server import AbstractUserManager, Permission, AvailableConnections
 import httpx
 
 
 class User:
-    def __init__(self, login: str):
+    def __init__(self, login: str, base_path: Path) -> None:
         self.login = login
+        self.base_path = base_path
 
-    def after_login(self, permissions: list[Permission]):
+    def after_login(self, permissions: list[Permission]) -> None:
         self.permissions = permissions
 
     async def get_permissions(self, path: str | PurePosixPath) -> Permission:
@@ -24,9 +25,13 @@ class User:
 
 class UserManager(AbstractUserManager):
     def __init__(
-        self, client: httpx.AsyncClient, timeout: float | int | None = None
+        self,
+        client: httpx.AsyncClient,
+        basepath: Path,
+        timeout: float | int | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
+        self._basepath = basepath
         self._client = client
         self.available_connections: dict[str, AvailableConnections] = {}
 
@@ -39,16 +44,21 @@ class UserManager(AbstractUserManager):
         ):
             return (
                 AbstractUserManager.GetUserResponse.ERROR,
-                User(login),
+                User(login, self._basepath),
                 f"too much connections for {login!r}",
             )
         return (
             AbstractUserManager.GetUserResponse.PASSWORD_REQUIRED,
-            User(login),
+            User(login, self._basepath),
             "password required",
         )
 
     async def authenticate(self, user: User, password: str) -> bool:
+        if user.login not in self.available_connections:
+            max_connections = 3
+            self.available_connections[user.login] = AvailableConnections(
+                max_connections
+            )
         self.available_connections[user.login].acquire()
         try:
             token_res = await self._client.post(
@@ -58,7 +68,7 @@ class UserManager(AbstractUserManager):
                     "password": password,
                 },
             )
-            if token_res.status_code != 200:  # login and password are valid.
+            if token_res.status_code != 200:  # invalid credentials
                 return False
             token = token_res.json()
             authorization_str = (
@@ -66,17 +76,22 @@ class UserManager(AbstractUserManager):
             )
             # now retrieve permissions
             permissions_res = await self._client.get(
-                "/permissions/storage",
+                "/ldap/roles/storage",
                 headers={"Authorization": authorization_str},
             )
+            if permissions_res.status_code != 200:  # nothing is available
+                return False
             permissions: list[Permission] = []
             for path_right in permissions_res.json():
                 path, _, rights = path_right.rpartition(":")
                 permissions.append(
-                    Permission(path, readable=True, writable=rights == "w")
+                    Permission(
+                        f"/{path}", readable=True, writable=rights == "w"
+                    )
                 )
+                print("Added", permissions[-1])
             user.permissions = permissions
-        except Exception as e:
+        except httpx.NetworkError as e:
             print(f"authentication server not available {e}")
             return False
         return True
