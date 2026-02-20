@@ -12,7 +12,7 @@ import json
 
 from .. import __version__
 
-from .helpers import Permissions, HXTrigger, parse_projects
+from .helpers import Permissions, HXTrigger, parse_projects, parse_errors
 
 
 class App(Quart):
@@ -136,11 +136,10 @@ async def invite_new():
     )
     if resp.status_code == 201:
         trigger = HXTrigger()
-        print(trigger.events)
         url = resp.json()
         trigger.add_update_project_info()
-        # trigger.add_success_event("Invite created!")
-        print(trigger.events)
+        trigger.add_success_event("Invite created!")
+        trigger.add_close_modal_event()
         return (
             await render_template(
                 "invite_result.html", url_key=url["url_key"]
@@ -153,7 +152,7 @@ async def invite_new():
 
 @app.get("/register/<key>")
 async def register(key: str):
-    form_res = await app.client.get("/invite/{key}")
+    form_res = await app.client.get(f"/invite/{key}")
     form = form_res.json()
     if form_res.status_code == 200:
         return await render_template("register.html", form=form, key=key)
@@ -165,7 +164,6 @@ async def register_post(key: str):
     form = await request.form
     api_resp = await app.client.post("/register/{key}", json=dict(form))
     if api_resp.status_code == 201:
-        # trigger = HXTrigger()
         resp = await make_response("", 201)
         resp.headers["HX-Redirect"] = url_for("index")
         return resp
@@ -216,6 +214,7 @@ async def create_project():
         trigger = HXTrigger()
         trigger.add_update_projects_tree()
         trigger.add_success_event("Project created!")
+        trigger.add_close_modal_event()
         return ("", 201, trigger.build())
     return ("", resp.status_code, HXTrigger.send_errors(resp))
 
@@ -232,6 +231,7 @@ async def update_project(project_id: str):
         trigger = HXTrigger()
         trigger.add_update_project_info()
         trigger.add_success_event("Project updated!")
+        trigger.add_close_modal_event()
         return "", resp.status_code, trigger.build()
     return "", resp.status_code, HXTrigger.send_errors(resp)
 
@@ -261,18 +261,54 @@ async def role_new():
         trigger = HXTrigger()
         trigger.add_success_event("Role created!")
         trigger.add_update_project_info()
+        trigger.add_close_modal_event()
         return ("", 201, trigger.build())
-    print(resp.json())
     return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
-@app.get("/role_manage_form")
-async def manage_role_form():
-    # form = request.args
-    print(request.args)
+@app.post("/roles/<user_id>")
+async def manage_roles(user_id):
+    user_id = int(user_id)
+    form = await request.form
+    roles = json.loads(form.get("roles", {}))
+    added = roles.get("added")
+    removed = roles["removed"]
 
-    # data, errors = RoleManageData.parse_form(form)
-    return await render_template("forms/add_roles_form.html")
+    trigger = HXTrigger()
+    cnt = 0
+    for role_id in added:
+        resp = await app.client.post(
+            f"/role/{role_id}/users",
+            json=[user_id],
+            headers={
+                "Authorization": request.cookies.get("Authorization", "")
+            },
+        )
+        if resp.status_code == 201:
+            cnt += 1
+        else:
+            trigger.add_error_event(parse_errors(resp.json()))
+    trigger.add_success_event(f"{cnt} roles added!")
+
+    cnt = 0
+    for role_id in removed:
+        resp = await app.client.request(
+            "DELETE",
+            f"/role/{role_id}/users",
+            json=[user_id],
+            headers={
+                "Authorization": request.cookies.get("Authorization", "")
+            },
+        )
+        if resp.status_code == 204:
+            cnt += 1
+        else:
+            trigger.add_error_event(parse_errors(resp.json()))
+    trigger.add_success_event(f"{cnt} roles removed!")
+    trigger.add_update_project_info()
+
+    trigger.add_close_modal_event()
+    return "", 201, trigger.build()
 
 
 @app.get("/forms/new_project/<parent_id>")
@@ -293,5 +329,23 @@ async def get_edit_project_form(project_id: str):
         context = {"project_id": project_id, **resp.json()}
         return await render_template(
             "forms/upsert_project_form.html", context=context, edit_mode=True
+        )
+    return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.get("/forms/manage_user_roles")
+async def get_manage_user_roles_form():
+    user_id = request.args.get("user_id", type=int)
+    project_id = request.args.get("project_id", type=int)
+    resp = await app.client.get(
+        f"ui/project/{project_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        user = next(filter(lambda x: x["id"] == user_id, data["members"]))
+        context = {"user": user, "roles": data["roles"]}
+        return await render_template(
+            "forms/manage_user_roles_form.html", context=context
         )
     return "", resp.status_code, HXTrigger.send_errors(resp)

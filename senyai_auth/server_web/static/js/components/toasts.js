@@ -1,6 +1,10 @@
 export function initToasts() {
     document.body.addEventListener("successEvent", event => {
-        showToast("success", event.detail.message);
+        const messages = event.detail.message;
+        messages.forEach(element => {
+            showToast("success", element);
+        })
+        // showToast("success", event.detail.message);
     });
 
     document.body.addEventListener("errorEvent", event => {

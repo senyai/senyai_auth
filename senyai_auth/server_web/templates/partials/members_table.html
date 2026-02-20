@@ -1,42 +1,34 @@
 <table class="table table-hover">
     <thead>
         <tr>
-            <th>User</th>
-            <th>Roles</th>
+            <th class="col-2">Name</th>
+            {% for role in context.roles %}
+            <th class="text-center">{{ role.name }}</th>
+            {% endfor %}
             <th></th>
         </tr>
     </thead>
     <tbody>
-        
-    </tbody>
-
-</table>
-
-
-<table class="table table-hover">
-    <thead>
+        {% for member in context.members %}
         <tr>
-            <th class="col-md-2">Name</th>
-            {% if roles %}
-            {% for role in roles %}
-            <th class="text-center">{{ role['name'] }}</th>
-            {% endfor %}
-            {% endif %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for member in members %}
-        <tr title="{{ member['id'] }}:{{ member['username'] }}">
-            <td> {{ member['display_name'] }}</td>
-            {% if roles %}
-            {% for role in roles %}
+            <td title="{{ member.username }}:{{ member.id }}">{{ member.display_name }}</td>
+            {% for role in context.roles %}
             <td class="text-center">
-                {% if member['id'] in role['users'] %}
+                {% if member.id in role.users %}
                 <i class="bi bi-check-lg"></i>
                 {% endif %}
             </td>
             {% endfor %}
-            {% endif %}
+            <td>
+                <button class="btn btn-table pe-3"
+                    hx-get="{{ url_for('get_manage_user_roles_form', project_id=context.project_id, user_id=member.id) }}"
+                    hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
+                    <i class="bi bi-pen-fill"></i>
+                </button>
+                <button class="btn btn-table">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
         </tr>
         {% endfor %}
     </tbody>

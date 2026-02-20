@@ -15,8 +15,10 @@ export function initRoleEditor() {
         if (!event.target.closest("[data-role-editor-root]")) return;
 
         const diff = getRoleDiff();
-        event.detail.parameters.added = diff.added;
-        event.detail.parameters.removed = diff.removed;
+        // event.detail.parameters.added = diff.added;
+        // event.detail.parameters.removed = diff.removed;
+        event.detail.parameters.roles = diff;
+        clearState();
     })
 
 
@@ -33,6 +35,12 @@ export function initRoleEditor() {
         collectInitialState(root);
         syncSubmitButton(root);
     }
+
+    document.body.addEventListener("htmx:configRequest", e => {
+        if (e.detail.elt.matches("[data-roles-request]")) {
+
+        }
+    });
 }
 
 export function getRoleDiff() {
@@ -51,8 +59,13 @@ export function hasChanged() {
     return diff.added.length > 0 || diff.removed.length > 0;
 }
 
+function clearState() {
+    state.initial.clear();
+    state.current.clear();
+}
 
 function collectInitialState() {
+    clearState();
     document.querySelectorAll("[data-role-checkbox]").forEach(cb => {
         const roleId = cb.dataset.roleId;
 
@@ -64,7 +77,7 @@ function collectInitialState() {
 }
 
 function handleChange(event) {
-    if (!event.target.matches(["data-role-checkbox"])) return;
+    if (!event.target.matches("[data-role-checkbox]")) return;
 
     const checkbox = event.target;
     const roleId = checkbox.dataset.roleId;
@@ -100,7 +113,7 @@ function hasChanges() {
 }
 
 function syncSubmitButton(root) {
-    const button = root.querySelector("[data-role-submit]");
+    const button = document.querySelector("[data-role-submit]");
     if (!button) return;
     button.disabled = !hasChanges();
 }

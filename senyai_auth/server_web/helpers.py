@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+from collections import defaultdict
 
 
 class Permissions:
@@ -31,21 +32,30 @@ class Permissions:
     ]
 
 
+def constant_factory():
+    return lambda: defaultdict(list)
+
+
 class HXTrigger:
     def __init__(self):
-        self.events: dict = {}
+        self.events: dict[str, dict[str, list[str]]] = defaultdict(
+            constant_factory()
+        )
 
     def add_success_event(self, message: str):
-        self.events["successEvent"] = {"message": message}
+        self.events["successEvent"]["message"].append(message)
 
     def add_error_event(self, errors: list):
-        self.events["errorEvent"] = {"errors": errors}
+        self.events["errorEvent"]["errors"].extend(errors)
 
     def add_update_projects_tree(self):
         self.events["updateProjects"] = {}
 
     def add_update_project_info(self):
         self.events["updateProjectInfo"] = {}
+
+    def add_close_modal_event(self):
+        self.events["closeModal"] = {}
 
     def build(self):
         return self._build(self.events)
