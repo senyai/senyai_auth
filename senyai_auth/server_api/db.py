@@ -53,8 +53,9 @@ class MemberRole(Base):
     role_id: Mapped[int] = mapped_column(
         ForeignKey("role.id", ondelete="CASCADE"), nullable=False
     )
-
-    __table_args__ = (UniqueConstraint(user_id, role_id),)
+    idx_uniq_user_role = UniqueConstraint(
+        user_id, role_id, name="idx_uniq_user_role"
+    )
 
     role: Mapped[Role] = relationship(foreign_keys=[role_id])
     user: Mapped[User] = relationship(
@@ -141,7 +142,9 @@ class Member(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
-    idx_uniq_project_user = UniqueConstraint(project_id, user_id)
+    idx_uniq_project_user = UniqueConstraint(
+        project_id, user_id, name="idx_uniq_project_user"
+    )
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     project: Mapped[Project] = relationship(foreign_keys=[project_id])
@@ -249,7 +252,9 @@ class Role(Base):
     permissions_git: Mapped[str] = mapped_column(default="")
     permissions_storage: Mapped[str] = mapped_column(default="")
     permissions_extra: Mapped[str] = mapped_column(default="")
-    idx_uniq_name_project = UniqueConstraint(name, project_id)
+    idx_uniq_name_project = UniqueConstraint(
+        name, project_id, name="idx_uniq_name_project"
+    )
 
     project: Mapped[Project] = relationship(back_populates="roles")
 
