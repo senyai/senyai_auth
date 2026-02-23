@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Annotated
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from pydantic import (
     AfterValidator,
@@ -8,16 +8,19 @@ from pydantic import (
     Field,
     StringConstraints,
 )
-from sqlalchemy import select
+from sqlalchemy import delete, select, insert, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from .blocklist import not_in_blocklist
 from ..db import (
     auth_for_project_stmt,
+    Member,
+    MemberRole,
     permissions_api_stmt,
     PermissionsAPI,
     Project,
+    Role,
     User,
 )
 from .. import get_async_session
@@ -202,3 +205,144 @@ async def get_project(
         display_name=project_db.display_name,
         description=project_db.description,
     )
+
+
+class AddUserInfo(BaseModel, strict=True, frozen=True):
+    id: int
+    username: str
+    email: str
+    display_name: str
+
+    @classmethod
+    def from_user(cls, user: User):
+        return cls(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            display_name=user.display_name,
+        )
+
+
+@router.get(
+    "/project/{project_id}/add_users",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+    },
+)
+async def project_list_possible_users(
+    project_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> list[AddUserInfo]:
+    """
+    ## List all users that current user can add to the project
+
+    * Only managers and above can do this
+    """
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    id_parent = select(Project.id)
+    base = (
+        id_parent.join(Role, Role.project_id == Project.id)
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(
+            Role.permissions_api >= PermissionsAPI.manager,
+            MemberRole.user_id == user.id,
+        )
+        .cte(name="base", recursive=True)
+    )
+    stmt_projects = select(
+        base.union_all(
+            id_parent.join(base, Project.parent_id == base.c.id),
+        )
+    )
+    stmt = (
+        select(User)
+        .join(Member)
+        .where(
+            Member.project_id.in_(stmt_projects),
+            Member.project_id != project_id,
+        )
+        .distinct()
+    )
+    return [
+        AddUserInfo.from_user(user) for user in await session.scalars(stmt)
+    ]
+
+
+@router.post(
+    "/project/{project_id}/users",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+    },
+)
+async def project_add_users(
+    project_id: int,
+    user_ids: list[int],
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    ## Add users to a project
+
+    * Only managers and above can do this
+    """
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    await session.execute(
+        insert(Member).from_select(
+            ("project_id", "user_id"),
+            select(literal(project_id).label("project_id"), User.id).where(
+                User.id.in_(user_ids)
+            ),
+        )
+    )
+    await session.commit()
+
+
+@router.delete(
+    "/project/{project_id}/users",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Project not found"),
+    },
+)
+async def project_remove_users(
+    project_id: int,
+    user_ids: list[int],
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    ## Remove users from a project
+
+    * Only managers and above can do this
+    * Also removes users from Project's Roles
+    """
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+    # remove project members
+    await session.execute(
+        delete(Member).where(
+            Member.project_id == project_id, Member.user_id.in_(user_ids)
+        )
+    )
+    # remove these members from roles too
+    await session.execute(
+        select(MemberRole)
+        .join(Role)
+        .where(Role.project_id == project_id, MemberRole.user_id.in_(user_ids))
+    )
+    await session.commit()
