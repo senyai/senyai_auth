@@ -39,6 +39,9 @@ router = APIRouter(tags=["user"])
 def check_password(
     password: str, username: str, email: str, display_name: str
 ) -> None:
+    """
+    Check password strength
+    """
     validation = zxcvbn(
         password=password,
         user_inputs=[username, email, display_name],
@@ -51,37 +54,46 @@ def check_password(
         )
 
 
+Username = (
+    StringConstraints(
+        min_length=2,
+        max_length=32,
+        to_lower=True,
+        strip_whitespace=True,
+        pattern=r"^[a-z0-9_-]+$",
+    ),
+    AfterValidator(not_in_blocklist),
+    Field(examples=["senyai"]),
+)
+
+Contacts = (
+    StringConstraints(
+        min_length=0,
+        max_length=1500,
+    ),
+    Field(
+        description="User telephone and address. Can be empty.",
+        examples=["89450000000"],
+    ),
+)
+
+DisplayName = (
+    StringConstraints(
+        min_length=3,
+        max_length=79,
+        strip_whitespace=True,
+        pattern=r"^[\w ]*$",
+    ),
+    Field(examples=["Arseniy Terekhin"]),
+)
+
+
 class CreateUserModel(BaseModel, strict=True, frozen=True):
-    username: Annotated[
-        str,
-        StringConstraints(
-            min_length=2,
-            max_length=32,
-            to_lower=True,
-            strip_whitespace=True,
-            pattern=r"^[a-z0-9_-]+$",
-        ),
-        AfterValidator(not_in_blocklist),
-    ]
+    username: Annotated[str, *Username]
     password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
     email: EmailStr
-    contacts: Annotated[
-        str,
-        StringConstraints(
-            min_length=0,
-            max_length=1500,
-        ),
-        Field(description="User telephone and address. Can be empty."),
-    ]
-    display_name: Annotated[
-        str,
-        StringConstraints(
-            min_length=3,
-            max_length=79,
-            strip_whitespace=True,
-            pattern=r"^[\w ]*$",
-        ),
-    ]
+    contacts: Annotated[str, *Contacts]
+    display_name: Annotated[str, *DisplayName]
 
     @model_validator(mode="after")
     def check_strong_password(self):
@@ -155,36 +167,11 @@ class PasswordModel(BaseModel, strict=True, frozen=True):
 
 
 class UpdateUserModel(BaseModel, strict=True, frozen=True):
-    username: Annotated[
-        str | None,
-        StringConstraints(
-            min_length=2,
-            max_length=32,
-            to_lower=True,
-            strip_whitespace=True,
-            pattern=r"^[a-z_-]+$",
-        ),
-        AfterValidator(not_in_blocklist),
-    ] = None
+    username: Annotated[str | None, *Username] = None
     password: PasswordModel | None = None
     email: EmailStr | None = None
-    contacts: Annotated[
-        str | None,
-        StringConstraints(
-            min_length=0,
-            max_length=1500,
-        ),
-        Field(description="User telephone and address. Can be empty."),
-    ] = None
-    display_name: Annotated[
-        str | None,
-        StringConstraints(
-            min_length=3,
-            max_length=79,
-            strip_whitespace=True,
-            pattern=r"^[\w ]*$",
-        ),
-    ] = None
+    contacts: Annotated[str | None, *Contacts] = None
+    display_name: Annotated[str | None, *DisplayName] = None
     disabled: Annotated[
         bool | None,
         Field(description="User won't be able to login when disabled"),
@@ -240,6 +227,9 @@ async def get_user(
 ) -> UserInfo:
     """
     ## Information for "Update User" form
+
+    * Information about currently authorized user
+    * Available for all authorized users
     """
     auth_user = await session.merge(auth_user)
     await session.refresh(
