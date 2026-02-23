@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import Literal, AsyncGenerator
+from typing import Any, Literal, AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from starlette.requests import Request
@@ -44,6 +45,15 @@ class AppSettings(BaseModel, strict=True, frozen=True):
             expire_on_commit=False,
             autocommit=False,
         )
+
+        if self.db_url.startswith("sqlite"):
+
+            def _sqlite_pragma(dbapi_connection: Any, _: Any) -> None:
+                # make sqlite honor `ondelete="CASCADE"``
+                dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+            event.listen(async_engine.sync_engine, "connect", _sqlite_pragma)
+
         return async_engine, async_session
 
 
