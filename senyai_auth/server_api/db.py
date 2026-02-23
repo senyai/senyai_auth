@@ -50,7 +50,9 @@ class MemberRole(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
-    role_id: Mapped[int] = mapped_column(ForeignKey("role.id"), nullable=False)
+    role_id: Mapped[int] = mapped_column(
+        ForeignKey("role.id", ondelete="CASCADE"), nullable=False
+    )
 
     __table_args__ = (UniqueConstraint(user_id, role_id),)
 
@@ -88,7 +90,7 @@ class User(Base):
     # projects = relationship("Project", secondary="member", viewonly=True)
 
     member_roles: Mapped[list[MemberRole]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", passive_deletes=True
     )
 
     @staticmethod
@@ -131,9 +133,11 @@ class Member(Base):
     __tablename__ = "member"
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("project.id"), nullable=False
+        ForeignKey("project.id", ondelete="CASCADE"), nullable=False
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey(User.id), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(User.id, ondelete="CASCADE"), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
@@ -154,7 +158,7 @@ class Project(Base):
         server_default=func.now(), nullable=False
     )
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("project.id"), nullable=True
+        ForeignKey("project.id", ondelete="CASCADE"), nullable=True
     )
 
     parent: Mapped[Project | None] = relationship(
@@ -165,9 +169,7 @@ class Project(Base):
         secondary=Member.__table__,
         overlaps="user,project",
     )
-    children: Mapped[list[Project]] = relationship(
-        back_populates="parent", cascade="all, delete-orphan"
-    )
+    children: Mapped[list[Project]] = relationship(back_populates="parent")
     roles: Mapped[list[Role]] = relationship(back_populates="project")
 
     def __repr__(self) -> str:
@@ -237,7 +239,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     project_id: Mapped[int] = mapped_column(
-        ForeignKey(Project.id), nullable=False
+        ForeignKey(Project.id, ondelete="CASCADE"), nullable=False
     )
     description: Mapped[str] = mapped_column(nullable=False, default="")
     permissions_api: Mapped[PermissionsAPI] = mapped_column(
@@ -279,7 +281,7 @@ class Invitation(Base):
         JSON, nullable=False
     )  # json serialized list
     inviter_id: Mapped[User] = mapped_column(
-        ForeignKey(User.id), nullable=False
+        ForeignKey(User.id, ondelete="CASCADE"), nullable=False
     )
     prompt: Mapped[str] = mapped_column(nullable=False)
     default_username: Mapped[str] = mapped_column(nullable=False)
@@ -289,7 +291,7 @@ class Invitation(Base):
         server_default=func.now(), nullable=False
     )
     who_accepted_id: Mapped[int | None] = mapped_column(
-        ForeignKey(User.id), nullable=True
+        ForeignKey(User.id, ondelete="SET NULL"), nullable=True
     )
 
     who_accepted: Mapped[User | None] = relationship(
