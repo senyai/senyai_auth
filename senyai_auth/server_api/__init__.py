@@ -100,6 +100,11 @@ app = FastAPI(
     },
     lifespan=lifespan,
     docs_url=None,
+    openapi_tags=[
+        {"name": "auth", "description": "First, every user must authorize"},
+        {"name": "ui", "description": "Requests that only make sense in web"},
+        {"name": "ldap", "description": "For GIT and STORAGE services"},
+    ],
 )
 app.mount(
     "/static",
