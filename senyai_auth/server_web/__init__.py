@@ -162,7 +162,7 @@ async def register(key: str):
 @app.post("/register/<key>")
 async def register_post(key: str):
     form = await request.form
-    api_resp = await app.client.post("/register/{key}", json=dict(form))
+    api_resp = await app.client.post(f"/register/{key}", json=dict(form))
     if api_resp.status_code == 201:
         resp = await make_response("", 201)
         resp.headers["HX-Redirect"] = url_for("index")
