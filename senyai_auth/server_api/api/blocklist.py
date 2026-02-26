@@ -16,6 +16,7 @@ def not_in_blocklist(name: str) -> str:
         "hostmaster",
         "ldap",
         "manager",
+        "nobody",
         "oracle",
         "owner",
         "postgres",
