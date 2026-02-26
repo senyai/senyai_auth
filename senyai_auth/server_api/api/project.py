@@ -33,7 +33,7 @@ from .exceptions import (
 
 router = APIRouter(tags=["project"])
 
-type Name = Annotated[
+type ProjectName = Annotated[
     str,
     Field(description="Name as it will be used in url string"),
     StringConstraints(
@@ -53,7 +53,7 @@ type Description = Annotated[str, StringConstraints(max_length=1024)]
 
 
 class ProjectCreate(BaseModel, strict=True):
-    name: Name
+    name: ProjectName
     display_name: DisplayName
     description: Description
     parent_id: Annotated[int, Field(strict=False)]
@@ -68,7 +68,7 @@ class ProjectCreate(BaseModel, strict=True):
 
 
 class ProjectUpdate(BaseModel, strict=True):
-    name: Name | None = None
+    name: ProjectName | None = None
     display_name: DisplayName | None = None
     description: Description | None = None
     parent: Annotated[
