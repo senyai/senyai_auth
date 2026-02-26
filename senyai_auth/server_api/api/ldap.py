@@ -136,11 +136,6 @@ async def all_users(
     ]
 
 
-# class LDAPProject(BaseModel, strict=True, frozen=True):
-#     project: str  # project-role format
-#     members: list[str]
-
-
 @router.get(
     "/roles/{domain}",
     status_code=status.HTTP_200_OK,
