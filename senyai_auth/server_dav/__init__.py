@@ -1,0 +1,519 @@
+# import os
+from __future__ import annotations
+from typing import NamedTuple, NewType
+from os import stat_result, getenv
+from stat import S_ISDIR
+from base64 import b64decode
+from collections import defaultdict
+from collections.abc import Callable, Awaitable
+import xml.etree.ElementTree as ET
+from datetime import datetime
+from starlette.applications import Starlette
+from starlette.responses import Response, FileResponse
+from starlette.requests import Request
+from starlette.routing import Route
+from starlette.types import Scope, Receive, Send
+import aiofiles
+from pathlib import Path
+from mimetypes import types_map as mimetypes
+from httpx import AsyncClient, NetworkError
+from contextlib import asynccontextmanager
+from time import monotonic
+from asyncio import Future
+
+
+class DavSettings(NamedTuple):
+    path: str = "."
+    realm: str = "Storage"
+    api_url: str = "http://127.0.0.1:8000"
+
+
+# path with slash at the beginning and at the end
+DAVPath = NewType("DAVPath", str)
+
+
+def _get_settings() -> DavSettings:
+    import json
+
+    settings_path = getenv("AUTH_DAV_SETTINGS_PATH", "settings_dav.json")
+    try:
+        with open(settings_path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {}
+    return DavSettings(**data)
+
+
+class Node:
+    __slots__ = ("children", "can_write", "is_leaf")
+
+    def __init__(self) -> None:
+        self.children: defaultdict[str, Node] = defaultdict(Node)
+        self.can_write = False
+        self.is_leaf = False
+
+    def __repr__(self) -> str:
+        return (
+            f"<{type(self).__name__} {dict(self.children)}"
+            f"{' leaf' if self.is_leaf else ''} can_write={self.can_write}>"
+        )
+
+
+class Permissions:
+    def __init__(self, paths: list[str]) -> None:
+        self._root = root = Node()
+        for path_rw in paths:
+            node = root
+            path, _, rights = path_rw.rpartition(":")
+            path = path.strip("/")
+            for item in path.split("/"):
+                node = node.children[item]
+            node.can_write |= rights == "w"
+            node.is_leaf = True
+
+    def closet_node(self, path: DAVPath) -> Node:
+        node = self._root
+        for item in path.split("/"):
+            if item in node.children:
+                node = node.children[item]
+            else:
+                return node
+        return node
+
+    def has_write_access(self, path: DAVPath) -> bool:
+        node = self.closet_node(path)
+        return node.is_leaf and node.can_write
+
+    def has_read_access(self, path: DAVPath) -> bool:
+        return self.closet_node(path).is_leaf
+
+    def can_traverse(self, path: DAVPath) -> bool:
+        return not path or self.closet_node(path) is not self._root
+
+    def list_children(self, path: DAVPath) -> list[str] | None:
+        """
+        List nodes
+        """
+        node = self._root
+        if path:
+            for item in path.split("/"):
+                if item in node.children:
+                    node = node.children[item]
+                else:
+                    return None
+        return list(node.children)
+
+
+def _auth_cache_get(
+    now: float,
+    auth_cache: dict[tuple[str, str], tuple[float, Future[str]]],
+    username_password: tuple[str, str],
+) -> Future[str] | None:
+    if username_password in auth_cache:
+        expiration, authorization_str = auth_cache[username_password]
+        if expiration > now:  # if not expired
+            return authorization_str
+
+
+async def _permissions_for(
+    api_client: AsyncClient,
+    now: float,
+    auth_cache: dict[tuple[str, str], tuple[float, Future[str]]],
+    username_password: tuple[str, str],
+) -> Permissions | None:
+    authorization_fut = _auth_cache_get(now, auth_cache, username_password)
+    if authorization_fut is None:
+        future: Future[str] = Future()
+        auth_cache[username_password] = now + 60 * 5, future
+        username, password = username_password
+        token_res = await api_client.post(
+            "/token",
+            data={"username": username, "password": password},
+        )
+        if token_res.status_code != 200:  # login and password are valid.
+            return None
+
+        token = token_res.json()
+        authorization_str = (
+            f"{token['token_type'].capitalize()} {token['access_token']}"
+        )
+        future.set_result(authorization_str)
+    else:
+        authorization_str = await authorization_fut
+    permissions_res = await api_client.get(
+        "/ldap/roles/storage",
+        headers={"Authorization": authorization_str},
+    )
+    if permissions_res.status_code != 200:
+        return None
+
+    return Permissions(permissions_res.json())
+
+
+class SenyaiDAV:
+    def __init__(self, path: str, realm: str, api_url: str) -> None:
+        self._api_url = api_url
+        self._path = Path(path)
+        self._methods: dict[
+            str,
+            Callable[
+                [Path, DAVPath, Request, Permissions], Awaitable[Response]
+            ],
+        ] = {
+            "OPTIONS": self.options,
+            "PROPFIND": self.propfind,
+            "GET": self.get,
+            "HEAD": self.head,
+            "PUT": self.put,
+            "DELETE": self.delete,
+            "MKCOL": self.mkcol,
+        }
+        self._response_options = Response(
+            headers={
+                "DAV": "1",
+                "Allow": ", ".join(self._methods),
+                "Content-Length": "0",
+            }
+        )
+        self._response_authentication_required = Response(
+            content="Authentication required",
+            status_code=401,
+            headers={"WWW-Authenticate": f'Basic realm="{realm}"'},
+        )
+        self._response_no_permissions_write = Response(
+            content="Write permission denied",
+            status_code=403,
+            headers={"Content-Type": "text/plain", "DAV": "1"},
+        )
+        error = ET.Element("{DAV:}error")
+        ET.SubElement(error, "{DAV:}privilege")
+        ET.SubElement(error, "{DAV:}read")
+        self._response_no_permissions_propfind = Response(
+            content=ET.tostring(error, encoding="unicode"),
+            media_type='application/xml; charset="utf-8"',
+            status_code=403,
+        )
+        self._response_no_permissions_read = Response(
+            content="403 Read permission denied", status_code=403
+        )
+        self._response_not_found = Response(
+            content="404 Not Found", status_code=404
+        )
+        self._response_api_failure = Response(
+            content="Authentication backend is down", status_code=503
+        )
+        self._auth_cache: dict[tuple[str, str], tuple[float, Future[str]]] = {}
+        self._permissions_cache: dict[
+            tuple[str, str], tuple[float, Future[Permissions]]
+        ] = {}
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        if scope["type"] != "http":  # websocket or something
+            return
+        response = await self.handle(Request(scope, receive))
+        await response(scope, receive, send)
+
+    async def _check_auth(self, request: Request) -> Permissions | None:
+        """Check authentication and return (success, username)."""
+        auth_header = request.headers.get("Authorization")
+
+        if not auth_header or not auth_header.startswith("Basic "):
+            return None
+
+        try:
+            auth_decoded = b64decode(auth_header[6:]).decode()
+            username_password: tuple[str, str] = tuple(
+                auth_decoded.split(":", 1)
+            )
+        except:
+            return None
+
+        now = monotonic()
+        cache = self._permissions_cache
+        if username_password in cache:
+            expiration, permissions = cache[username_password]
+            if expiration > now:  # not expired
+                return await permissions
+            del cache[username_password]
+        future: Future[Permissions] = Future()
+        cache[username_password] = monotonic() + 10.0, future
+        permissions = await _permissions_for(
+            self._api_client, now, self._auth_cache, username_password
+        )
+        if permissions is not None:
+            future.set_result(permissions)
+        return permissions
+
+    async def handle(self, request: Request) -> Response:
+        method = request.method
+
+        if method == "OPTIONS":
+            return await self.options(None, None, None, None)
+
+        try:
+            permissions = await self._check_auth(request)
+        except NetworkError:
+            return self._response_api_failure
+        if not permissions:
+            return self._response_authentication_required
+
+        dav_path = DAVPath(request.path_params.get("path", "").rstrip("/"))
+        assert not dav_path.startswith("/")
+        full_path = self._path / dav_path
+        call = self._methods.get(method)
+        if call is not None:
+            return await call(full_path, dav_path, request, permissions)
+        return Response(
+            status_code=405, content=f"Method {method} not allowed"
+        )
+
+    async def options(
+        self,
+        path: Path | None,
+        dav_path: DAVPath | None,
+        request: Request | None,
+        permissions: Permissions | None,
+    ) -> Response:
+        return self._response_options
+
+    def paths_for(
+        self, path: Path, dav_path: DAVPath, permissions: Permissions
+    ) -> list[Path]:
+        if permissions.has_read_access(dav_path):
+            items = list(path.iterdir())
+        else:
+            children = permissions.list_children(dav_path)
+            if children is None:
+                raise ValueError()
+            items = [self._path / dav_path / child for child in children]
+        items.sort()
+        return items
+
+    async def propfind(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not path.exists():
+            return self._response_not_found
+
+        depth = request.headers.get("Depth", "0")
+        root = ET.Element("{DAV:}multistatus")
+
+        # Add children if depth > 0 and it's a directory
+        if depth in ("1", "infinity") and path.is_dir():
+            base_url = request.url.path.rstrip("/")
+            try:
+                items = self.paths_for(path, dav_path, permissions)
+                self._add_response(root, path.stat(), request.url.path, path)
+
+                for item_path in items:
+                    item_url = f"{base_url}/{item_path.name}"
+                    stat = item_path.stat()
+                    if S_ISDIR(stat.st_mode):
+                        item_url += "/"
+
+                    self._add_response(root, stat, item_url, item_path)
+            except Exception:
+                return self._response_no_permissions_propfind
+        elif depth == "0" and permissions.can_traverse(dav_path):
+            self._add_response(root, path.stat(), request.url.path, path)
+        else:
+            return self._response_no_permissions_propfind
+
+        return Response(
+            content=ET.tostring(root, encoding="unicode"),
+            media_type='application/xml; charset="utf-8"',
+            status_code=207,  # 207 Multi-Status
+        )
+
+    def _add_response(
+        self,
+        parent: ET.Element,
+        stat: stat_result,
+        url_path: str,
+        fs_path: Path,
+    ) -> None:
+        """Add a response element for a resource."""
+        response = ET.SubElement(parent, "{DAV:}response")
+        ET.SubElement(response, "{DAV:}href").text = url_path
+
+        propstat = ET.SubElement(response, "{DAV:}propstat")
+        prop = ET.SubElement(propstat, "{DAV:}prop")
+
+        # Display name
+        display_name = fs_path.name
+        if not display_name:  # Root
+            display_name = "/"
+        ET.SubElement(prop, "{DAV:}displayname").text = display_name
+
+        # Resource type and other properties
+        if S_ISDIR(stat.st_mode):
+            resourcetype = ET.SubElement(prop, "{DAV:}resourcetype")
+            ET.SubElement(resourcetype, "{DAV:}collection")
+            ET.SubElement(prop, "{DAV:}getcontenttype").text = (
+                "httpd/unix-directory"
+            )
+        else:
+            ET.SubElement(prop, "{DAV:}resourcetype")
+            ET.SubElement(prop, "{DAV:}getcontentlength").text = str(
+                stat.st_size
+            )
+            ext = fs_path.suffix.lower()
+            content_type = mimetypes.get(ext, "application/octet-stream")
+            ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
+
+        # Last modified
+        last_modified = datetime.fromtimestamp(stat.st_mtime).strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
+        ET.SubElement(prop, "{DAV:}getlastmodified").text = last_modified
+        ET.SubElement(propstat, "{DAV:}status").text = "HTTP/1.1 200 OK"
+
+    async def get(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        # if not permissions.has_read_access(dav_path):
+        #     return self._response_no_permissions_read
+        if not path.exists():
+            return self._response_not_found
+
+        if path.is_dir():
+            # Simple directory listing
+            items: list[str] = []
+            if dav_path:
+                items.append('<li><a href="../">../</a></li>')
+            base_url = request.url.path.rstrip("/")
+
+            for item_path in self.paths_for(path, dav_path, permissions):
+                name = item_path.name
+                url = f"{base_url}/{name}"
+                if item_path.is_dir():
+                    item = f'<li><a href="{url}/">{name}/</a></li>'
+                else:
+                    item = f'<li><a href="{url}">{name}</a></li>'
+                items.append(item)
+
+            html = f"""<html>
+<head><title>Index of {request.url.path}</title></head>
+<body>
+<h1>Index of {request.url.path}</h1>
+<ul>
+{'\n'.join(items)}
+</ul>
+</body>
+</html>"""
+            return Response(html, media_type="text/html")
+        elif permissions.has_read_access(dav_path):
+            return FileResponse(path)
+        else:
+            return self._response_no_permissions_read
+
+    async def head(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_read_access(dav_path):
+            return self._response_no_permissions_read
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            return Response(status_code=404)
+
+        if not S_ISDIR(stat.st_mode):
+            return Response(
+                headers={
+                    "Content-Length": str(stat.st_size),
+                    "Last-Modified": datetime.fromtimestamp(
+                        stat.st_mtime
+                    ).strftime("%a, %d %b %Y %H:%M:%S GMT"),
+                    "Content-Type": "application/octet-stream",
+                }
+            )
+        return Response()
+
+    async def put(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        path.parent.mkdir(exist_ok=True, parents=True)
+
+        try:
+            async with aiofiles.open(path, "wb") as f:
+                async for chunk in request.stream():
+                    await f.write(chunk)
+            return Response(status_code=201)
+        except Exception as e:
+            return Response(status_code=500, content=str(e))
+
+    async def delete(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        if not path.exists():
+            return Response(status_code=404)
+
+        try:
+            if path.is_dir():
+                path.rmdir()  # Only removes empty directories
+            else:
+                path.unlink()
+            return Response(status_code=204)
+        except OSError as e:
+            return Response(status_code=409, content=str(e))
+
+    async def mkcol(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        if path.exists():
+            return Response(
+                status_code=405
+            )  # Method Not Allowed (resource exists)
+        try:
+            path.mkdir(parents=True)
+            return Response(status_code=201)
+        except Exception as e:
+            return Response(status_code=500, content=str(e))
+
+    @asynccontextmanager
+    async def lifespan(self, _starlette: Starlette):
+        async with AsyncClient(base_url=self._api_url) as api_client:
+            self._api_client = api_client
+            yield
+
+    @classmethod
+    def create_app(cls) -> Starlette:
+        settings = _get_settings()
+        dav = cls(settings.path, settings.realm, settings.api_url)
+        routes = [Route("/{path:path}", endpoint=dav)]
+        return Starlette(routes=routes, debug=True, lifespan=dav.lifespan)
+
+
+app = SenyaiDAV.create_app()
