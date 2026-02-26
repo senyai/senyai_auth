@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Annotated, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
@@ -15,7 +15,7 @@ from ..db import (
 )
 from .auth import get_current_user
 from .. import get_async_session
-from .project import Name, Description
+from .project import Description
 from .exceptions import (
     not_authorized_exception,
     response_description,
@@ -24,10 +24,16 @@ from .exceptions import (
 
 router = APIRouter(tags=["role"])
 
+type RoleName = Annotated[
+    str,
+    Field(description="Name as it will be used in url string"),
+    StringConstraints(min_length=2, max_length=32, strip_whitespace=True),
+]
+
 
 class RoleCreate(BaseModel, strict=True, frozen=True):
     project_id: Annotated[int, Field(strict=False)]
-    name: Name
+    name: RoleName
     description: Description = ""
     permissions_api: Literal["none", *[p.name for p in PermissionsAPI]] = (
         "none"
@@ -135,7 +141,7 @@ async def role(
 
 
 class RoleUpdate(BaseModel, strict=True, frozen=True):
-    name: Name | None = None
+    name: RoleName | None = None
     description: Description | None = None
     permissions_api: str | None = None
     permissions_git: str | None = None
