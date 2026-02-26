@@ -13,7 +13,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-  "aioftp==0.27.2",
   "aiosqlite>=0.22.1",
   "fastapi[standard]>=0.128.0",
   "pyargon2>=1.1.2",
