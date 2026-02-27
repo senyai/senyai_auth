@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from collections import defaultdict
+from httpx import Response
 
 
 class Permissions:
@@ -65,7 +66,7 @@ class HXTrigger:
         return {"HX-Trigger": json.dumps(events)}
 
     @classmethod
-    def send_errors(cls, response):
+    def send_errors(cls, response: Response):
         errors = parse_errors(response.json())
         events = {"errorEvent": {"errors": errors}}
         return cls._build(events)
