@@ -117,18 +117,25 @@ async def invites_table():
 async def invite():
     project_id = request.args.get("project_id", type=int)
     project_name = request.args.get("project_name")
-    return await render_template(
-        "forms/invite_form.html",
-        project_id=project_id,
-        project_name=project_name,
+    roles_resp = await app.client.get(
+        f"/ui/project/{project_id}/roles",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
     )
+    if roles_resp.status_code == 200:
+        return await render_template(
+            "forms/invite_form.html",
+            project_id=project_id,
+            project_name=project_name,
+            roles=roles_resp.json(),
+        )
+    return "", roles_resp.status_code, HXTrigger.send_errors(roles_resp)
 
 
 @app.post("/invite")
 async def invite_new():
     form = await request.form
     data = dict(form)
-    data["roles"] = []
+    data["roles"] = form.getlist("role")
     resp = await app.client.post(
         "/invite",
         headers={"Authorization": request.cookies.get("Authorization", "")},
