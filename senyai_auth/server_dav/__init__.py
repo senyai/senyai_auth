@@ -20,12 +20,15 @@ from httpx import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
 from asyncio import Future, create_task
+import httpcore  # needed for _drop_privileges
+import anyio._backends._asyncio  # needed for _drop_privileges
 
 
 class DavSettings(NamedTuple):
     path: str = "."
     realm: str = "Storage"
     api_url: str = "http://127.0.0.1:8000"
+    drop_privileges_user: str | None = None
 
 
 # path with slash at the beginning and at the end
@@ -109,6 +112,17 @@ class Permissions:
         return list(node.children)
 
 
+def _drop_privileges(username: str) -> None:
+    import pwd, os
+
+    pw = pwd.getpwnam(username)
+    target_uid = pw.pw_uid
+    target_gid = pw.pw_gid
+    os.setgroups([])
+    os.setgid(target_gid)
+    os.setuid(target_uid)
+
+
 async def _authorization_for(
     api_client: AsyncClient,
     username: str,
@@ -139,9 +153,10 @@ async def _permissions_for(
 
 
 class SenyaiDAV:
-    def __init__(self, path: str, realm: str, api_url: str) -> None:
-        self._api_url = api_url
-        self._path = Path(path)
+    def __init__(self, settings: DavSettings) -> None:
+        self._settings = settings
+        self._path = Path(settings.path)
+
         self._methods: dict[
             str,
             Callable[
@@ -168,7 +183,7 @@ class SenyaiDAV:
             status_code=401,
             # Info: we can only use Basic Authentication, because
             #       it is the one that shows username/password dialog
-            headers={"WWW-Authenticate": f'Basic realm="{realm}"'},
+            headers={"WWW-Authenticate": f'Basic realm="{settings.realm}"'},
         )
         self._response_no_permissions_write = Response(
             content="Write permission denied",
@@ -549,15 +564,16 @@ class SenyaiDAV:
     @asynccontextmanager
     async def lifespan(self, _starlette: Starlette):
         task = create_task(self._run_periodic_tasks())
-        async with AsyncClient(base_url=self._api_url) as api_client:
+        async with AsyncClient(base_url=self._settings.api_url) as api_client:
             self._api_client = api_client
+            if self._settings.drop_privileges_user is not None:
+                _drop_privileges(self._settings.drop_privileges_user)
             yield
         task.cancel()
 
     @classmethod
     def create_app(cls) -> Starlette:
-        settings = _get_settings()
-        dav = cls(settings.path, settings.realm, settings.api_url)
+        dav = cls(_get_settings())
         routes = [Route("/{path:path}", endpoint=dav)]
         return Starlette(routes=routes, lifespan=dav.lifespan)
 
