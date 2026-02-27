@@ -21,8 +21,26 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
         <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}">
         <label for="default_display_name">Display name:</label>
     </div>
+    <div class="mb-3">
+        <label class="mb-2">Auto add roles</label>
+        {% for role in roles %}
+        <div class="form-check">
+            <label class="form-check-label" tooltip="{{ role.display_name }}" data-bs-toggle="tooltip" data-bs-html="true"
+                   data-bs-title="<b>{{ role.description }}</b><hr><div class=text-start><b>api:</b> {{ role.permissions_api }}<br><b>git:</b> {{ role.permissions_git }}<br><b>storage:</b> {{ role.permissions_storage }}</div>">
+                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox>
+                {{ role.name }}
+            </label>
+        </div>
+        {% endfor %}
+    </div>
     <input type="hidden" name="project_id" value="{{ project_id }}">
 </form>
+<script>
+(function(){
+    const tooltipTriggerList = document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+})();
+</script>
 {% endblock form %}
 {% block buttons %}
 <button type="submit" class="btn btn-primary" form="role-form">Create Invite</button>
