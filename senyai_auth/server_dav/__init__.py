@@ -19,7 +19,7 @@ from mimetypes import types_map as mimetypes
 from httpx import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
-from asyncio import Future
+from asyncio import Future, create_task
 
 
 class DavSettings(NamedTuple):
@@ -30,6 +30,10 @@ class DavSettings(NamedTuple):
 
 # path with slash at the beginning and at the end
 DAVPath = NewType("DAVPath", str)
+# non empty authorization string that goes directly into api backend
+Authorization = NewType("Authorization", str)
+
+ONE_MONTH = 30 * 24 * 60 * 60
 
 
 def _get_settings() -> DavSettings:
@@ -104,49 +108,34 @@ class Permissions:
         return list(node.children)
 
 
-def _auth_cache_get(
-    now: float,
-    auth_cache: dict[tuple[str, str], tuple[float, Future[str]]],
-    username_password: tuple[str, str],
-) -> Future[str] | None:
-    if username_password in auth_cache:
-        expiration, authorization_str = auth_cache[username_password]
-        if expiration > now:  # if not expired
-            return authorization_str
+async def _authorization_for(
+    api_client: AsyncClient,
+    username: str,
+    password: str,
+) -> Authorization | None:
+    print("_authorization_for", username)
+    token_res = await api_client.post(
+        "/token",
+        data={"username": username, "password": password},
+    )
+    if token_res.status_code != 200:  # login and password are invalid.
+        return None
+
+    token = token_res.json()
+    return Authorization(
+        f"{token['token_type'].capitalize()} {token['access_token']}"
+    )
 
 
 async def _permissions_for(
-    api_client: AsyncClient,
-    now: float,
-    auth_cache: dict[tuple[str, str], tuple[float, Future[str]]],
-    username_password: tuple[str, str],
+    api_client: AsyncClient, authorization_str: Authorization
 ) -> Permissions | None:
-    authorization_fut = _auth_cache_get(now, auth_cache, username_password)
-    if authorization_fut is None:
-        future: Future[str] = Future()
-        auth_cache[username_password] = now + 60 * 5, future
-        username, password = username_password
-        token_res = await api_client.post(
-            "/token",
-            data={"username": username, "password": password},
-        )
-        if token_res.status_code != 200:  # login and password are valid.
-            return None
-
-        token = token_res.json()
-        authorization_str = (
-            f"{token['token_type'].capitalize()} {token['access_token']}"
-        )
-        future.set_result(authorization_str)
-    else:
-        authorization_str = await authorization_fut
+    print("_permissions_for", authorization_str)
     permissions_res = await api_client.get(
-        "/ldap/roles/storage",
-        headers={"Authorization": authorization_str},
+        "/ldap/roles/storage", headers={"Authorization": authorization_str}
     )
     if permissions_res.status_code != 200:
         return None
-
     return Permissions(permissions_res.json())
 
 
@@ -178,6 +167,8 @@ class SenyaiDAV:
         self._response_authentication_required = Response(
             content="Authentication required",
             status_code=401,
+            # Info: we can only use Basic Authentication, because
+            #       it is the one that shows username/password dialog
             headers={"WWW-Authenticate": f'Basic realm="{realm}"'},
         )
         self._response_no_permissions_write = Response(
@@ -202,9 +193,11 @@ class SenyaiDAV:
         self._response_api_failure = Response(
             content="Authentication backend is down", status_code=503
         )
-        self._auth_cache: dict[tuple[str, str], tuple[float, Future[str]]] = {}
+        self._auth_cache: dict[
+            tuple[str, str], tuple[float, Future[Authorization | None]]
+        ] = {}
         self._permissions_cache: dict[
-            tuple[str, str], tuple[float, Future[Permissions]]
+            Authorization, tuple[float, Future[Permissions | None]]
         ] = {}
 
     async def __call__(
@@ -215,36 +208,68 @@ class SenyaiDAV:
         response = await self.handle(Request(scope, receive))
         await response(scope, receive, send)
 
-    async def _check_auth(self, request: Request) -> Permissions | None:
-        """Check authentication and return (success, username)."""
+    async def _permissions_for(
+        self, authorization: Authorization, now: float
+    ) -> Permissions | None:
+        cache = self._permissions_cache
+        if authorization in cache:
+            expiration, permissions = cache[authorization]
+            if expiration > now:  # not expired
+                return await permissions
+            del cache[authorization]
+        future: Future[Permissions | None] = Future()
+        # update permissions every 20 seconds
+        cache[authorization] = now + 20.0, future
+        permissions = await _permissions_for(self._api_client, authorization)
+        future.set_result(permissions)
+        return permissions
+
+    async def _authorization_for(
+        self, username_password: tuple[str, str], now: float
+    ) -> Authorization | None:
+        cache = self._auth_cache
+        if username_password in cache:
+            expiration, authorization = cache[username_password]
+            if expiration > now:  # not expired
+                return await authorization
+            del cache[username_password]
+        future: Future[Authorization | None] = Future()
+        cache[username_password] = now + 60.0, future
+        authorization = await _authorization_for(
+            self._api_client, *username_password
+        )
+        future.set_result(authorization)
+        return authorization
+
+    async def _check_auth(
+        self, request: Request
+    ) -> tuple[Permissions | None, Authorization | None]:
+        now = monotonic()
+        authorization_str = request.cookies.get("Authorization")
+        if authorization_str:
+            return (
+                await self._permissions_for(
+                    Authorization(authorization_str), now
+                )
+            ), None
+
         auth_header = request.headers.get("Authorization")
 
         if not auth_header or not auth_header.startswith("Basic "):
-            return None
+            return None, None
 
         try:
             auth_decoded = b64decode(auth_header[6:]).decode()
-            username_password: tuple[str, str] = tuple(
-                auth_decoded.split(":", 1)
-            )
-        except:
-            return None
+            username_password = tuple(auth_decoded.split(":", 1))
+            if len(username_password) != 2:
+                return None, None
+        except Exception:
+            return None, None
 
-        now = monotonic()
-        cache = self._permissions_cache
-        if username_password in cache:
-            expiration, permissions = cache[username_password]
-            if expiration > now:  # not expired
-                return await permissions
-            del cache[username_password]
-        future: Future[Permissions] = Future()
-        cache[username_password] = monotonic() + 10.0, future
-        permissions = await _permissions_for(
-            self._api_client, now, self._auth_cache, username_password
-        )
-        if permissions is not None:
-            future.set_result(permissions)
-        return permissions
+        authorization = await self._authorization_for(username_password, now)
+        if not authorization:
+            return None, None
+        return await self._permissions_for(authorization, now), authorization
 
     async def handle(self, request: Request) -> Response:
         method = request.method
@@ -253,7 +278,7 @@ class SenyaiDAV:
             return await self.options(None, None, None, None)
 
         try:
-            permissions = await self._check_auth(request)
+            permissions, authorization = await self._check_auth(request)
         except NetworkError:
             return self._response_api_failure
         if not permissions:
@@ -264,7 +289,12 @@ class SenyaiDAV:
         full_path = self._path / dav_path
         call = self._methods.get(method)
         if call is not None:
-            return await call(full_path, dav_path, request, permissions)
+            response = await call(full_path, dav_path, request, permissions)
+            if authorization:
+                response.set_cookie(
+                    "Authorization", authorization, max_age=ONE_MONTH
+                )
+            return response
         return Response(
             status_code=405, content=f"Method {method} not allowed"
         )
@@ -502,11 +532,28 @@ class SenyaiDAV:
         except Exception as e:
             return Response(status_code=500, content=str(e))
 
+    async def _run_periodic_tasks(self):
+        from asyncio import sleep
+
+        while True:
+            await sleep(60.0)
+            now = monotonic()
+            for cache in self._auth_cache, self._permissions_cache:
+                keys = [
+                    key
+                    for key, (expiration, _) in cache.items()
+                    if expiration < now  # expired
+                ]
+                for key in keys:
+                    del cache[key]
+
     @asynccontextmanager
     async def lifespan(self, _starlette: Starlette):
+        task = create_task(self._run_periodic_tasks())
         async with AsyncClient(base_url=self._api_url) as api_client:
             self._api_client = api_client
             yield
+        task.cancel()
 
     @classmethod
     def create_app(cls) -> Starlette:
