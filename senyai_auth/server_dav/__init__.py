@@ -113,7 +113,6 @@ async def _authorization_for(
     username: str,
     password: str,
 ) -> Authorization | None:
-    print("_authorization_for", username)
     token_res = await api_client.post(
         "/token",
         data={"username": username, "password": password},
@@ -130,7 +129,6 @@ async def _authorization_for(
 async def _permissions_for(
     api_client: AsyncClient, authorization_str: Authorization
 ) -> Permissions | None:
-    print("_permissions_for", authorization_str)
     permissions_res = await api_client.get(
         "/ldap/roles/storage", headers={"Authorization": authorization_str}
     )
