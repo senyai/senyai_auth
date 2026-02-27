@@ -70,8 +70,9 @@ class Permissions:
             node = root
             path, _, rights = path_rw.rpartition(":")
             path = path.strip("/")
-            for item in path.split("/"):
-                node = node.children[item]
+            if path:  # without this check root can't become leaf
+                for item in path.split("/"):
+                    node = node.children[item]
             node.can_write |= rights == "w"
             node.is_leaf = True
 
