@@ -466,3 +466,8 @@ get_user_by_username_or_email_stmt = (
 select_userid_by_username_stmt = select(User.id).where(
     User.username == bindparam("username", type_=String)
 )
+select_roles_stmt = (
+    select(Role)
+    .where(Role.project_id == bindparam("project_id", type_=Integer))
+    .order_by(Role.name)
+)
