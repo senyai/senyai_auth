@@ -19,7 +19,7 @@ from mimetypes import types_map as mimetypes
 from httpx import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
-from asyncio import Future, create_task
+from asyncio import Future, create_task, sleep
 import httpcore  # needed for _drop_privileges
 import anyio._backends._asyncio  # needed for _drop_privileges
 
@@ -547,8 +547,6 @@ class SenyaiDAV:
             return Response(status_code=500, content=str(e))
 
     async def _run_periodic_tasks(self):
-        from asyncio import sleep
-
         while True:
             await sleep(60.0)
             now = monotonic()
