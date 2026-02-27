@@ -13,10 +13,12 @@ from ..db import (
     PermissionsAPI,
     Project,
     Role,
+    select_roles_stmt,
     User,
 )
 from .auth import get_current_user
 from .user import UserInfo
+from .role import RoleInfo
 from .. import get_async_session
 from pydantic import BaseModel
 from .exceptions import not_authorized_exception, response_with_perm_check
@@ -150,3 +152,34 @@ async def projects(
             for id, name, display_name, parent_id in projects
         ],
     )
+
+
+@router.get(
+    "/project/{project_id}/roles",
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
+async def project_roles(
+    project_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> list[RoleInfo]:
+    """
+    ## List roles of a project for a invitation form
+
+    * Only manages can do it
+    """
+
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    assert permission is not None
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    return [
+        RoleInfo.from_role(role)
+        for role in await session.scalars(
+            select_roles_stmt, {"project_id": project_id}
+        )
+    ]
