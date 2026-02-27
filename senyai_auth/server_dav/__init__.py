@@ -560,7 +560,7 @@ class SenyaiDAV:
         settings = _get_settings()
         dav = cls(settings.path, settings.realm, settings.api_url)
         routes = [Route("/{path:path}", endpoint=dav)]
-        return Starlette(routes=routes, debug=True, lifespan=dav.lifespan)
+        return Starlette(routes=routes, lifespan=dav.lifespan)
 
 
 app = SenyaiDAV.create_app()
