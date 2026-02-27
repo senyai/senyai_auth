@@ -375,11 +375,11 @@ def _create_list_projects_stmt():
     user_id = bindparam("user_id", type_=Integer)
     id_name_parent = select(
         Project.id, Project.name, Project.display_name, Project.parent_id
-    )
+    ).distinct()
     base = (
         id_name_parent.join(Role, Role.project_id == Project.id)
         .join(MemberRole, MemberRole.role_id == Role.id)
-        .where(user_id == MemberRole.user_id)
+        .where(MemberRole.user_id == user_id)
         .cte(name="base", recursive=True)
     )
     return select(
