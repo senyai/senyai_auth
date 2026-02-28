@@ -25,9 +25,9 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
         <label class="mb-2">Auto add roles</label>
         {% for role in roles %}
         <div class="form-check">
-            <label class="form-check-label" tooltip="{{ role.display_name }}" data-bs-toggle="tooltip" data-bs-html="true"
-                   data-bs-title="<b>{{ role.description }}</b><hr><div class=text-start><b>api:</b> {{ role.permissions_api }}<br><b>git:</b> {{ role.permissions_git }}<br><b>storage:</b> {{ role.permissions_storage }}</div>">
-                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox>
+            <label class="form-check-label" tooltip="{{ role.display_name|e }}" data-bs-toggle="tooltip" data-bs-html="true"
+                   data-bs-title="<b>{{ role.description|e }}</b><hr><div class=text-start><b>api:</b> {{ role.permissions_api|e }}<br><b>git:</b> {{ role.permissions_git|e }}<br><b>storage:</b> {{ role.permissions_storage|e }}</div>">
+                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name|e }}" data-role-checkbox>
                 {{ role.name }}
             </label>
         </div>
