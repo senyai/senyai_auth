@@ -26,14 +26,12 @@ API_HOST = "http://127.0.0.1:8000"
 
 @app.before_serving
 async def startup():
-    print("create httpx client")
     app.client = httpx.AsyncClient(base_url=API_HOST)
 
 
 @app.after_serving
 async def shutdown():
     await app.client.aclose()
-    print("close httpx client")
 
 
 @app.errorhandler(httpx.NetworkError)
