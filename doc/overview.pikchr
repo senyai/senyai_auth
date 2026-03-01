@@ -1,0 +1,18 @@
+lineht *= 0.9
+$margin = lineht*2.5
+scale = 0.9
+fontscale = 1.1
+charht *= 1.15
+down
+box "server_web:5000" bold "Web UI" width 190%
+arrow
+API: box "server_api:8000" bold "FastAPI interface" same
+move
+S: box invis height 1
+LDAP: box "server_ldap:10389" bold "Special LDAP" "implementation" "to fit forgejo" with .right at (S.left) height 1 width 190%
+down
+arrow
+box "forgejo:8080"  bold "Standard" "installation" same height 0.75
+STORAGE: box "server_dav:5001" bold "Custom WebDAV" "server with" "permissions" with .left at (S.right) same as LDAP
+arrow from API.sw to LDAP.t
+arrow from API.se to STORAGE.t
