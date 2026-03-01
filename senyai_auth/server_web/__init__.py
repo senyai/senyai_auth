@@ -144,7 +144,6 @@ async def invite_new():
         url = resp.json()
         trigger.add_update_project_info()
         trigger.add_success_event("Invite created!")
-        trigger.add_close_modal_event()
         return (
             await render_template(
                 "invite_result.html", url_key=url["url_key"]
