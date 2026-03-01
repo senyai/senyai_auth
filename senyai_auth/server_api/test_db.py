@@ -9,7 +9,7 @@ def _test_get_settings():
     return AppSettings(
         db_url="sqlite+aiosqlite:///:memory:",
         secret_key="debug_" * 6,
-        engine={"echo": True},
+        engine={"echo": False},
     )
 
 
