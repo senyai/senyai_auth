@@ -209,12 +209,11 @@ async def delete_invitation(
     """
     ## Delete a single invite
 
-    Only superadmins can do it
+    * managers can delete pending invitations
+    * superadmins can delete any invitation
     """
     invitation = await session.scalar(
-        select(Invitation).where(
-            Invitation.url_key == key,
-        )
+        select(Invitation).where(Invitation.url_key == key)
     )
     if invitation is None:
         raise HTTPException(
@@ -225,9 +224,15 @@ async def delete_invitation(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": invitation.project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
+    if (
+        invitation.who_accepted_id is not None
+        and permission < PermissionsAPI.superadmin
+    ):
+        raise not_authorized_exception
     await session.delete(invitation)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
