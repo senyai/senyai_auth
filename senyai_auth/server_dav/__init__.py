@@ -13,7 +13,9 @@ from starlette.responses import Response, FileResponse
 from starlette.requests import Request
 from starlette.routing import Route
 from starlette.types import Scope, Receive, Send
+from starlette.datastructures import URL
 import aiofiles
+import aiofiles.os
 from pathlib import Path
 from mimetypes import types_map as mimetypes
 from httpx import AsyncClient, NetworkError
@@ -22,6 +24,7 @@ from time import monotonic
 from asyncio import Future, create_task, sleep
 import httpcore  # needed for _drop_privileges
 import anyio._backends._asyncio  # needed for _drop_privileges
+from .afs import copy, delete
 
 
 class DavSettings(NamedTuple):
@@ -96,7 +99,11 @@ class Permissions:
         return self.closet_node(path).is_leaf
 
     def can_traverse(self, path: DAVPath) -> bool:
-        return not path or self.closet_node(path) is not self._root
+        return (
+            not path
+            or self.closet_node(path) is not self._root
+            or self._root.is_leaf
+        )
 
     def list_children(self, path: DAVPath) -> list[str] | None:
         """
@@ -170,6 +177,8 @@ class SenyaiDAV:
             "PUT": self.put,
             "DELETE": self.delete,
             "MKCOL": self.mkcol,
+            "COPY": self.copy,
+            "MOVE": self.move,
         }
         self._response_options = Response(
             headers={
@@ -324,13 +333,13 @@ class SenyaiDAV:
 
     def paths_for(
         self, path: Path, dav_path: DAVPath, permissions: Permissions
-    ) -> list[Path]:
+    ) -> list[Path] | None:
         if permissions.has_read_access(dav_path):
             items = list(path.iterdir())
         else:
             children = permissions.list_children(dav_path)
             if children is None:
-                raise ValueError()
+                return
             items = [self._path / dav_path / child for child in children]
         items.sort()
         return items
@@ -343,16 +352,28 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not path.exists():
+            if not permissions.has_read_access(dav_path):
+                return self._response_no_permissions_read
             return self._response_not_found
 
         depth = request.headers.get("Depth", "0")
         root = ET.Element("{DAV:}multistatus")
+
+        content_length = request.headers.get("content-length", "0")
+        if content_length != "0":
+            body = await request.body()
+            try:
+                ET.fromstring(body)
+            except Exception as e:
+                return Response(status_code=400, content=str(e))
 
         # Add children if depth > 0 and it's a directory
         if depth in ("1", "infinity") and path.is_dir():
             base_url = request.url.path.rstrip("/")
             try:
                 items = self.paths_for(path, dav_path, permissions)
+                if items is None:
+                    return self._response_no_permissions_read
                 self._add_response(root, path.stat(), request.url.path, path)
 
                 for item_path in items:
@@ -425,19 +446,22 @@ class SenyaiDAV:
         request: Request,
         permissions: Permissions,
     ) -> Response:
-        # if not permissions.has_read_access(dav_path):
-        #     return self._response_no_permissions_read
         if not path.exists():
+            if not permissions.has_read_access(dav_path):
+                return self._response_no_permissions_read
             return self._response_not_found
 
         if path.is_dir():
+            item_path = self.paths_for(path, dav_path, permissions)
+            if item_path is None:
+                return self._response_no_permissions_read
             # Simple directory listing
             items: list[str] = []
             if dav_path:
                 items.append('<li><a href="../">../</a></li>')
             base_url = request.url.path.rstrip("/")
 
-            for item_path in self.paths_for(path, dav_path, permissions):
+            for item_path in item_path:
                 name = item_path.name
                 url = f"{base_url}/{name}"
                 if item_path.is_dir():
@@ -471,7 +495,7 @@ class SenyaiDAV:
         if not permissions.has_read_access(dav_path):
             return self._response_no_permissions_read
         try:
-            stat = path.stat()
+            stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
             return Response(status_code=404)
 
@@ -519,10 +543,7 @@ class SenyaiDAV:
             return Response(status_code=404)
 
         try:
-            if path.is_dir():
-                path.rmdir()  # Only removes empty directories
-            else:
-                path.unlink()
+            await delete(path)
             return Response(status_code=204)
         except OSError as e:
             return Response(status_code=409, content=str(e))
@@ -536,15 +557,110 @@ class SenyaiDAV:
     ) -> Response:
         if not permissions.has_write_access(dav_path):
             return self._response_no_permissions_write
+        content_length = request.headers.get("content-length", "0")
+        if content_length != "0":
+            if await request.body():
+                return Response(
+                    content="MKCOL request must not contain a body",
+                    status_code=415,  # Unsupported Media Type
+                )
+
+        # 2. Check if parent directory exists
+        if not path.parent.exists():
+            return Response(
+                content="Parent collection does not exist",
+                status_code=409,  # Conflict
+            )
+
         if path.exists():
             return Response(
-                status_code=405
-            )  # Method Not Allowed (resource exists)
+                content="Collection already exists",
+                status_code=405,  # Method Not Allowed - Correct for existing resource
+            )
         try:
-            path.mkdir(parents=True)
+            await aiofiles.os.mkdir(path)
             return Response(status_code=201)
+        except FileNotFoundError:
+            return Response(status_code=409)
         except Exception as e:
             return Response(status_code=500, content=str(e))
+
+    @staticmethod
+    def destination(request: Request) -> DAVPath | None:
+        destination = request.headers.get("Destination")
+        if destination is not None:
+            return DAVPath(URL(destination).path.strip("/"))
+
+    async def copy(
+        self,
+        source_path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_read_access(dav_path):
+            return self._response_no_permissions_write
+        destination = self.destination(request)
+        if not destination:
+            return Response(
+                status_code=400, content="Destination not specified"
+            )
+        if not permissions.has_write_access(DAVPath(destination)):
+            return self._response_no_permissions_write
+        destination_path = self._path / destination
+        successful_response = Response(
+            status_code=201, headers={"Location": destination}
+        )
+
+        if destination_path.exists():
+            overwrite = request.headers.get("Overwrite", "T").upper() == "T"
+            if overwrite:
+                await delete(destination_path)
+                successful_response.status_code = 204
+            else:
+                return Response(status_code=412)
+        try:
+            await copy(source_path, destination_path)
+        except FileNotFoundError as e:
+            return Response(status_code=409, content=str(e))
+        except Exception as e:
+            # Should not happen, as user only works with files and directories
+            return Response(status_code=500, content=str(e))
+        return successful_response
+
+    async def move(
+        self,
+        source_path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        destination = self.destination(request)
+        if not destination:
+            return Response(
+                status_code=400, content="Destination not specified"
+            )
+        if not permissions.has_write_access(destination):
+            return self._response_no_permissions_write
+        overwrite = request.headers.get("Overwrite", "T").upper() == "T"
+        destination_path = self._path / destination
+        successful_response = Response(
+            status_code=201, headers={"Location": destination}
+        )
+        if destination_path.exists():
+            if overwrite:
+                await delete(destination_path)
+                successful_response.status_code = 204
+            else:
+                return Response(status_code=412)
+        try:
+            await aiofiles.os.rename(source_path, destination_path)
+        except Exception as e:
+            # Should not happen, as user only works with files and directories
+            return Response(status_code=500, content=str(e))
+        return successful_response
 
     async def _run_periodic_tasks(self):
         while True:
