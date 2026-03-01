@@ -570,10 +570,10 @@ class SenyaiDAV:
         task.cancel()
 
     @classmethod
-    def create_app(cls) -> Starlette:
+    def create_app(cls, debug: bool = False) -> Starlette:
         dav = cls(_get_settings())
         routes = [Route("/{path:path}", endpoint=dav)]
-        return Starlette(routes=routes, lifespan=dav.lifespan)
+        return Starlette(routes=routes, debug=debug, lifespan=dav.lifespan)
 
 
 app = SenyaiDAV.create_app()
