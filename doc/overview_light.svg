@@ -1,0 +1,30 @@
+<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;' class="pikchr" width="469" height="540" viewBox="0 0 522.72 601.92" data-pikchr-date="20250319161943">
+<path d="M158.76,74.16L363.96,74.16L363.96,2.16L158.76,2.16Z"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<text x="261.36" y="25.4088" text-anchor="middle" font-weight="bold" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">server_web:5000</text>
+<text x="261.36" y="50.9112" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">Web UI</text>
+<polygon points="261.36,138.96 257.04,127.44 265.68,127.44" style="fill:rgb(0,0,0)"/>
+<path d="M261.36,74.16L261.36,133.2"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<path d="M158.76,210.96L363.96,210.96L363.96,138.96L158.76,138.96Z"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<text x="261.36" y="162.209" text-anchor="middle" font-weight="bold" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">server_api:8000</text>
+<text x="261.36" y="187.711" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">FastAPI interface</text>
+<path d="M2.16,426.96L207.36,426.96L207.36,282.96L2.16,282.96Z"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<text x="104.76" y="316.706" text-anchor="middle" font-weight="bold" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">server_ldap:10389</text>
+<text x="104.76" y="342.209" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">Special LDAP</text>
+<text x="104.76" y="367.711" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">implementation</text>
+<text x="104.76" y="393.214" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">to fit forgejo</text>
+<polygon points="104.76,491.76 100.44,480.24 109.08,480.24" style="fill:rgb(0,0,0)"/>
+<path d="M104.76,426.96L104.76,486"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<path d="M2.16,599.76L207.36,599.76L207.36,491.76L2.16,491.76Z"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<text x="104.76" y="520.258" text-anchor="middle" font-weight="bold" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">forgejo:8080</text>
+<text x="104.76" y="545.76" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">Standard</text>
+<text x="104.76" y="571.262" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">installation</text>
+<path d="M315.36,426.96L520.56,426.96L520.56,282.96L315.36,282.96Z"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<text x="417.96" y="316.706" text-anchor="middle" font-weight="bold" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">server_dav:5001</text>
+<text x="417.96" y="342.209" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">Custom WebDAV</text>
+<text x="417.96" y="367.711" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">server with</text>
+<text x="417.96" y="393.214" text-anchor="middle" fill="rgb(0,0,0)" font-size="110%" dominant-baseline="central">permissions</text>
+<polygon points="104.76,282.96 108.216,271.152 115.128,276.336" style="fill:rgb(0,0,0)"/>
+<path d="M158.76,210.96L108.216,278.352"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+<polygon points="417.96,282.96 407.592,276.336 414.504,271.152" style="fill:rgb(0,0,0)"/>
+<path d="M363.96,210.96L414.504,278.352"  style="fill:none;stroke-width:2.16;stroke:rgb(0,0,0);" />
+</svg>
