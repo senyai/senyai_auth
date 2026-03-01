@@ -25,6 +25,7 @@ from asyncio import Future, create_task, sleep
 import httpcore  # needed for _drop_privileges
 import anyio._backends._asyncio  # needed for _drop_privileges
 from .afs import copy, delete
+from .. import __version__
 
 
 class DavSettings(NamedTuple):
@@ -477,6 +478,7 @@ class SenyaiDAV:
 <ul>
 {'\n'.join(items)}
 </ul>
+<hr><small>Powered by senyai_auth {__version__}</small>
 </body>
 </html>"""
             return Response(html, media_type="text/html")
