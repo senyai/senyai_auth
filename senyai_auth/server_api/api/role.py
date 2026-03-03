@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Annotated, Literal
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
@@ -30,14 +30,16 @@ type RoleName = Annotated[
     StringConstraints(min_length=2, max_length=32, strip_whitespace=True),
 ]
 
+type PermissionsType = Literal[
+    "none", "user", "manager", "admin", "superadmin"
+]
+
 
 class RoleCreate(BaseModel, strict=True, frozen=True):
     project_id: Annotated[int, Field(strict=False)]
     name: RoleName
     description: Description = ""
-    permissions_api: Literal["none", *[p.name for p in PermissionsAPI]] = (
-        "none"
-    )
+    permissions_api: PermissionsType = "none"
     permissions_git: str = ""
     permissions_storage: str = ""
     permissions_extra: str = ""
@@ -143,7 +145,9 @@ async def role(
 class RoleUpdate(BaseModel, strict=True, frozen=True):
     name: RoleName | None = None
     description: Description | None = None
-    permissions_api: str | None = None
+    permissions_api: Annotated[
+        PermissionsType | None, AfterValidator(lambda v: PermissionsAPI[v])
+    ] = None
     permissions_git: str | None = None
     permissions_storage: str | None = None
     permissions_extra: str | None = None
