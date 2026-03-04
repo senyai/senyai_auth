@@ -1,11 +1,14 @@
 from __future__ import annotations
+from collections.abc import Callable
+import gettext
 from quart import (
-    Quart,
-    render_template,
-    redirect,
-    url_for,
-    request,
     make_response,
+    Quart,
+    redirect,
+    render_template,
+    request,
+    Request,
+    url_for,
 )
 import httpx
 import json
@@ -60,6 +63,27 @@ def get_authorization_str(token_type: str, access_token: str):
     return f"{token_type.capitalize()} {access_token}"
 
 
+def _load_translation(locale: str):
+    return gettext.translation(
+        "messages",
+        localedir="./senyai_auth/server_web/locale",
+        languages=[locale],
+    )
+
+
+_translations = {
+    "ru": _load_translation("ru"),
+}
+
+
+def _get_underscore(request: Request) -> Callable[[str], str]:
+    locale = request.accept_languages.best_match(("en", "ru")) or "en"
+    try:
+        return _translations[locale].gettext
+    except KeyError:
+        return lambda text: text
+
+
 @app.get("/")
 async def index():
     if token := request.cookies.get("Authorization"):
@@ -74,7 +98,9 @@ async def index():
             return await render_template(
                 "user.html", user=user, projects=parse_projects(projects)
             )
-    resp = await make_response(await render_template("login.html"))
+    resp = await make_response(
+        await render_template("login.html", _=_get_underscore(request))
+    )
     resp.set_cookie("Authorization", "")
     return resp
 
@@ -168,7 +194,9 @@ async def register(key: str):
     form_res = await app.client.get(f"/invite/{key}")
     form = form_res.json()
     if form_res.status_code == 200:
-        return await render_template("register.html", form=form, key=key)
+        return await render_template(
+            "register.html", form=form, key=key, _=_get_underscore(request)
+        )
     return form, 404
 
 
