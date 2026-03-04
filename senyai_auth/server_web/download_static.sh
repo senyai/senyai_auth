@@ -21,7 +21,7 @@ echo "Starting download of dependencies..."
 # Bootstrap JS Bundle (includes Popper.js)
 if [ ! -f "$JS_DIR/bootstrap.bundle.min.js" ]; then
   echo "Downloading Bootstrap JS..."
-  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js -o "$JS_DIR/bootstrap.bundle.min.js"
+  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js -o "$JS_DIR/bootstrap.bundle.min.js"
 else
   echo "Bootstrap JS already exists."
 fi
@@ -30,8 +30,8 @@ fi
 # Bootstrap CSS
 if [ ! -f "$CSS_DIR/bootstrap.min.css" ]; then
   echo "Downloading Bootstrap CSS..."
-  # We will use a pre-compiled dark theme (Bootswatch "darkly")
-  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css -o "$CSS_DIR/bootstrap.min.css"
+  # We will use a pre-compiled dark theme (Bootswatch "lumen")
+  curl -L https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/lumen/bootstrap.min.css -o "$CSS_DIR/bootstrap.min.css"
 else
   echo "Bootstrap CSS already exists."
 fi
