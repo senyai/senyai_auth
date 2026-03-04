@@ -36,7 +36,16 @@ async def shutdown():
 
 @app.errorhandler(httpx.NetworkError)
 async def handle_connect_error(error: httpx.NetworkError):
-    return "", 503
+    """
+    API
+    """
+    return (
+        "",
+        503,
+        HXTrigger._build(
+            {"errorEvent": {"errors": [f"API Backend Error: {error}"]}}
+        ),
+    )
 
 
 @app.context_processor
