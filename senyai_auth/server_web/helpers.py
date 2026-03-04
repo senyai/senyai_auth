@@ -33,20 +33,16 @@ class Permissions:
     ]
 
 
-def constant_factory():
-    return lambda: defaultdict(list)
-
-
 class HXTrigger:
     def __init__(self):
         self.events: dict[str, dict[str, list[str]]] = defaultdict(
-            constant_factory()
+            lambda: defaultdict(list)
         )
 
     def add_success_event(self, message: str):
         self.events["successEvent"]["message"].append(message)
 
-    def add_error_event(self, errors: list):
+    def add_error_event(self, errors: list[str]):
         self.events["errorEvent"]["errors"].extend(errors)
 
     def add_update_projects_tree(self):
@@ -62,7 +58,7 @@ class HXTrigger:
         return self._build(self.events)
 
     @classmethod
-    def _build(cls, events):
+    def _build(cls, events: dict[str, dict[str, list[str]]]):
         return {"HX-Trigger": json.dumps(events)}
 
     @classmethod
