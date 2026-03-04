@@ -5,19 +5,18 @@
     <div class="row justify-content-center">
         <div class="col-md-4 ">
             <form role="form" class="form-control login-form" hx-post="{{ url_for('login') }}">
-                <legend>Sign In</legend>
+                <legend>{{ _("Auth") }}</legend>
                 <div class="form-floating mb-3">
                     <input type="text" class="form-control" name="username" placeholder="Login" required autofocus>
-                    <label for="login">Login</label>
+                    <label for="login">{{ _("Login") }}</label>
                 </div>
                 <div class="form-floating">
                     <input type="password" class="form-control" name="password" placeholder="Password" required>
-                    <label for="password">Password</label>
+                    <label for="password">{{ _("Password") }}</label>
                 </div>
                 <div class="d-grid pt-3">
-                    <button type="submit" class="btn btn-primary">Sign in</button>
+                    <button type="submit" class="btn btn-primary">{{ _("Sign in") }}</button>
                 </div>
-
             </form>
         </div>
     </div>

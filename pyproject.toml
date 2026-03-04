@@ -21,7 +21,8 @@ dependencies = [
   "PyJWT>=2.10.1",
   "SQLAlchemy>=2.0.45",
   "zxcvbn>=4.5.0",
-  "Quart>=0.20.0"
+  "Quart>=0.20.0",
+  "babel>=2.18.0",
 ]
 [project.urls]
 "Homepage" = "https://github.com/iitpvisionlab/senyai_auth"

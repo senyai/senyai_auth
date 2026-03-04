@@ -8,27 +8,32 @@
             <!-- <input type="hidden" value="{{ csrf }}" name="csrf_token"> -->
             <legend>{{ form["prompt"] }}</legend>
             <div class="form-floating mb-3">
-                <input type="text" class="form-control" id="username" name="username" value="{{ form['username'] }}" required>
-                <label for="username">Username:</label>
+                <input type="text" class="form-control" id="username" name="username" aria-describedby="usernameHelp" value="{{ form['username'] }}" required>
+                <label for="username">{{ _("Username") }}:</label>
+                <small id="usernameHelp" class="form-text text-muted">{{ _("Can be used as login and all users will be able to see it. Example: \"daivanov\"") }}</small>
             </div>
             <div class="form-floating mb-3">
-                <input type="text" class="form-control" id="display_name" name="display_name" value="{{ form['display_name'] }}" required>
-                <label for="display_name">Display name:</label>
+                <input type="text" class="form-control" id="display_name" name="display_name" aria-describedby="displayNameHelp" value="{{ form['display_name'] }}" required>
+                <label for="display_name">{{ _("Display Name") }}:</label>
+                <small id="displayNameHelp" class="form-text text-muted">{{ _("This is the name everyone will be able to see you. Example: \"Dmitry Ivanov\"") }}</small>
             </div>
             <div class="form-floating mb-3">
-                <input type="email" class="form-control" id="email" name="email" value="{{ form['email'] }}" required>
-                <label for="email">email:</label>
+                <input type="email" class="form-control" id="email" name="email" aria-describedby="emailHelp" value="{{ form['email'] }}" required>
+                <label for="email">{{ _("Email") }}:</label>
+                <small id="emailHelp" class="form-text text-muted">{{ _("Email can be used as login and will be visible to all users") }}</small>
             </div>
             <div class="form-floating mb-3">
-                <input type="password" class="form-control" id="password" name="password" value="" required>
-                <label for="password">Password:</label>
+                <input type="password" class="form-control" id="password" name="password" aria-describedby="passwordHelp" value="" required>
+                <label for="password">{{ _("Password") }}:</label>
+                <small id="passwordHelp" class="form-text text-muted">{{ _("Password will be safely stored as a hash produced by modern algorithm") }}</small>
             </div>
             <div class="form-floating mb-3">
-                <textarea rows="5" class="form-control" id="contacts" name="contacts">{{ form['contacts'] if 'contacts' in form }}</textarea>
-                <label for="contacts">Contacts:</label>
+                <textarea rows="3" style="height:initial" class="form-control" id="contacts" name="contacts" aria-describedby="contactsHelp">{{ form['contacts'] if 'contacts' in form }}</textarea>
+                <label for="contacts">{{ _("Contacts") }}:</label>
+                <small id="contactsHelp" class="form-text text-muted">{{ _("Contacts will be visible to all users. Can be empty.") }}</small>
             </div>
             <div class="d-grid pt-3">
-                <button type="submit" class="btn btn-primary">Sign Up</button>
+                <button type="submit" class="btn btn-primary">{{ _("Sign Up") }}</button>
             </div>
         </form>
     </div>
