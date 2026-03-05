@@ -22,4 +22,5 @@ jobs:
       - uses: psf/black@25.1.0
       - run: pip install -e .
       - run: cd senyai_auth/server_api && ./download_static.sh
+      - run: cd senyai_auth/server_web && ./babel.sh
       - run: python -m unittest -v
