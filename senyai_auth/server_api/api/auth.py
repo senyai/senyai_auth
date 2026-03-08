@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from . import app
 from .. import get_async_session
-from ..db import User, get_user_by_username_stmt
+from ..db import User, get_user_by_username_stmt, update_last_login_at_stmt
 from .exceptions import response_description
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,15 +48,14 @@ async def _get_user_by_username(
     )
 
 
-async def authenticate_user(
+async def _authenticate_user(
     username: str, password: str, session: AsyncSession
 ) -> User | None:
     user = await _get_user_by_username(username, session)
-    if not user:
-        return
-    if not user.validate_password(password):
-        return
-    return user
+    if user is not None and user.validate_password(password):
+        await session.execute(update_last_login_at_stmt, {"user_id": user.id})
+        await session.commit()
+        return user
 
 
 @app.post(
@@ -73,7 +72,7 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: AsyncSession = Depends(get_async_session),
 ) -> Token:
-    user = await authenticate_user(
+    user = await _authenticate_user(
         form_data.username, form_data.password, session
     )
     if not user:
