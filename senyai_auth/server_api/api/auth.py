@@ -8,7 +8,12 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from . import app
 from .. import get_async_session
-from ..db import User, get_user_by_username_stmt, update_last_login_at_stmt
+from ..db import (
+    get_user_for_authentication_stmt,
+    get_user_for_session_stmt,
+    update_last_login_at_stmt,
+    User,
+)
 from .exceptions import response_description
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,18 +45,12 @@ def _create_access_token(
     return encoded_jwt
 
 
-async def _get_user_by_username(
-    username: str, session: AsyncSession
-) -> User | None:
-    return await session.scalar(
-        get_user_by_username_stmt, params={"username": username}
-    )
-
-
 async def _authenticate_user(
-    username: str, password: str, session: AsyncSession
+    login: str, password: str, session: AsyncSession
 ) -> User | None:
-    user = await _get_user_by_username(username, session)
+    user = await session.scalar(
+        get_user_for_authentication_stmt, params={"login": login}
+    )
     if user is not None and user.validate_password(password):
         await session.execute(update_last_login_at_stmt, {"user_id": user.id})
         await session.commit()
@@ -110,7 +109,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     # we must fetch user on every request, because user information update
-    user = await _get_user_by_username(payload["username"], session)
+    user = await session.scalar(
+        get_user_for_session_stmt, {"username": payload["username"]}
+    )
     # we must check salt because user password can change
     if user is None or user.salt != payload["salt"] or user.disabled:
         raise HTTPException(

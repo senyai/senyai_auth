@@ -268,6 +268,7 @@ async def update_user(
     is_superadmin: bool = permissions & PermissionsAPI.superadmin
     if not is_superadmin and auth_user.id != user_id:
         raise not_authorized_exception
+    await session.refresh(auth_user, ("password_hash",))
     user.update(auth_user, is_superadmin)
     session.add(auth_user)
     await session.commit()
