@@ -397,9 +397,10 @@ def _create_list_projects_stmt():
     )
 
 
-def _create_get_user_by_username_stmt():
+def _create_get_user_for_session_stmt():
     """
-    Use session to get user by `username`
+    To get user info for the session, ensuring user wasn't disables or
+    didn't change the password
 
     Disabled users will be returned too, and for disabled user an error
     'User is not available anymore' will be shown
@@ -408,6 +409,29 @@ def _create_get_user_by_username_stmt():
     return (
         select(User)
         .where(User.username == username)
+        .options(
+            load_only(
+                User.id,
+                User.username,
+                User.salt,
+                User.disabled,
+            )
+        )
+    )
+
+
+def _create_get_user_for_authentication_stmt():
+    """
+    Fetch `User` using `login`, i.e. username or email.
+    Will contain `password_hash`
+
+    Disabled users will be returned too, and for disabled user an error
+    'User is not available anymore' will be shown
+    """
+    login = bindparam("login", type_=String)
+    return (
+        select(User)
+        .where((User.username == login) | (User.email == login))
         .options(
             load_only(
                 User.id,
@@ -467,7 +491,8 @@ all_users_storage_stmt = _create_get_all_users_for_domain(
 all_users_git_stmt = _create_get_all_users_for_domain(Role.permissions_git)
 
 list_projects_stmt = _create_list_projects_stmt()
-get_user_by_username_stmt = _create_get_user_by_username_stmt()
+get_user_for_session_stmt = _create_get_user_for_session_stmt()
+get_user_for_authentication_stmt = _create_get_user_for_authentication_stmt()
 get_user_by_username_or_email_stmt = (
     _create_get_user_by_username_or_email_stmt()
 )
