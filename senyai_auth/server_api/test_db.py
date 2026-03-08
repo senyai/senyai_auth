@@ -1,6 +1,6 @@
 from __future__ import annotations
 from unittest import IsolatedAsyncioTestCase
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exc
 from . import AppSettings
 from .db import Project, Role, User, Base, Member, MemberRole
 
@@ -101,3 +101,26 @@ class IntegrityTest(IsolatedAsyncioTestCase):
             self.assertEqual(role_members, ((3, 2), (4, 2)))
 
             await session.rollback()
+
+    async def test_username_must_not_contain_at_character(self):
+        async with self.async_session() as session:
+            user = User(
+                username="test@example.com",
+                password_hash="a",
+                salt="e",
+                email="a@j.c",
+            )
+            session.add(user)
+            with self.assertRaises(exc.IntegrityError) as e:
+                await session.commit()
+            self.assertIn("unique_username_and_email", str(e.exception))
+
+    async def test_email_must_contain_at_character(self):
+        async with self.async_session() as session:
+            user = User(
+                username="test", password_hash="a", salt="e", email="a?j.c"
+            )
+            session.add(user)
+            with self.assertRaises(exc.IntegrityError) as e:
+                await session.commit()
+            self.assertIn("unique_username_and_email", str(e.exception))
