@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     type_coerce,
     TypeDecorator,
+    update,
 )
 from enum import IntFlag
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -477,4 +478,9 @@ select_roles_stmt = (
     select(Role)
     .where(Role.project_id == bindparam("project_id", type_=Integer))
     .order_by(Role.name)
+)
+update_last_login_at_stmt = (
+    update(User)
+    .where(User.id == bindparam("user_id", type_=Integer))
+    .values(last_login_at=func.now())
 )
