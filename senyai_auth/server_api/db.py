@@ -13,11 +13,12 @@ from datetime import datetime
 from pyargon2 import hash as pyargon2_hash
 from sqlalchemy import (
     bindparam,
+    CheckConstraint,
     Dialect,
     Integer,
+    JSON,
     select,
     String,
-    JSON,
     type_coerce,
     TypeDecorator,
 )
@@ -92,6 +93,12 @@ class User(Base):
 
     member_roles: Mapped[list[MemberRole]] = relationship(
         back_populates="user", passive_deletes=True
+    )
+    CheckConstraint(
+        ~username.contains("@") & email.contains("@"),
+        name="unique_username_and_email",
+        comment="we must ensure that username and email do not "
+        "intersect, otherwise login would not work correctly",
     )
 
     @staticmethod
