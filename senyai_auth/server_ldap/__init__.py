@@ -11,7 +11,7 @@ from httpx import AsyncClient
 from pyasn1.type import univ, tag, namedtype, namedval, constraint
 from pyasn1.codec.ber import decoder, encoder
 from pyasn1.error import EndOfStreamError, PyAsn1Error
-from .ldap import parse_dn
+from .ldap import parse_dn, DN
 
 maxInt = univ.Integer(2147483647)
 api_client: AsyncClient
@@ -490,7 +490,7 @@ class SearchRequest(univ.Sequence):
                 msgid, diag=f"Invalid domain {dn.domain_components}"
             )
         if dn.organization_units == (b"users",) or dn.organization_units == ():
-            async for data in self._search_users(msgid):
+            async for data in self._search_users(msgid, dn):
                 yield data
         elif dn.organization_units == (b"projects",):
             async for data in self._search_projects(msgid):
@@ -501,7 +501,9 @@ class SearchRequest(univ.Sequence):
                 diag=f"Unsupported organization units {dn.organization_units}",
             )
 
-    async def _search_users(self, msgid: int) -> AsyncGenerator[bytes, None]:
+    async def _search_users(
+        self, msgid: int, dn: DN
+    ) -> AsyncGenerator[bytes, None]:
         match self["filter"].build():
             case {
                 "op": "and",
@@ -535,6 +537,15 @@ class SearchRequest(univ.Sequence):
             }:
                 async for user in self._list_all_users(msgid):
                     yield user
+            case {"op": "=", "lhs": "memberOf", "rhs": rhs_dn_str}:
+                rhs_dn = parse_dn(rhs_dn_str.encode())
+                assert rhs_dn.common_name == b"admin", rhs_dn.common_name
+                assert rhs_dn.organization_units == (b"groups",)
+                assert dn.user_name is not None, "client problem"
+                async for user in self._find_user(
+                    msgid, dn.user_name.decode(), only_admin=True
+                ):
+                    yield user
             case unknown_query:
                 print(f"query {unknown_query} not implemented")
 
@@ -551,13 +562,19 @@ class SearchRequest(univ.Sequence):
                     b"objectClass": [b"account", b"inetOrgPerson"],
                     b"uid": username.encode(),
                     b"cn": [user["display_name"].encode()],
+                    b"memberOf": [
+                        f"cn={group},ou=groups,{DOMAIN.dc}".encode()
+                        for group in user["permissions"]
+                    ],
                 },
             )
         yield encode_search_result_done(
             msgid=msgid, result_code=0, matched_dn="", diag=""  # success
         )
 
-    async def _find_user(self, msgid: int, username_or_email: str):
+    async def _find_user(
+        self, msgid: int, username_or_email: str, only_admin: bool = False
+    ):
         res = await api_client.get(
             f"/ldap/find_user/git",
             params={"username_or_email": username_or_email},
@@ -567,16 +584,17 @@ class SearchRequest(univ.Sequence):
             assert res.status_code == 200, (res.status_code, user)
             assert "username" in user, user
             username = user["username"]
-            yield encode_search_result_entry(
-                msgid,
-                dn=f"uid={username},{DOMAIN.dc}",  # todo: escape
-                attributes={
-                    b"mail": [user["email"].encode()],
-                    b"objectClass": [b"account", b"inetOrgPerson"],
-                    b"uid": username.encode(),
-                    b"cn": [user["display_name"].encode()],
-                },
-            )
+            if not only_admin or "admin" in user["permissions"]:
+                yield encode_search_result_entry(
+                    msgid,
+                    dn=f"uid={username},{DOMAIN.dc}",  # todo: escape
+                    attributes={
+                        b"mail": [user["email"].encode()],
+                        b"objectClass": [b"account", b"inetOrgPerson"],
+                        b"uid": username.encode(),
+                        b"cn": [user["display_name"].encode()],
+                    },
+                )
         yield encode_search_result_done(
             msgid=msgid, result_code=0, matched_dn="", diag=""  # success
         )
@@ -670,7 +688,7 @@ def encode_bind_response(msgid: int, result=0, matchedDN=b"", diag=b""):
 
 
 def encode_search_result_entry(
-    msgid: int, dn: str, attributes: dict[str, str | list[str]]
+    msgid: int, dn: str, attributes: dict[bytes, bytes | list[bytes]]
 ) -> bytes:
     """Encode a SearchResultEntry response"""
 
