@@ -1,3 +1,6 @@
+<!-- click[event.target.matches('button')] from:body -->
+ <!-- hx-confirm="js:call1()" -->
+<form hx-get="js:call1()" data-bs-toggle="modal" data-bs-target="#baseModal">
 <table class="table table-hover">
     <thead>
         <tr>
@@ -5,7 +8,12 @@
             {% for role in context.roles %}
             <th class="text-center">{{ role.name }}</th>
             {% endfor %}
-            <th></th>
+            <th>
+                <button class="btn btn-table" hx-get="{{ url_for('add_users', project_id=context.project_id) }}"
+                    hx-trigger="click" hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </button>
+            </th>
         </tr>
     </thead>
     <tbody>
@@ -33,3 +41,10 @@
         {% endfor %}
     </tbody>
 </table>
+</form>
+<script>
+    function call1() {
+        console.log("call1");
+        alert("call1");
+    }
+</script>

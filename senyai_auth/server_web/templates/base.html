@@ -23,6 +23,43 @@
     </body>
 
     <script>
+    document.addEventListener("htmx:confirm", function(e) {
+        if (!e.detail.question) return
+        e.preventDefault()
+
+        const modal = document.getElementById("modalContent");
+        modal.innerHTML = `
+            <div class="modal-header">
+                <h1 class="modal-title fs-5">Title</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Question
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Confirm</button>
+            </div>
+        `;
+        // document.getElementById("baseModal").classList.toggle("modal");
+        console.log("FINISH");
+        // const bsModal = new bootstrap.Modal(modal);
+        // bsModal.show();
+
+        // Swal.fire({
+        //   title: "Proceed?",
+        //   text: `I ask you... ${e.detail.question}`
+        // }).then(function(result) {
+        //   if (result.isConfirmed) {
+        //     // If the user confirms, we manually issue the request
+        //     e.detail.issueRequest(true); // true to skip the built-in window.confirm()
+        //   }
+        // })
+    })
+    </script>
+
+
+    <script>
         document.addEventListener("show.bs.collapse", e => {
             const icon = document.querySelector(
                 `[data-bs-target="#${e.target.id}"] .folder-check`

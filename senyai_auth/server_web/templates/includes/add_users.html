@@ -1,0 +1,19 @@
+{% extends "modal/modal_template.html" %}
+{% block title %}Add Users{% endblock title %}
+{% block form %}
+<form role="form" class="form-control" id="role-form" hx-post="{{ url_for('add_users_post', project_id=project_id) }}">
+<label class="mb-2">Users</label>
+{% for user in users %}
+{# {'id': 1, 'username': 'senyai', 'email': '', 'display_name': 'Administrator'} #}
+<div class="form-check">
+  <label class="form-check-label" title="{{ username }}" data-bs-html="true">
+    <input type="checkbox" class="form-check-input" name="user" value="{{ user.id }}" data-role-checkbox>
+    {{ user.display_name }}
+  </label>
+</div>
+{% endfor %}
+</form>
+{% endblock form %}
+{% block buttons %}
+<button type="submit" form="role-form" class="btn btn-primary">Add Users</button>
+{% endblock buttons %}

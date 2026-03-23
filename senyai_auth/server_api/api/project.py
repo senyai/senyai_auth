@@ -225,6 +225,7 @@ class AddUserInfo(BaseModel, strict=True, frozen=True):
 
 @router.get(
     "/project/{project_id}/add_users",
+    status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
     },
@@ -276,6 +277,7 @@ async def project_list_possible_users(
 
 @router.post(
     "/project/{project_id}/users",
+    status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
     },
@@ -285,11 +287,12 @@ async def project_add_users(
     user_ids: list[int],
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> int:
     """
     ## Add users to a project
 
     * Only managers and above can do this
+    * Returns number of users added
     """
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -297,15 +300,22 @@ async def project_add_users(
     )
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
-    await session.execute(
+    res = await session.execute(
         insert(Member).from_select(
             ("project_id", "user_id"),
             select(literal(project_id).label("project_id"), User.id).where(
-                User.id.in_(user_ids)
+                User.id.in_(user_ids),  # valid users
+                ~User.id.in_(
+                    select(Member.user_id).where(
+                        Member.project_id == project_id
+                    )
+                ),  # not already in project
             ),
+            # ToDo: check user is addable
         )
     )
     await session.commit()
+    return res.rowcount
 
 
 @router.delete(
