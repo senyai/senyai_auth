@@ -384,9 +384,9 @@ async def get_manage_user_roles_form():
     )
     if resp.status_code == 200:
         data = resp.json()
-        user = next(filter(lambda x: x["id"] == user_id, data["members"]))
-        context = {"user": user, "roles": data["roles"]}
         return await render_template(
-            "forms/manage_user_roles_form.html", context=context
+            "forms/manage_user_roles_form.html",
+            user_id=user_id,
+            roles=data["roles"],
         )
     return "", resp.status_code, HXTrigger.send_errors(resp)
