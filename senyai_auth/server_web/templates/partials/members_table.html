@@ -1,14 +1,18 @@
-<table class="table table-hover">
+<table class="table table-hover" data-bs-toggle="modal" data-bs-target="#baseModal" hx-target="#modalContent">
     <thead>
         <tr>
             <th class="col-2">Name</th>
             {% for role in context.roles %}
             <th class="text-center">{{ role.name }}</th>
             {% endfor %}
-            <th></th>
+            <th>
+                <button class="btn btn-table" id="xxx" hx-get="{{ url_for('add_users', project_id=context.project_id) }}">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </button>
+            </th>
         </tr>
     </thead>
-    <tbody>
+    <tbody hx-confirm="Delete user?">
         {% for member in context.members %}
         <tr>
             <td title="{{ member.username }}:{{ member.id }}">{{ member.display_name }}</td>
@@ -19,13 +23,11 @@
                 {% endif %}
             </td>
             {% endfor %}
-            <td>
-                <button class="btn btn-table pe-3"
-                    hx-get="{{ url_for('get_manage_user_roles_form', project_id=context.project_id, user_id=member.id) }}"
-                    hx-target="#modalContent" data-bs-toggle="modal" data-bs-target="#baseModal">
+            <td hx-vals='{"user_id": {{ member.id }}}'>
+                <button class="btn btn-table pe-3 edit-btn" hx-confirm="unset" hx-get="{{ url_for('get_manage_user_roles_form', project_id=context.project_id) }}">
                     <i class="bi bi-pen-fill"></i>
                 </button>
-                <button class="btn btn-table">
+                <button class="btn btn-table del-btn" hx-delete="{{ url_for('delete_users', project_id=context.project_id) }}">
                     <i class="bi bi-trash3"></i>
                 </button>
             </td>
