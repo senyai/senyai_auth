@@ -211,11 +211,11 @@ async def register_post(key: str):
     return ("", api_resp.status_code, HXTrigger.send_errors(api_resp))
 
 
-@app.get("/project/<project_id>")
+@app.get("/project/<int:project_id>")
 async def project(project_id: int):
     token = request.cookies.get("Authorization", "")
     resp = await app.client.get(
-        f"{API_HOST}/ui/project/{project_id}",
+        f"/ui/project/{project_id}",
         headers={"Authorization": token},
     )
     if resp.status_code == 200:
@@ -239,6 +239,63 @@ async def project(project_id: int):
         return await render_template(
             "includes/project_info.html", context=context
         )
+
+    return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.get("/project/<int:project_id>/users")
+async def add_users(project_id: int):
+    token = request.cookies.get("Authorization", "")
+    resp = await app.client.get(
+        f"/project/{project_id}/add_users",
+        headers={"Authorization": token},
+    )
+    if resp.status_code == 200:
+        users = resp.json()
+
+        return await render_template(
+            "includes/add_users.html", users=users, project_id=project_id
+        )
+
+    return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.post("/project/<int:project_id>/users")
+async def add_users_post(project_id: int):
+    token = request.cookies.get("Authorization", "")
+    user_ids = (await request.form).getlist("user")
+    resp = await app.client.post(
+        f"/project/{project_id}/users",
+        headers={"Authorization": token},
+        json=user_ids,
+    )
+    if resp.status_code == 200:
+        num_inserted: int = resp.json()
+        trigger = HXTrigger()
+        trigger.add_success_event(f"{num_inserted} Users added!")
+        trigger.add_update_project_info()
+        trigger.add_close_modal_event()
+        return ("", 201, trigger.build())
+
+    return "", resp.status_code, HXTrigger.send_errors(resp)
+
+
+@app.delete("/project/<int:project_id>/users")
+async def delete_users(project_id: int):
+    token = request.cookies.get("Authorization", "")
+    user_ids = request.args.getlist("user_id")
+    resp = await app.client.request(
+        "DELETE",
+        f"/project/{project_id}/users",
+        headers={"Authorization": token},
+        json=user_ids,
+    )
+    if resp.status_code == 200:
+        num_deled: int = resp.json()
+        trigger = HXTrigger()
+        trigger.add_success_event(f"{num_deled} Users deleted!")
+        trigger.add_update_project_info()
+        return ("", 200, trigger.build())
 
     return "", resp.status_code, HXTrigger.send_errors(resp)
 
@@ -307,9 +364,8 @@ async def role_new():
     return "", resp.status_code, HXTrigger.send_errors(resp)
 
 
-@app.post("/roles/<user_id>")
-async def manage_roles(user_id):
-    user_id = int(user_id)
+@app.post("/roles/<int:user_id>")
+async def manage_roles(user_id: int):
     form = await request.form
     roles = json.loads(form.get("roles", {}))
     added = roles.get("added")
