@@ -1,0 +1,20 @@
+[Unit]
+Description=Senyai Auth DAV Service
+After=network.target
+Wants=senyai-auth-api.service
+After=senyai-auth-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/auth/senyai_auth
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/auth/senyai_auth/.venv312/bin/hypercorn senyai_auth.server_dav:app --access-logfile - --bind 127.0.0.1:5001 --root-path /storage
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=senyai-auth.target

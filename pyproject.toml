@@ -39,3 +39,5 @@ line-length = 79
 target-version = ["py312"]
 [tool.setuptools.dynamic]
 version = {attr = "senyai_auth.__version__"}
+[tool.setuptools.packages.find]
+exclude = ["systemd"]
