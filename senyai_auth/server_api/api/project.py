@@ -225,6 +225,7 @@ class AddUserInfo(BaseModel, strict=True, frozen=True):
 
 @router.get(
     "/project/{project_id}/add_users",
+    status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
     },
@@ -268,6 +269,7 @@ async def project_list_possible_users(
             Member.project_id != project_id,
         )
         .distinct()
+        .order_by(User.display_name)
     )
     return [
         AddUserInfo.from_user(user) for user in await session.scalars(stmt)
