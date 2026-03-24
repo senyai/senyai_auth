@@ -268,10 +268,10 @@ legend {
     border-radius: var(--bs-border-radius);
 }
 
-.modal-header {
+/* .modal-header {
     background-color: var(--bs-secondary);
     color: var(--bs-secondary-color);
-}
+} */
 
 .btn-close {
     --bs-btn-close-color: var(--bs-secondary-color);
