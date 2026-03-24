@@ -312,6 +312,7 @@ async def project_add_users(
 
 @router.delete(
     "/project/{project_id}/users",
+    status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
         status.HTTP_404_NOT_FOUND: response_description("Project not found"),
@@ -322,12 +323,13 @@ async def project_remove_users(
     user_ids: list[int],
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-):
+) -> int:
     """
     ## Remove users from a project
 
     * Only managers and above can do this
     * Also removes users from Project's Roles
+    * Returns number of users deleted
     """
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -336,7 +338,7 @@ async def project_remove_users(
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     # remove project members
-    await session.execute(
+    delete_response = await session.execute(
         delete(Member).where(
             Member.project_id == project_id, Member.user_id.in_(user_ids)
         )
@@ -348,3 +350,4 @@ async def project_remove_users(
         .where(Role.project_id == project_id, MemberRole.user_id.in_(user_ids))
     )
     await session.commit()
+    return delete_response.rowcount
