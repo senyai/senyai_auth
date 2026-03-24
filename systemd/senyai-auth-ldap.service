@@ -1,0 +1,22 @@
+[Unit]
+Description=Senyai Auth LDAP Service
+After=network.target
+Wants=senyai-auth-api.service
+After=senyai-auth-api.service
+
+[Service]
+Type=simple
+User=auth
+Group=auth
+WorkingDirectory=/home/auth/senyai_auth
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/auth/senyai_auth/.venv312/bin/python -m senyai_auth.server_ldap --port 8636
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=senyai-auth.target

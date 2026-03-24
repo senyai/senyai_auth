@@ -1,0 +1,6 @@
+[Unit]
+Description=Senyai Auth Services Target
+Requires=senyai-auth-api.service senyai-auth-web.service senyai-auth-ldap.service senyai-auth-dav.service senyai-auth-forgejo.service
+AllowIsolate=yes
+[Install]
+WantedBy=multi-user.target

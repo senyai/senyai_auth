@@ -1,0 +1,20 @@
+[Unit]
+Description=Senyai Auth API Service
+After=network.target
+
+[Service]
+Type=simple
+User=auth
+Group=auth
+WorkingDirectory=/home/auth/senyai_auth
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/auth/senyai_auth/.venv312/bin/hypercorn senyai_auth.server_api:app --bind 127.0.0.1:8000
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=senyai-auth.target
