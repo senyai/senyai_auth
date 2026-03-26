@@ -2,16 +2,15 @@ from __future__ import annotations
 from typing import Annotated
 import os
 import base64
+from dataclasses import replace
 from pydantic import (
-    AfterValidator,
     BaseModel,
     StringConstraints,
     Field,
 )
-from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from ..db import User, Invitation
 from .auth import get_current_user
@@ -22,6 +21,7 @@ from .exceptions import (
 )
 from .. import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
+from .user import Username
 
 router = APIRouter(tags=["invite"])
 
@@ -49,14 +49,8 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
     ]
     default_username: Annotated[
         str,
-        StringConstraints(
-            min_length=0,
-            max_length=32,
-            to_lower=True,
-            strip_whitespace=True,
-            pattern=r"^[a-z_-]*$",
-        ),
-        AfterValidator(not_in_blocklist),
+        replace(Username[0], min_length=0),
+        *Username[1:],
         Field(
             description="User will have username field filled for convenience."
         ),
