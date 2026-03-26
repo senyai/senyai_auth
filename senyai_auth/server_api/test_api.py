@@ -247,6 +247,41 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             role_db = await session.get(Role, 2)
         self.assertEqual(role_db.description, role["description"])
 
+    async def test_06_create_admin_for_project_easy_password(self):
+        assert isinstance(authorization_str, str), authorization_str
+        user = {
+            "username": "john",
+            "password": "12345678",
+            "password_repeat": "12345678",
+            "display_name": "John Blackpool",
+            "email": "johnnyB@example.com",
+            "contacts": "HQ",
+        }
+        response = client.post(
+            "/user",
+            headers={"Authorization": authorization_str},
+            json=user,
+        )
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "ctx": {"error": {}},
+                        "input": "12345678",
+                        "loc": ["body", "password"],
+                        "msg": "Value error, Password is too weak This is a top-10 common "
+                        "password., Add another word or two. Uncommon words are "
+                        "better.",
+                        "type": "value_error",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(
+            response.status_code, status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+
     async def test_06_create_admin_for_project(self):
         assert isinstance(authorization_str, str), authorization_str
         user = {

@@ -110,6 +110,8 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
     @field_validator("password_repeat", mode="after")
     @staticmethod
     def check_passwords_match(value: SecretStr, info: ValidationInfo):
+        if "password" not in info.data:  # password is too weak, ignore repeat
+            return value
         if (
             value.get_secret_value()
             != info.data["password"].get_secret_value()
