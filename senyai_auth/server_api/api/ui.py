@@ -14,6 +14,7 @@ from ..db import (
     Project,
     Role,
     select_roles_stmt,
+    select_user_roles_stmt,
     User,
 )
 from .auth import get_current_user
@@ -181,5 +182,38 @@ async def project_roles(
         RoleInfo.from_role(role)
         for role in await session.scalars(
             select_roles_stmt, {"project_id": project_id}
+        )
+    ]
+
+
+@router.get(
+    "/project/{project_id}/roles/{user_id:int}",
+    responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
+)
+async def project_roles(
+    project_id: int,
+    user_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> list[tuple[RoleInfo, bool]]:
+    """
+    ## List roles of a user in a project
+
+    * Only manages can do it
+    """
+
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    assert permission is not None
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
+    return [
+        (RoleInfo.from_role(role), checked)
+        for role, checked in await session.execute(
+            select_user_roles_stmt,
+            {"project_id": project_id, "user_id": user_id},
         )
     ]

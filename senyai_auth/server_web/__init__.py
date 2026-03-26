@@ -435,14 +435,14 @@ async def get_manage_user_roles_form():
     user_id = request.args.get("user_id", type=int)
     project_id = request.args.get("project_id", type=int)
     resp = await app.client.get(
-        f"ui/project/{project_id}",
+        f"ui/project/{project_id}/roles/{user_id}",
         headers={"Authorization": request.cookies.get("Authorization", "")},
     )
     if resp.status_code == 200:
-        data = resp.json()
+        roles = resp.json()
         return await render_template(
             "forms/manage_user_roles_form.html",
             user_id=user_id,
-            roles=data["roles"],
+            roles=roles,
         )
     return resp.content, resp.status_code, resp.headers

@@ -129,6 +129,11 @@ async def role(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> RoleInfo:
+    """
+    ## Get role
+
+    * Only managers can do it
+    """
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -172,6 +177,11 @@ async def update_role(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
+    """
+    ## Update role
+
+    * Only managers can do it
+    """
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -200,6 +210,11 @@ async def delete_role(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
+    """
+    ## Delete role
+
+    * Only managers can do it
+    """
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise HTTPException(

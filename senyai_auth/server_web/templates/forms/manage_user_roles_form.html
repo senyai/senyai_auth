@@ -2,18 +2,24 @@
 {% block title %}
 Manage roles
 {% endblock title %}
-
+{% from 'macros/roles.html' import role_tooltip %}
 {% block form %}
 <form class="form-control" id="manage-form" data-role-editor-root hx-post="{{ url_for('manage_roles', user_id=user_id) }}" data-roles-request>
-    {% for role in roles %}
+    {% for role, checked in roles %}
     <div class="form-check">
-        <label class="form-check-label">
+        <label class="form-check-label" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="{{ role_tooltip(role) }}">
             <input type="checkbox" class="form-check-input" name="{{ role.id }}" data-role-checkbox
-                data-role-id="{{ role.id }}" {% if user_id in role.users %}checked{% endif %}>{{ role.name }}
+                data-role-id="{{ role.id }}" {% if checked %}checked{% endif %}>{{ role.name }}
         </label>
     </div>
     {% endfor %}
 </form>
+<script>
+(function(){
+    const tooltipTriggerList = document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+})();
+</script>
 {% endblock form %}
 {% block buttons %}
 <button type="submit" form="manage-form" class="btn btn-primary" data-role-submit disabled>Save</button>

@@ -2,7 +2,7 @@
 {% block title %}
 Create Invite to {{ project_name }} (Project ID: {{ project_id }})
 {% endblock title %}
-
+{% from 'macros/roles.html' import role_tooltip %}
 {% block form %}
 <form role="form" class="form-control" hx-post="{{ url_for('invite_new') }}" hx-target="#modalContent" id="role-form">
     <div class="form-floating mb-3">
@@ -25,11 +25,7 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
         <label class="mb-2">Auto add roles</label>
         {% for role in roles %}
         <div class="form-check">
-            <label class="form-check-label" tooltip="{{ role.display_name }}" data-bs-toggle="tooltip" data-bs-html="true"
-                   data-bs-title="<b>{{ role.description|forceescape|forceescape }}</b><hr><div class=text-start>
-                   <b>api:</b> {{ role.permissions_api|forceescape|forceescape }}<br>
-                   <b>git:</b> {{ role.permissions_git|forceescape|forceescape }}<br>
-                   <b>storage:</b> {{ role.permissions_storage|forceescape|forceescape }}</div>">
+            <label class="form-check-label" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="{{ role_tooltip(role) }}">
                 <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox>
                 {{ role.name }}
             </label>
