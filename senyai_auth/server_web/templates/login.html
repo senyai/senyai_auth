@@ -1,10 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
-
+<style>
+    #login_btn.htmx-request>#sign-in-text {
+        display: none;
+    }
+    .spinner-border {
+        display: none;
+        margin: 0.3em auto;
+    }
+    #login_btn.htmx-request>.spinner-border {
+        display: inherit;
+    }
+</style>
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-4 ">
-            <form role="form" class="form-control login-form" hx-post="{{ url_for('login') }}">
+            <form role="form" class="form-control login-form" hx-post="{{ url_for('login') }}" hx-indicator="#login_btn" hx-on::before-request="login_btn.disabled = true;" hx-on::after-request="login_btn.disabled = false">
                 <legend>{{ _("Auth") }}</legend>
                 <div class="form-floating mb-3">
                     <input type="text" class="form-control" name="username" placeholder="Login" required autofocus>
@@ -15,7 +26,10 @@
                     <label for="password">{{ _("Password") }}</label>
                 </div>
                 <div class="d-grid pt-3">
-                    <button type="submit" class="btn btn-primary">{{ _("Sign in") }}</button>
+                    <button type="submit" id="login_btn" class="btn btn-primary">
+                        <span id="sign-in-text">{{ _("Sign in") }}</span>
+                        <div id="spinner" class="htmx-indicator spinner-border text-info" role="status"></div>
+                    </button>
                 </div>
             </form>
         </div>
