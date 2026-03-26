@@ -1,0 +1,8 @@
+{% macro role_tooltip(role) -%}
+<b>{{ role.description|forceescape|forceescape }}</b><hr>
+<div class=text-start>
+    <b>api:</b> {{ role.permissions_api|forceescape|forceescape }}<br>
+    <b>git:</b> {{ role.permissions_git|forceescape|forceescape }}<br>
+    <b>storage:</b> {{ role.permissions_storage|forceescape|forceescape }}
+</div>
+{%- endmacro %}

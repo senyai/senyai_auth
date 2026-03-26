@@ -5,8 +5,8 @@ import base64
 from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
-    Mapped,
     mapped_column,
+    Mapped,
     relationship,
 )
 from datetime import datetime
@@ -15,6 +15,7 @@ from sqlalchemy import (
     bindparam,
     CheckConstraint,
     Dialect,
+    exists,
     Integer,
     JSON,
     select,
@@ -478,6 +479,9 @@ def _create_get_all_users_for_domain(field: InstrumentedAttribute[str]):
     )
 
 
+bind_project_id = bindparam("project_id", type_=Integer)
+bind_user_id = bindparam("user_id", type_=Integer)
+
 auth_for_project_stmt = _create_auth_for_project_stmt()
 permissions_api_stmt = _create_permissions_api_stmt()
 
@@ -500,12 +504,23 @@ select_userid_by_username_stmt = select(User.id).where(
     User.username == bindparam("username", type_=String)
 )
 select_roles_stmt = (
-    select(Role)
-    .where(Role.project_id == bindparam("project_id", type_=Integer))
+    select(Role).where(Role.project_id == bind_project_id).order_by(Role.name)
+)
+select_user_roles_stmt = (
+    select(
+        Role,
+        exists()
+        .where(
+            MemberRole.role_id == Role.id, MemberRole.user_id == bind_user_id
+        )
+        .label("is_member"),
+    )
+    .where(Role.project_id == bind_project_id)
     .order_by(Role.name)
 )
+
 update_last_login_at_stmt = (
     update(User)
-    .where(User.id == bindparam("user_id", type_=Integer))
+    .where(User.id == bind_user_id)
     .values(last_login_at=func.now())
 )
