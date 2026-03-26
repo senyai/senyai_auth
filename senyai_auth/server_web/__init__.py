@@ -118,7 +118,7 @@ async def login():
         )
         resp.headers["HX-Redirect"] = url_for("index")
         return resp
-    return ("", api_resp.status_code, HXTrigger.send_errors(api_resp))
+    return api_resp.content, api_resp.status_code, api_resp.headers
 
 
 @app.route("/logout")
@@ -143,7 +143,7 @@ async def invites_table():
             project_id=project_id,
             project_name=project_name,
         )
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/invite")
@@ -161,7 +161,7 @@ async def invite():
             project_name=project_name,
             roles=roles_resp.json(),
         )
-    return "", roles_resp.status_code, HXTrigger.send_errors(roles_resp)
+    return roles_resp.content, roles_resp.status_code, roles_resp.headers
 
 
 @app.post("/invite")
@@ -186,7 +186,7 @@ async def invite_new():
             201,
             trigger.build(),
         )
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/register/<key>")
@@ -208,7 +208,7 @@ async def register_post(key: str):
         resp = await make_response("", 201)
         resp.headers["HX-Redirect"] = url_for("index")
         return resp
-    return ("", api_resp.status_code, HXTrigger.send_errors(api_resp))
+    return api_resp.content, api_resp.status_code, api_resp.headers
 
 
 @app.get("/project/<int:project_id>")
@@ -240,7 +240,7 @@ async def project(project_id: int):
             "includes/project_info.html", context=context
         )
 
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/project/<int:project_id>/users")
@@ -257,7 +257,7 @@ async def add_users(project_id: int):
             "includes/add_users.html", users=users, project_id=project_id
         )
 
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.post("/project/<int:project_id>/users")
@@ -277,7 +277,7 @@ async def add_users_post(project_id: int):
         trigger.add_close_modal_event()
         return ("", 201, trigger.build())
 
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.delete("/project/<int:project_id>/users")
@@ -297,7 +297,7 @@ async def delete_users(project_id: int):
         trigger.add_update_project_info()
         return ("", 200, trigger.build())
 
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.post("/project")
@@ -314,7 +314,7 @@ async def create_project():
         trigger.add_success_event("Project created!")
         trigger.add_close_modal_event()
         return ("", 201, trigger.build())
-    return ("", resp.status_code, HXTrigger.send_errors(resp))
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.patch("/project/<project_id>")
@@ -331,7 +331,7 @@ async def update_project(project_id: str):
         trigger.add_success_event("Project updated!")
         trigger.add_close_modal_event()
         return "", resp.status_code, trigger.build()
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/role")
@@ -361,7 +361,7 @@ async def role_new():
         trigger.add_update_project_info()
         trigger.add_close_modal_event()
         return ("", 201, trigger.build())
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.post("/roles/<int:user_id>")
@@ -427,7 +427,7 @@ async def get_edit_project_form(project_id: str):
         return await render_template(
             "forms/upsert_project_form.html", context=context, edit_mode=True
         )
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/forms/manage_user_roles")
@@ -445,4 +445,4 @@ async def get_manage_user_roles_form():
             user_id=user_id,
             roles=data["roles"],
         )
-    return "", resp.status_code, HXTrigger.send_errors(resp)
+    return resp.content, resp.status_code, resp.headers

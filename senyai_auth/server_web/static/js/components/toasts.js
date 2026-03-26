@@ -14,6 +14,34 @@ export function initToasts() {
         });
     });
 
+    document.addEventListener('htmx:responseError', evt => {
+        const xhr = evt.detail.xhr;
+
+        if (xhr.status == 422 || xhr.status == 409) {
+            const form = evt.detail.elt;
+            const errors = JSON.parse(xhr.responseText);
+
+            for (const error of errors['detail']) {
+                const name = error.loc[1];
+                const field = form.querySelector(`[name="${name}"]`);
+
+                field.setCustomValidity(error.msg);
+                field.onfocus = () => field.reportValidity();
+                field.onchange = () => field.setCustomValidity('');
+                field.reportValidity();
+            }
+        } else {
+            let danger;
+            try {
+                danger = JSON.parse(xhr.responseText).detail;
+            } catch {
+                danger = `Error ${xhr.status}`;
+            }
+            showToast("danger", danger);
+        }
+    });
+
+
     const container = document.getElementById("toast-container");
     container.addEventListener("focusin", (e) => e.stopPropagation());
 }

@@ -61,16 +61,10 @@ class HXTrigger:
     def _build(cls, events: dict[str, dict[str, list[str]]]):
         return {"HX-Trigger": json.dumps(events)}
 
-    @classmethod
-    def send_errors(cls, response: Response):
-        errors = parse_errors(response.json())
-        events = {"errorEvent": {"errors": errors}}
-        return cls._build(events)
 
-
-def parse_errors(msg: dict):
+def parse_errors(msg: dict[str, str | list[str]]):
     detail = msg.get("detail")
-    result = []
+    result: list[str] = []
     if isinstance(detail, list):
         for d in detail:
             result.append(str(d))
