@@ -252,6 +252,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         user = {
             "username": "john",
             "password": "jiBBerish",
+            "password_repeat": "jiBBerish",
             "display_name": "John Blackpool",
             "email": "johnnyB@example.com",
             "contacts": "HQ",
@@ -314,6 +315,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         user = {
             "username": "john",
             "password": "milkshape3000",
+            "password_repeat": "milkshape3000",
             "display_name": "Invited User",
             "email": "ted@example.com",
             "contacts": "home address",
@@ -337,6 +339,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         user = {
             "username": "invited_user",
             "password": "milkshape3000",
+            "password_repeat": "milkshape3000",
             "display_name": "Invited User",
             "email": "ted@example.com",
             "contacts": "home address",

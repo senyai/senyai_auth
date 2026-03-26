@@ -96,6 +96,9 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
     email: EmailStr
     display_name: Annotated[str, *DisplayName]
     password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
+    password_repeat: SecretStr = Field(
+        exclude=True, min_length=8, max_length=64
+    )
     contacts: Annotated[str, *Contacts]
 
     @field_validator("password", mode="after")
@@ -103,6 +106,16 @@ class CreateUserModel(BaseModel, strict=True, frozen=True):
     def check_strong_password(password: SecretStr, info: ValidationInfo):
         check_password(password.get_secret_value(), **info.data)
         return password
+
+    @field_validator("password_repeat", mode="after")
+    @staticmethod
+    def check_passwords_match(value: SecretStr, info: ValidationInfo):
+        if (
+            value.get_secret_value()
+            != info.data["password"].get_secret_value()
+        ):
+            raise ValueError(f"Passwords do not match")
+        return value
 
     def make_user(self) -> User:
         salt = User.make_salt()
