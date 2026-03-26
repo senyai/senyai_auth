@@ -33,9 +33,7 @@ def not_in_blocklist(name: str) -> str:
     )
     count_digits = sum(ch.isdigit() for ch in name)
     if (len(name) - count_digits) < count_digits:
-        raise ValueError(
-            "more than half of username characters can't be digits"
-        )
+        raise ValueError("more than half of characters can't be digits")
     if name in bad_names or name.startswith("admin") or name.endswith("admin"):
         if name != "adminov":
             raise ValueError("is blocked because it is suspicious")
