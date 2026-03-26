@@ -26,6 +26,8 @@ from ..db import (
 from .. import get_async_session
 from .auth import get_current_user
 from .exceptions import (
+    conflict_description,
+    conflict_exception,
     not_authorized_exception,
     response_description,
     response_with_perm_check,
@@ -96,8 +98,8 @@ class NewProjectInfo(BaseModel, strict=True):
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
-        status.HTTP_409_CONFLICT: response_description(
-            "Project already exists"
+        status.HTTP_409_CONFLICT: conflict_description(
+            "Project 'acme' already exists", "name"
         ),
     },
 )
@@ -117,9 +119,8 @@ async def new_project(
     try:
         await session.commit()
     except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Project '{project.name}' already exists",
+        raise conflict_exception(
+            f"Project '{project.name}' already exists", "name"
         )
     return NewProjectInfo(project_id=project_db.id)
 

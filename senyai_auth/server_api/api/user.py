@@ -3,11 +3,11 @@ from typing import Annotated
 from pydantic import (
     AfterValidator,
     BaseModel,
-    StringConstraints,
+    EmailStr,
     Field,
     model_validator,
     SecretStr,
-    EmailStr,
+    StringConstraints,
 )
 from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
@@ -19,18 +19,20 @@ from zxcvbn import zxcvbn
 from ..db import (
     Invitation,
     Member,
+    MemberRole,
     permissions_api_stmt,
     PermissionsAPI,
-    MemberRole,
     Role,
     User,
 )
 from .auth import get_current_user
 from .. import get_async_session
 from .exceptions import (
+    conflict_description,
+    conflict_exception,
     not_authorized_exception,
-    response_with_perm_check,
     response_description,
+    response_with_perm_check,
 )
 
 router = APIRouter(tags=["user"])
@@ -129,7 +131,9 @@ class NewUserResponse(BaseModel, strict=True):
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
-        status.HTTP_409_CONFLICT: response_description("User already exists"),
+        status.HTTP_409_CONFLICT: conflict_description(
+            "User already exists", "name"
+        ),
     },
 )
 async def create_user(
@@ -154,9 +158,8 @@ async def create_user(
     try:
         await session.commit()
     except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"User {user.username} already exists",
+        raise conflict_exception(
+            f"User {user.username} already exists", "username"
         )
     return NewUserResponse(user_id=user_db.id)
 
@@ -310,7 +313,9 @@ async def delete_user(
         status.HTTP_404_NOT_FOUND: response_description(
             "Invitation not found or already accepted"
         ),
-        status.HTTP_409_CONFLICT: response_description("User already exists"),
+        status.HTTP_409_CONFLICT: conflict_description(
+            "User daivanov already exists", "username"
+        ),
     },
 )
 async def create_user_by_invitation(
@@ -341,7 +346,12 @@ async def create_user_by_invitation(
     session.add(Member(project_id=invitation.project_id, user=user_db))
     session.add(invitation)
     session.add(user_db)
-    await session.flush((user_db,))
+    try:
+        await session.flush((user_db,))
+    except IntegrityError:
+        raise conflict_exception(
+            f"User '{user.username}' already exists", "username"
+        )
     await session.execute(
         insert(MemberRole).from_select(
             ("user_id", "role_id"),
@@ -353,12 +363,5 @@ async def create_user_by_invitation(
             ),
         )
     )
-
-    try:
-        await session.commit()
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"User {user.username} already exists",
-        )
+    await session.commit()
     return NewUserResponse(user_id=user_db.id)

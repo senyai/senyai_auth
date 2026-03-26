@@ -22,6 +22,39 @@ def response_description(description: str):
     }
 
 
+def conflict_description(description: str, field: str):
+    return {
+        "description": description,
+        "content": {
+            "application/json": {
+                "schema": {"$ref": "#/components/schemas/ValidationError"},
+                "example": {
+                    "detail": (
+                        {
+                            "loc": ("body", field),
+                            "msg": description,
+                            "type": "Conflict",
+                        },
+                    )
+                },
+            }
+        },
+    }
+
+
+def conflict_exception(description: str, field: str):
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=(
+            {
+                "loc": ("body", field),
+                "msg": description,
+                "type": "Conflict",
+            },
+        ),
+    )
+
+
 response_for_get_current_user = {
     "model": ErrorResponse,
     "description": "Unauthorized — token invalid or user unavailable",
