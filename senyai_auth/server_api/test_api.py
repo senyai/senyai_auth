@@ -160,7 +160,16 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(
-            response.json(), {"detail": "Project 'gmc' already exists"}
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "loc": ["body", "name"],
+                        "msg": "Project 'gmc' already exists",
+                        "type": "Conflict",
+                    }
+                ]
+            },
         )
 
     async def test_03_edit_project(self):
@@ -194,6 +203,33 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json(), {"role_id": 2})
+
+    async def test_04_add_role_with_the_same_name(self):
+        assert isinstance(authorization_str, str), authorization_str
+        role = {
+            "name": "test_role",
+            "project_id": 2,
+            "permissions_api": "user",
+            "permissions_git": "admin",
+        }
+        response = client.post(
+            "/role",
+            headers={"Authorization": authorization_str},
+            json=role,
+        )
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "loc": ["body", "name"],
+                        "msg": "Role 'test_role' already exists",
+                        "type": "Conflict",
+                    }
+                ]
+            },
+        )
 
     async def test_05_update_role(self):
         assert isinstance(authorization_str, str), authorization_str
@@ -274,7 +310,30 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             },
         )
 
-    async def test_10_user_accepts_invitation(self):
+    async def test_10_user_accepts_invitation_and_uses_existing_name(self):
+        user = {
+            "username": "john",
+            "password": "milkshape3000",
+            "display_name": "Invited User",
+            "email": "ted@example.com",
+            "contacts": "home address",
+        }
+        response = client.post(f"/register/{invitation_str}", json=user)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "loc": ["body", "username"],
+                        "msg": "User 'john' already exists",
+                        "type": "Conflict",
+                    }
+                ]
+            },
+        )
+
+    async def test_10_user_accepts_invitation_success(self):
         user = {
             "username": "invited_user",
             "password": "milkshape3000",

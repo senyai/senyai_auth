@@ -19,6 +19,8 @@ from .project import Description
 from .exceptions import (
     not_authorized_exception,
     response_description,
+    conflict_description,
+    conflict_exception,
     response_with_perm_check,
 )
 
@@ -65,8 +67,8 @@ class RoleModel(BaseModel, strict=True):
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
-        status.HTTP_409_CONFLICT: response_description(
-            "Role with that name already exists"
+        status.HTTP_409_CONFLICT: conflict_description(
+            "Role 'Administrator' already exists", "name"
         ),
     },
 )
@@ -89,10 +91,7 @@ async def new_role(
     try:
         await session.commit()
     except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Role with that name already exists",
-        )
+        raise conflict_exception(f"Role '{role.name}' already exists", "name")
     return RoleModel(role_id=role_db.id)
 
 
