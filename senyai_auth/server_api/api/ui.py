@@ -77,8 +77,10 @@ async def project(
         .join(Member)
         .where(Member.project_id == project_id)
     )
-    roles_stmt = select(Role.id, Role.name, Role.description).where(
-        Role.project_id == project_id
+    roles_stmt = (
+        select(Role.id, Role.name, Role.description)
+        .where(Role.project_id == project_id)
+        .order_by(Role.name)
     )
     role_users_stmt = (
         select(Role.id, MemberRole.user_id)
