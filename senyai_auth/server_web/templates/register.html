@@ -28,6 +28,11 @@
                 <small id="passwordHelp" class="form-text text-muted">{{ _("Password will be safely stored as a hash produced by modern algorithm") }}</small>
             </div>
             <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password_repeat" name="password_repeat" aria-describedby="passwordRepeatHelp" value="" required>
+                <label for="password">{{ _("Confirm Password") }}:</label>
+                <small id="passwordRepeatHelp" class="form-text text-muted">{{ _("Please re-enter your password to confirm") }}</small>
+            </div>
+            <div class="form-floating mb-3">
                 <textarea rows="3" style="height:initial" class="form-control" id="contacts" name="contacts" aria-describedby="contactsHelp">{{ form['contacts'] if 'contacts' in form }}</textarea>
                 <label for="contacts">{{ _("Contacts") }}:</label>
                 <small id="contactsHelp" class="form-text text-muted">{{ _("Contacts will be visible to all users. Can be empty.") }}</small>
