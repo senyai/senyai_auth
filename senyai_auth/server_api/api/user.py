@@ -4,10 +4,11 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     EmailStr,
+    field_validator,
     Field,
-    model_validator,
     SecretStr,
     StringConstraints,
+    ValidationInfo,
 )
 from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
@@ -92,20 +93,16 @@ DisplayName = (
 
 class CreateUserModel(BaseModel, strict=True, frozen=True):
     username: Annotated[str, *Username]
-    password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
     email: EmailStr
-    contacts: Annotated[str, *Contacts]
     display_name: Annotated[str, *DisplayName]
+    password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
+    contacts: Annotated[str, *Contacts]
 
-    @model_validator(mode="after")
-    def check_strong_password(self):
-        check_password(
-            self.password.get_secret_value(),
-            self.username,
-            self.email,
-            self.display_name,
-        )
-        return self
+    @field_validator("password", mode="after")
+    @staticmethod
+    def check_strong_password(password: SecretStr, info: ValidationInfo):
+        check_password(password.get_secret_value(), **info.data)
+        return password
 
     def make_user(self) -> User:
         salt = User.make_salt()
