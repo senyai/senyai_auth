@@ -63,7 +63,7 @@ Username = (
         max_length=32,
         to_lower=True,
         strip_whitespace=True,
-        pattern=r"^[a-z0-9_-]+$",
+        pattern=r"^[a-z0-9_-]*$",
     ),
     AfterValidator(not_in_blocklist),
     Field(examples=["senyai"]),

@@ -333,6 +333,32 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         global invitation_str
         invitation_str = json["url_key"]
 
+    async def test_08_admin_can_create_invitation_with_empty_fields(self):
+        assert isinstance(authorization_str, str), authorization_str
+        invitation = {
+            "project_id": 2,
+            "prompt": "",
+            "default_username": "",
+            "default_email": "",
+            "default_display_name": "",
+            "roles": [],
+        }
+        response = client.post(
+            "/invite",
+            headers={"Authorization": authorization_str},
+            json=invitation,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        json = response.json()
+        self.assertIn("url_key", json)
+        self.assertEqual(len(json["url_key"]), 32)
+
+        del_rest = client.delete(
+            f"/invite/{json['url_key']}",
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(del_rest.status_code, 204)
+
     async def test_09_user_gets_invitation(self):
         response = client.get(f"/invite/{invitation_str}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
