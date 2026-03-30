@@ -4,7 +4,7 @@
 <form role="form" class="form-control" id="role-form" hx-post="{{ url_for('add_users_post', project_id=project_id) }}">
 <label class="mb-2">Users</label>
 {% if not users %}
-  <span>No users to add</span>
+  <div>No users to add. Either all users are already added, or you don't have permissions to list more users.</div>
 {% endif %}
 {% for user in users %}
 <div class="form-check">

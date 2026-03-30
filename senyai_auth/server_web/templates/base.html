@@ -41,6 +41,7 @@
         `;
         const issueRequest = e.detail.issueRequest;
         modal.querySelector(".btn-danger").addEventListener("click", e => issueRequest(true));
+        getModal().show();
     })
         document.addEventListener("show.bs.collapse", e => {
             const icon = document.querySelector(

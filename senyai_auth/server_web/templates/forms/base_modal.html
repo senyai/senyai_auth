@@ -7,6 +7,9 @@
 </div>
 <script>
     const modalEl = document.getElementById("baseModal");
+    function getModal() {
+        return bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    }
     document.body.addEventListener("closeModal", () => {
         bootstrap.Modal.getInstance(modalEl)?.hide();
     });
