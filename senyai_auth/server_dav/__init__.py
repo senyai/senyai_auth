@@ -335,8 +335,14 @@ class SenyaiDAV:
     def paths_for(
         self, path: Path, dav_path: DAVPath, permissions: Permissions
     ) -> list[Path] | None:
+        """
+        :returns: None, when access is denied
+        """
         if permissions.has_read_access(dav_path):
-            items = list(path.iterdir())
+            try:
+                items = list(path.iterdir())
+            except PermissionError:
+                return  # disk permissions screwed up
         else:
             children = permissions.list_children(dav_path)
             if children is None:
