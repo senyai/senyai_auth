@@ -35,7 +35,7 @@ class DavSettings(NamedTuple):
     drop_privileges_user: str | None = None
 
 
-# path with slash at the beginning and at the end
+# path without slash at the beginning and at the end
 DAVPath = NewType("DAVPath", str)
 # non empty authorization string that goes directly into api backend
 Authorization = NewType("Authorization", str)
