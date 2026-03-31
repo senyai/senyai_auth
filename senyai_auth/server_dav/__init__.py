@@ -75,7 +75,9 @@ class Permissions:
         self._root = root = Node()
         for path_rw in paths:
             node = root
-            path, _, rights = path_rw.rpartition(":")
+            path, sep, rights = path_rw.rpartition(":")
+            if not sep:
+                path, rights = rights, "r"
             path = path.strip("/")
             if path:  # without this check root can't become leaf
                 for item in path.split("/"):
