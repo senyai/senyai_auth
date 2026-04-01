@@ -7,7 +7,7 @@ Create Role
 {% endif %}
 {% endblock title %}
 {% block form %}
-<form role="form" class="form-control" id="role-form" hx-post="{{ url_for('role_new') }}">
+<form role="form" class="form-control" id="role-form" {% if form %}hx-patch="{{ url_for('role_update', role_id=role_id) }}"{% else %}hx-post="{{ url_for('role_new') }}"{% endif %}>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="name" name="name" value="{{ form['name'] if form }}" required>
         <label for="name">Role name:</label>
@@ -20,7 +20,7 @@ Create Role
     <div class="form-floating mb-3">
         <select class="form-select" id="permissions_api" name="permissions_api">
             {% for option in api_options %}
-            <option value="{{ option['name'] }}">{{ option['name'] }}</option>
+            <option value="{{ option['name'] }}" {% if form.permissions_api == option.name %}selected{% endif %}>{{ option['name'] }}</option>
             {% endfor %}
         </select>
         <label for="permissions_api">API permissions:</label>
@@ -41,9 +41,15 @@ Create Role
         <label for="address">Extra permissions:</label>
     </div>
 
+    {% if not form %}
     <input type="hidden" name="project_id" value="{{ project_id }}">
+    {% endif %}
 </form>
 {% endblock form %}
 {% block buttons %}
-<button type="submit" form="role-form" class="btn btn-primary">Save Role</button>
+{% if form %}
+<button type="submit" form="role-form" class="btn btn-warning">Update Role</button>
+{% else %}
+<button type="submit" form="role-form" class="btn btn-success">Create Role</button>
+{% endif %}
 {% endblock buttons %}
