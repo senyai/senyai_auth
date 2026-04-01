@@ -227,7 +227,7 @@ async def delete_role(
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     await session.delete(role_db)
-    await session.flush()
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
