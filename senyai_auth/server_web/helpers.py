@@ -54,6 +54,9 @@ class HXTrigger:
     def add_close_modal_event(self):
         self.events["closeModal"] = {}
 
+    def add_update_invites_tab(self):
+        self.events["updateInvitesTab"] = {}
+
     def build(self):
         return self._build(self.events)
 
