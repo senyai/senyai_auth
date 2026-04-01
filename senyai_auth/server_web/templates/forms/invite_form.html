@@ -15,10 +15,10 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
     </div>
     <div class="form-floating mb-3">
         <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form['default_email'] if form }}">
-        <label for="default_email">email:</label>
+        <label for="default_email">Email:</label>
     </div>
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}">
+        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}" required>
         <label for="default_display_name">Display name:</label>
     </div>
     <div class="mb-3">

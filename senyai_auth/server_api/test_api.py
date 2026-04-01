@@ -340,7 +340,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "prompt": "",
             "default_username": "",
             "default_email": "",
-            "default_display_name": "",
+            "default_display_name": "ABC",
             "roles": [],
         }
         response = client.post(

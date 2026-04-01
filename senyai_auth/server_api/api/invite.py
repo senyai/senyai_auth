@@ -21,7 +21,7 @@ from .exceptions import (
 )
 from .. import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
-from .user import Username
+from .user import Username, DisplayName
 
 router = APIRouter(tags=["invite"])
 
@@ -68,12 +68,7 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
 
     default_display_name: Annotated[
         str,
-        StringConstraints(
-            min_length=0,
-            max_length=79,
-            strip_whitespace=True,
-            pattern=r"^[\w ]*$",
-        ),
+        DisplayName[0],
         Field(
             description="User will have display_name field filled "
             "for convenience and to allow to see the name of the person "
