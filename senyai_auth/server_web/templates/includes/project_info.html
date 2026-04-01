@@ -38,7 +38,7 @@
         {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
             hx-get="{{ url_for('invites_table', project_id=context.project_id, project_name=context.display_name ) }}"
-            hx-trigger="load delay:500ms" hx-target="#invites-tab-pane">
+            hx-trigger="load delay:500ms, updateInvitesTab from:body" hx-target="#invites-tab-pane">
         </div>
         <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
             {% include "partials/project_management.html" %}

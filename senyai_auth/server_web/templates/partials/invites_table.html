@@ -14,19 +14,19 @@
     <tbody>
         {% for invite in invites %}
         <tr>
-            <th>{{ invite['display_name'] }}</th>
-            <th class="text-center">
+            <td>{{ invite['display_name'] }}</td>
+            <td class="text-center">
                 {% if invite['accepted_id'] %}
                 <i class="bi bi-envelope-check fs-2 text-success"></i>
                 {% else %}
-                <a href="register/{{ invite['url_key'] }}"><i class="bi bi-envelope fs-2"></i></a>
+                <a href="register/{{ invite.url_key }}"><i class="bi bi-envelope fs-2"></i></a>
                 {% endif %}
-            </th>
-            <th>
-                <button class="btn btn-table">
+            </td>
+            <td>{% if not invite['accepted_id'] %}
+                <button class="btn btn-table" hx-confirm="Delete invitation for {{ invite.display_name }}?" hx-delete="invite/{{ invite.url_key }}">
                     <i class="bi bi-trash3"></i>
                 </button>
-            </th>
+            {% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

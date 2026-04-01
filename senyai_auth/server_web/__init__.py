@@ -189,6 +189,20 @@ async def invite_new():
     return resp.content, resp.status_code, resp.headers
 
 
+@app.delete("/invite/<key>")
+async def delete_invitation(key: str):
+    resp = await app.client.delete(
+        f"/invite/{key}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_update_invites_tab()
+        trigger.add_success_event("Invitation deleted!")
+        return "", resp.status_code, trigger.build()
+    return resp.content, resp.status_code, resp.headers
+
+
 @app.get("/register/<key>")
 async def register(key: str):
     form_res = await app.client.get(f"/invite/{key}")
