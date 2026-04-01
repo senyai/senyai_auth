@@ -1,7 +1,6 @@
 from __future__ import annotations
 import json
 from collections import defaultdict
-from httpx import Response
 
 
 class Permissions:
@@ -26,10 +25,11 @@ class Permissions:
     SUPERADMIN = 8
 
     api_options: list[dict[str, str | int]] = [
-        {"name": "none", "value": 0},
-        {"name": "user", "value": 1},
-        {"name": "manager", "value": 2},
-        {"name": "admin", "value": 4},
+        {"name": "none", "value": NONE},
+        {"name": "user", "value": USER},
+        {"name": "manager", "value": MANAGER},
+        {"name": "admin", "value": ADMIN},
+        {"name": "superadmin", "value": SUPERADMIN},
     ]
 
 
