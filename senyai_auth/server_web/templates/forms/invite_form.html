@@ -6,7 +6,7 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
 {% block form %}
 <form role="form" class="form-control" hx-post="{{ url_for('invite_new') }}" hx-target="#modalContent" id="role-form">
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form['prompt'] if form }}" >
+        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form['prompt'] if form else 'Registration' }}">
         <label for="prompt">Prompt:</label>
     </div>
     <div class="form-floating mb-3">
