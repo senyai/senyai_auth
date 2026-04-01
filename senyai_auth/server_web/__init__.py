@@ -350,6 +350,9 @@ async def update_project(project_id: str):
 
 @app.get("/role")
 async def role():
+    """
+    New role form
+    """
     project_id = request.args.get("project_id", 0, type=int)
     return await render_template(
         "forms/upsert_role_form.html",
@@ -357,6 +360,63 @@ async def role():
         project_id=project_id,
         api_options=Permissions.api_options,
     )
+
+
+@app.get("/role/<int:role_id>")
+async def role_form(role_id: int):
+    """
+    Role form for existing role
+    """
+    resp = await app.client.get(
+        f"/role/{role_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        return await render_template(
+            "forms/upsert_role_form.html",
+            form=resp.json(),
+            role_id=role_id,
+            api_options=Permissions.api_options,
+        )
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.patch("/role/<int:role_id>")
+async def role_update(role_id: int):
+    """
+    Update role
+    """
+    form = await request.form
+    data = dict(form)
+
+    resp = await app.client.patch(
+        f"/role/{role_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_success_event("Role updated!")
+        trigger.add_close_modal_event()
+        return "", resp.status_code, trigger.build()
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.delete("/role/<int:role_id>")
+async def role_delete(role_id: int):
+    """
+    Delete role
+    """
+    resp = await app.client.delete(
+        f"/role/{role_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_success_event("Role Deleted!")
+        trigger.add_update_project_info()
+        return "", resp.status_code, trigger.build()
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.post("/role")
@@ -374,7 +434,7 @@ async def role_new():
         trigger.add_success_event("Role created!")
         trigger.add_update_project_info()
         trigger.add_close_modal_event()
-        return ("", 201, trigger.build())
+        return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
 
 
