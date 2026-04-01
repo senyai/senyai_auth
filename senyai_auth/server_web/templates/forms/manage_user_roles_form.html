@@ -16,8 +16,8 @@ Manage roles
 </form>
 <script>
 (function(){
-    const tooltipTriggerList = document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]'
+    ).forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 })();
 </script>
 {% endblock form %}
