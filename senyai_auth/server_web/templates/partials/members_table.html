@@ -6,7 +6,7 @@
             <th class="text-center">{{ role.name }}</th>
             {% endfor %}
             <th>
-                <button class="btn btn-table" hx-get="{{ url_for('add_users', project_id=context.project_id) }}">
+                <button class="btn btn-table" hx-get="{{ url_for('add_users', project_id=context.project_id) }}" title="Add user from other projects">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
             </th>
