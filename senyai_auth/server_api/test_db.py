@@ -1,7 +1,7 @@
 from __future__ import annotations
 from unittest import IsolatedAsyncioTestCase
 from sqlalchemy import select, func, exc
-from . import AppSettings
+from .app import AppSettings
 from .db import Project, Role, User, Base, Member, MemberRole
 
 

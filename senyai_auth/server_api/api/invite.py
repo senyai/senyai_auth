@@ -19,7 +19,7 @@ from .exceptions import (
     response_description,
     response_with_perm_check,
 )
-from .. import get_async_session
+from ..app import get_async_session
 from ..db import auth_for_project_stmt, PermissionsAPI
 from .user import Username, DisplayName
 

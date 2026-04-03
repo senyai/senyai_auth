@@ -4,7 +4,7 @@ from fastapi import status
 from unittest import TestCase, IsolatedAsyncioTestCase
 from sqlalchemy.exc import IntegrityError
 
-from . import app, get_settings, AppSettings
+from .app import app, get_settings, AppSettings
 from .db import Project, Role, User, PermissionsAPI
 
 import logging
