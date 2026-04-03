@@ -24,9 +24,9 @@ from sqlalchemy import (
     TypeDecorator,
     update,
 )
-from enum import IntFlag
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import load_only
+from .permissions import PermissionsAPI
 
 
 class Base(DeclarativeBase):
@@ -188,40 +188,6 @@ class Project(Base):
         return f"{super().__repr__()[:-1]} project_id={self.name}!r>"
 
 
-class PermissionsAPI(IntFlag):
-    """
-    Warning! Do not add or remove elements from this class
-
-    Permissions:
-    """
-
-    none = 0
-
-    user = 1
-    """
-    * Change password
-    * Change display_name
-    * List projects
-    """
-
-    manager = 2
-    """
-    * Create and edit roles
-    * Manage users
-    * Send invites
-    """
-
-    admin = 4
-    """
-    * Create projects
-    """
-
-    superadmin = 8
-    """
-    * All, but ideally this permission is never used
-    """
-
-
 class PermissionsAPIType(TypeDecorator[PermissionsAPI]):
     impl = Integer
     cache_ok = True
@@ -351,7 +317,7 @@ def _create_permissions_api_stmt():
     user_id = bindparam("user_id", type_=Integer)
     return select(
         type_coerce(
-            func.sum(func.distinct(Role.permissions_api)),
+            func.max(func.distinct(Role.permissions_api)),
             PermissionsAPIType,
         )
     ).join(
