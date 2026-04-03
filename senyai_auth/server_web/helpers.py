@@ -1,36 +1,16 @@
 from __future__ import annotations
 import json
 from collections import defaultdict
+from ..server_api.permissions import PermissionsAPI
 
 
-class Permissions:
-    NONE = 0
-    USER = 1
-    """
-    * Change password
-    * Change display_name
-    * List projects
-    """
-    MANAGER = 2
-    """
-    * Create and edit roles
-    * Manage users
-    * Send invites
-    """
-
-    ADMIN = 4
-    """
-    * Create projects
-    """
-    SUPERADMIN = 8
-
-    api_options: list[dict[str, str | int]] = [
-        {"name": "none", "value": NONE},
-        {"name": "user", "value": USER},
-        {"name": "manager", "value": MANAGER},
-        {"name": "admin", "value": ADMIN},
-        {"name": "superadmin", "value": SUPERADMIN},
-    ]
+API_OPTIONS: list[dict[str, str | int]] = [
+    {"name": "none", "value": PermissionsAPI.none},
+    {"name": "user", "value": PermissionsAPI.user},
+    {"name": "manager", "value": PermissionsAPI.manager},
+    {"name": "admin", "value": PermissionsAPI.admin},
+    {"name": "superadmin", "value": PermissionsAPI.superadmin},
+]
 
 
 class HXTrigger:

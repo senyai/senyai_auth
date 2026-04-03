@@ -15,7 +15,13 @@ import json
 
 from .. import __version__
 
-from .helpers import Permissions, HXTrigger, parse_projects, parse_errors
+from .helpers import (
+    API_OPTIONS,
+    HXTrigger,
+    parse_errors,
+    parse_projects,
+    PermissionsAPI,
+)
 
 
 class App(Quart):
@@ -241,9 +247,9 @@ async def project(project_id: int):
             "roles": project_info.get("roles"),
             "display_name": project_info.get("display_name"),
             "project_name": project_info.get("name"),
-            "can_user": permission >= Permissions.USER,
-            "can_manager": permission >= Permissions.MANAGER,
-            "can_admin": permission >= Permissions.ADMIN,
+            "can_user": permission >= PermissionsAPI.user,
+            "can_manager": permission >= PermissionsAPI.manager,
+            "can_admin": permission >= PermissionsAPI.admin,
             "project_id": int(project_id),
             "description": project_info.get("description"),
             "parent_id": project_info.get("parent_id"),
@@ -358,7 +364,7 @@ async def role():
         "forms/upsert_role_form.html",
         form={},
         project_id=project_id,
-        api_options=Permissions.api_options,
+        api_options=API_OPTIONS,
     )
 
 
@@ -376,7 +382,7 @@ async def role_form(role_id: int):
             "forms/upsert_role_form.html",
             form=resp.json(),
             role_id=role_id,
-            api_options=Permissions.api_options,
+            api_options=API_OPTIONS,
         )
     return resp.content, resp.status_code, resp.headers
 
