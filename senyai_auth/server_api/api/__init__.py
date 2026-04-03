@@ -8,7 +8,7 @@ from typing import Annotated
 from sqlalchemy import select
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import app
+from ..app import app
 from ..db import User, Project, Member
 from .auth import get_current_user
 from .user import router as user_router
@@ -17,7 +17,7 @@ from .role import router as role_router
 from .invite import router as invite_router
 from .ui import router as ui_router
 from .ldap import router as ldap_router
-from .. import get_async_session
+from ..app import get_async_session
 
 app.include_router(user_router)
 app.include_router(project_router)

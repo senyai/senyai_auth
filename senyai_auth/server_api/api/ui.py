@@ -20,7 +20,7 @@ from ..db import (
 from .auth import get_current_user
 from .user import UserInfo
 from .role import RoleInfo
-from .. import get_async_session
+from ..app import get_async_session
 from pydantic import BaseModel
 from .exceptions import not_authorized_exception, response_with_perm_check
 from collections import defaultdict

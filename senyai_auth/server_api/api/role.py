@@ -14,7 +14,7 @@ from ..db import (
     User,
 )
 from .auth import get_current_user
-from .. import get_async_session
+from ..app import get_async_session
 from .project import Description
 from .exceptions import (
     not_authorized_exception,

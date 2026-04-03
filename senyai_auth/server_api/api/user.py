@@ -27,7 +27,7 @@ from ..db import (
     User,
 )
 from .auth import get_current_user
-from .. import get_async_session
+from ..app import get_async_session
 from .exceptions import (
     conflict_description,
     conflict_exception,

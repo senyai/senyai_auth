@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from . import app
-from .. import get_async_session
+from ..app import get_async_session
 from ..db import (
     get_user_for_authentication_stmt,
     get_user_for_session_stmt,
