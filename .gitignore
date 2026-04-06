@@ -1,5 +1,7 @@
 *.pyc
 *.svg
 *.egg-info
-/settings.json
 /.venv*
+/alembic*
+/settings_*.json
+*.sqlite
