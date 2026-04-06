@@ -97,7 +97,7 @@ async def _async_main(
         [AsyncEngine, sessionmaker[AsyncSession]], CoroutineType[Any, Any, Any]
     ],
 ):
-    from . import get_settings
+    from .app import get_settings
 
     settings = get_settings()
     async_engine, async_session = settings.create_engine()
