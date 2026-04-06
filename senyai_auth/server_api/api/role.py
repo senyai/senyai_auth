@@ -1,6 +1,12 @@
 from __future__ import annotations
 from typing import Annotated, Literal
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    PlainSerializer,
+    StringConstraints,
+)
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy import delete, insert, literal, select
 from sqlalchemy.exc import IntegrityError
@@ -112,7 +118,7 @@ class RoleInfo(BaseModel, strict=True, frozen=True):
             description=role.description,
             permissions_api=role.permissions_api.name or "",
             permissions_git=role.permissions_git,
-            permissions_storage=role.permissions_storage,
+            permissions_storage=role.permissions_storage.replace("|", "\n"),
             permissions_extra=role.permissions_extra,
         )
 
@@ -153,7 +159,9 @@ class RoleUpdate(BaseModel, strict=True, frozen=True):
         PermissionsType | None, AfterValidator(lambda v: PermissionsAPI[v])
     ] = None
     permissions_git: str | None = None
-    permissions_storage: str | None = None
+    permissions_storage: Annotated[
+        str | None, PlainSerializer(lambda s: s.replace("\n", "|"))
+    ] = None
     permissions_extra: str | None = None
 
     def update(self, role: Role) -> None:
