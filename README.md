@@ -11,7 +11,7 @@ Experimental Python package for unified user management across Git and storage s
 
 ```bash
 cd senyai_auth/server_api && ./download_static.sh && cd ../..
-cd senyai_auth/server_web && ./download_static.sh && cd ../..
+cd senyai_auth/server_web && ./download_static.sh && ./babel.sh && cd ../..
 python -m senyai_auth.server_api init
 fastapi dev -e 'senyai_auth.server_api.app:app'
 quart -A senyai_auth.server_web:app run
