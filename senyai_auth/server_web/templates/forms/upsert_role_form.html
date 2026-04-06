@@ -7,6 +7,7 @@ Create Role
 {% endif %}
 {% endblock title %}
 {% block form %}
+<style>#permissions_apiHelp li{display:none}.d-liit{display:list-item !important}</style>
 <form role="form" class="form-control" id="role-form" {% if form %}hx-patch="{{ url_for('role_update', role_id=role_id) }}"{% else %}hx-post="{{ url_for('role_new') }}"{% endif %}>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="name" name="name" value="{{ form['name'] if form }}" required>
@@ -18,27 +19,46 @@ Create Role
         <label for="description">Description:</label>
     </div>
     <div class="form-floating mb-3">
-        <select class="form-select" id="permissions_api" name="permissions_api">
+        <select class="form-select" id="permissions_api" name="permissions_api" aria-describedby="permissions_apiHelp" hx-on:change="htmx.takeClass(`#help-${this.value}`, 'd-liit')">
             {% for option in api_options %}
             <option value="{{ option['name'] }}" {% if form.permissions_api == option.name %}selected{% endif %}>{{ option['name'] }}</option>
             {% endfor %}
         </select>
         <label for="permissions_api">API permissions:</label>
+        <small id="permissions_apiHelp" class="form-text text-muted"><ul>
+            <li id="help-none"{% if form.permissions_api == "none" or not form %} class="d-liit"{% endif %}><b>none</b> — can't see projects</li>
+            <li id="help-user"{% if form.permissions_api == "user" %} class="d-liit"{% endif %}><b>user</b> — can see projects</li>
+            <li id="help-manager"{% if form.permissions_api == "manager" %} class="d-liit"{% endif %}><b>manager</b> — can assign roles</li>
+            <li id="help-admin"{% if form.permissions_api == "admin" %} class="d-liit"{% endif %}><b>admin</b> — can manage roles and projects</li>
+            <li id="help-superadmin"{% if form.permissions_api == "superadmin" %} class="d-liit"{% endif %}><b>superadmin</b> — can do everything, <span class="text-warning">do not use!</span></li>
+        </ul></small>
     </div>
     <div class="form-floating mb-3">
-        <textarea rows="5" class="form-control" id="permissions_git"
+        <textarea class="form-control" id="permissions_git" aria-describedby="permissions_gitHelp"
             name="permissions_git">{{ form['permissions_git'] if 'permissions_git' in form }}</textarea>
         <label for="address">Git permissions:</label>
+        <small id="permissions_gitHelp" class="form-text text-muted"><ul>
+            <li><b>user</b> — usual git user</li>
+            <li><b>admin</b> — git superuser</li>
+        </ul></small>
     </div>
     <div class="form-floating mb-3">
-        <textarea rows="5" class="form-control" id="permissions_storage"
+        <textarea style="height: 5em" class="form-control" id="permissions_storage" aria-describedby="permissions_storageHelp"
             name="permissions_storage">{{ form['permissions_storage'] if 'permissions_storage' in form }}</textarea>
         <label for="address">Storage permissions:</label>
+        <small id="permissions_storageHelp" class="form-text text-muted"><ul>
+            <li><b>folder</b> or <b>folder:r</b> — read access to a directory</li>
+            <li><b>folder:w</b> — write access to a directory</li>
+            <li><b>⤶ (new line)</b> — separator</li>
+        </ul></small>
     </div>
     <div class="form-floating mb-3">
-        <textarea rows="5" class="form-control" id="permissions_extra"
+        <textarea class="form-control" id="permissions_extra" aria-describedby="permissions_extraHelp"
             name="permissions_extra">{{ form['permissions_extra'] if 'permissions_extra' in form }}</textarea>
         <label for="address">Extra permissions:</label>
+        <small id="permissions_storageHelp" class="form-text text-muted"><ul>
+            <li>unused</li>
+        </ul></small>
     </div>
 
     {% if not form %}
