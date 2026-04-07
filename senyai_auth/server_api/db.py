@@ -20,7 +20,6 @@ from sqlalchemy import (
     JSON,
     select,
     String,
-    type_coerce,
     TypeDecorator,
     update,
 )
@@ -296,12 +295,7 @@ def _create_auth_for_project_stmt():
         id_and_parent.join(base, Project.id == base.c.parent_id),
     )
     return (
-        select(
-            type_coerce(
-                func.sum(func.distinct(Role.permissions_api)),
-                PermissionsAPIType,
-            )
-        )
+        select(func.max(Role.permissions_api))
         .join(user_projects, user_projects.c.id == Role.project_id)
         .join(
             MemberRole,
@@ -315,12 +309,7 @@ def _create_permissions_api_stmt():
     For `user_id` aggregate sum(Role.permissions_api)
     """
     user_id = bindparam("user_id", type_=Integer)
-    return select(
-        type_coerce(
-            func.max(func.distinct(Role.permissions_api)),
-            PermissionsAPIType,
-        )
-    ).join(
+    return select(func.max(Role.permissions_api)).join(
         MemberRole,
         (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
     )
