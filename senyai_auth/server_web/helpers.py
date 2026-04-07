@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import TypedDict, NotRequired
 import json
 from collections import defaultdict
 from ..server_api.permissions import PermissionsAPI
@@ -55,32 +56,25 @@ def parse_errors(msg: dict[str, str | list[str]]):
     return [detail]
 
 
-def parse_projects(projects: list[dict]):
-    def rec_leaf(project):
-        if project["parent"] not in idxs:
-            if project["id"] in to_check:
-                project["children"] = []
-                trees.append(project)
-                to_check.remove(project["id"])
-        else:
-            parent = projects[idxs.index(project["parent"])]
+class ProjectInfo(TypedDict):
+    id: int
+    name: str
+    display_name: str
+    parent: int | None
+    children: NotRequired[list["ProjectInfo"]]
 
-            if parent["id"] in to_check:
-                rec_leaf(parent)
 
-            if project["id"] in to_check:
-                project["children"] = []
+def parse_projects(projects: list[ProjectInfo]) -> list[ProjectInfo]:
+    all_projects = {project["id"]: project for project in projects}
+    root_projects: list[ProjectInfo] = []
+    for project in projects:
+        parent_id = project["parent"]
+        if parent_id in all_projects:
+            parent = all_projects[parent_id]
+            if "children" not in parent:
+                parent["children"] = [project]
+            else:
                 parent["children"].append(project)
-                to_check.remove(project["id"])
-
-        return
-
-    idxs = [project["id"] for project in projects]
-    to_check = idxs[:]
-    trees = []
-
-    while to_check:
-        project = next(filter(lambda x: x["id"] == to_check[0], projects))
-        rec_leaf(project)
-
-    return trees
+        else:
+            root_projects.append(project)
+    return root_projects
