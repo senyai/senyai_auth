@@ -167,7 +167,7 @@ async def project_roles(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[RoleInfo]:
     """
-    ## List roles of a project for a invitation form
+    ## List roles of a project for an invitation form
 
     * Only manages can do it
     """
@@ -192,7 +192,7 @@ async def project_roles(
     "/project/{project_id}/roles/{user_id:int}",
     responses={status.HTTP_401_UNAUTHORIZED: response_with_perm_check},
 )
-async def project_roles(
+async def project_roles_for_user(
     project_id: int,
     user_id: int,
     user: Annotated[User, Depends(get_current_user)],
