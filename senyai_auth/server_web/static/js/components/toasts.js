@@ -14,6 +14,10 @@ export function initToasts() {
         });
     });
 
+    document.body.addEventListener("htmx:sendError", event => {
+        showToast("danger", "Connection error")
+    });
+
     document.addEventListener('htmx:responseError', evt => {
         const xhr = evt.detail.xhr;
 
