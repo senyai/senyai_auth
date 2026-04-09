@@ -45,18 +45,13 @@
         </li>
         {% endmacro %}
 
-
-        <ul class="folder-tree list-unstyled" hx-target="#parent-div" hx-on::after-request="this.querySelectorAll('.link-success').forEach(el=>el.classList.remove('link-success'));event.target.classList.add('link-success')">
+        <ul class="folder-tree list-unstyled" hx-target="#tabs-container" hx-on::after-request="this.querySelectorAll('.link-success').forEach(el=>el.classList.remove('link-success'));event.target.classList.add('link-success')">
             {% for node in projects %}
                 {{ render_tree(node) }}
             {% endfor %}
         </ul>
     </div>
-    <div class="col-md-10">
-        <div id="parent-div">
-
-        </div>
-    </div>
+    <div class="col-md-10" id="tabs-container" hx-on::after-settle="update_tab_pane(event)"></div>
 </div>
 
 {% endblock content %}

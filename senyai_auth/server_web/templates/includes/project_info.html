@@ -1,35 +1,34 @@
 <div class="container-fluid" hx-get="{{ url_for('project', project_id=context.project_id) }}" hx-trigger="updateProjectInfo from:body"
-    ht-target="#parent-div">
+    hx-on::after-swap="htmx.find('#invites-tab').classList.add('stale')" hx-target="#tabs-container">
     <ul class="nav nav-tabs" id="projectTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="members-tab" data-bs-toggle="tab" data-bs-target="#members-tab-pane"
-                type="button" role="tab" aria-controls="members-tab-pane" aria-selected="true">
+                type="button" role="tab" aria-controls="members-tab-pane" aria-selected="true" hx-preserve>
                 Members
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles-tab-pane" type="button"
-                role="tab" aria-controls="roles-tab-pane" aria-selected="false">
+                role="tab" aria-controls="roles-tab-pane" aria-selected="false" hx-preserve>
                 Roles
             </button>
         </li>
         {% if context.can_manager %}
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
-                type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false">
+            <button class="nav-link stale" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
+                type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false" hx-preserve>
                 Invitations
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false">
+            <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" type="button" role="tab" aria-controls="manage-tab-pane" aria-selected="false" hx-preserve>
                 Manage
             </button>
         </li>
         {% endif %}
     </ul>
     <div class="tab-content" id="projectTabContent">
-        <div class="tab-pane fade show active" id="members-tab-pane" role="tabpanel" aria-labelledby="members-tab"
-            tabindex="0">
+        <div class="tab-pane fade" id="members-tab-pane" role="tabpanel" aria-labelledby="members-tab" tabindex="0">
             {% include "partials/members_table.html" %}
         </div>
         <div class="tab-pane fade" id="roles-tab-pane" role="tabpanel" aria-labelledby="roles-tab" tabindex="0">
@@ -38,7 +37,8 @@
         {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
             hx-get="{{ url_for('invites_table', project_id=context.project_id, project_name=context.display_name ) }}"
-            hx-trigger="load delay:500ms, updateInvitesTab from:body" hx-target="#invites-tab-pane">
+            hx-trigger="updateStale, updateInvitesTab from:body"
+            hx-on::after-request="htmx.find('#invites-tab').classList.remove('stale')" hx-target="this">
         </div>
         <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
             {% include "partials/project_management.html" %}
