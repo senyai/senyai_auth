@@ -26,6 +26,14 @@ else
   echo "Bootstrap JS already exists."
 fi
 
+# Bootstrap JS Bundle (includes Popper.js)
+if [ ! -f "$JS_DIR/bootstrap.bundle.min.js.map" ]; then
+  echo "Downloading Bootstrap JS MAP..."
+  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js.map -o "$JS_DIR/bootstrap.bundle.min.js.map"
+else
+  echo "Bootstrap JS MAP already exists."
+fi
+
 
 # Bootstrap CSS
 if [ ! -f "$CSS_DIR/bootstrap.min.css" ]; then
