@@ -15,7 +15,7 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-4 ">
-            <form role="form" class="form-control login-form" hx-post="{{ url_for('login') }}" hx-indicator="#login_btn" hx-on::before-request="login_btn.disabled = true;" hx-on::after-request="login_btn.disabled = false">
+            <form role="form" class="form-control login-form" hx-post="{{ url_for('login') }}" hx-indicator="#login_btn" hx-on::before-request="login_btn.disabled=true" hx-on::after-request="login_btn.disabled=false">
                 <legend>{{ _("Auth") }}</legend>
                 <div class="form-floating mb-3">
                     <input type="text" class="form-control" name="username" placeholder="Login" required autofocus>
