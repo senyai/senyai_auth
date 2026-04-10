@@ -10,16 +10,16 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
         <label for="prompt">Prompt:</label>
     </div>
     <div class="form-floating mb-3">
+        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}" required autofocus>
+        <label for="default_display_name">Display name:</label>
+    </div>
+    <div class="form-floating mb-3">
         <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form['default_username'] if form }}">
         <label for="default_username">Username:</label>
     </div>
     <div class="form-floating mb-3">
         <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form['default_email'] if form }}">
         <label for="default_email">Email:</label>
-    </div>
-    <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}" required>
-        <label for="default_display_name">Display name:</label>
     </div>
     <div class="mb-3">
         <label class="mb-2">Auto add roles</label>

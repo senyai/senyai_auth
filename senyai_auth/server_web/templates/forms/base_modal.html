@@ -16,5 +16,8 @@
     modalEl.addEventListener('hidden.bs.modal', () => {
         document.getElementById('modalContent').innerHTML = '';
     });
+    modalEl.addEventListener('shown.bs.modal', () => {
+        document.getElementById('modalContent').querySelector("[autofocus]")?.focus();
+    });
 
 </script>
