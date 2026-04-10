@@ -10,7 +10,7 @@ Create Role
 <style>#permissions_apiHelp li{display:none}.d-liit{display:list-item !important}</style>
 <form role="form" class="form-control" id="role-form" {% if form %}hx-patch="{{ url_for('role_update', role_id=role_id) }}"{% else %}hx-post="{{ url_for('role_new') }}"{% endif %}>
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="name" name="name" value="{{ form['name'] if form }}" required>
+        <input type="text" class="form-control" id="name" name="name" value="{{ form['name'] if form }}" required autofocus>
         <label for="name">Role name:</label>
     </div>
     <div class="form-floating mb-3">
