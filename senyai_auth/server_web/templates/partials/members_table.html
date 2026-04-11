@@ -1,4 +1,4 @@
-<table class="table table-hover" hx-on::after-request="getModal().toggle()" data-bs-target="#baseModal" hx-target="#modalContent">
+<table class="table table-hover" hx-on::after-request="if(event.detail.successful)getModal().toggle()" data-bs-target="#baseModal" hx-target="#modalContent">
     <thead>
         <tr>
             <th class="col-2">Name</th>
