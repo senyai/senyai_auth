@@ -354,7 +354,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         self.assertEqual(len(json["url_key"]), 32)
 
         del_rest = client.delete(
-            f"/invite/{json['url_key']}",
+            f"/invite/1",
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(del_rest.status_code, 204)
@@ -365,10 +365,10 @@ class WorkflowTest(IsolatedAsyncioTestCase):
         self.assertEqual(
             response.json(),
             {
-                "display_name": "New User",
-                "email": "newuser@example.com",
+                "default_display_name": "New User",
+                "default_email": "newuser@example.com",
                 "prompt": "Welcome",
-                "username": "newuser",
+                "default_username": "newuser",
             },
         )
 
@@ -423,6 +423,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                 {
                     "accepted_id": 3,
                     "display_name": "New User",
+                    "id": 1,
                     "url_key": invitation_str,
                 }
             ],
@@ -431,7 +432,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
     async def test_12_admin_deletes_invitation(self):
         assert isinstance(authorization_str, str), authorization_str
         response = client.delete(
-            f"/invite/{invitation_str}",
+            f"/invite/1",
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
