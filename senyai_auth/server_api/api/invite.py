@@ -10,6 +10,7 @@ from pydantic import (
 )
 from fastapi import APIRouter, status, Depends, Response, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 from sqlalchemy import select
 
 from ..db import User, Invitation
@@ -80,7 +81,7 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
         list[str],  # list of `Role.name`` for current `project_id`
         Field(
             description="Assign these roles after user accepts invitation. "
-            "If anything has happened  with roles before invitation is "
+            "If anything has happened with roles before invitation is "
             "accepted, roles will not be applied."
         ),
     ]
@@ -136,10 +137,12 @@ class InvitationForm(BaseModel, strict=True):
     What to show when user opens invitation
     """
 
-    prompt: str
-    username: str
-    display_name: str
-    email: str
+    prompt: Annotated[str, Field(description="Invitation text")]
+    default_username: Annotated[str, Field(description="Default username")]
+    default_display_name: Annotated[
+        str, Field(description="Default Display Name")
+    ]
+    default_email: Annotated[str, Field(description="Default Email")]
 
 
 @router.get(
@@ -155,11 +158,21 @@ async def get_invitation(
     session: AsyncSession = Depends(get_async_session),
 ) -> InvitationForm:
     """
-    ## For "Create New User" page
+    ## For "Invitation" page
+
+    * Any user that has the `key` can access the data
     """
     invitation = await session.scalar(
-        select(Invitation).where(
-            Invitation.url_key == key,
+        select(Invitation)
+        .where(Invitation.url_key == key)
+        .options(
+            load_only(
+                Invitation.prompt,
+                Invitation.default_username,
+                Invitation.default_display_name,
+                Invitation.default_email,
+                Invitation.who_accepted_id,
+            )
         )
     )
     if invitation is None:
@@ -174,14 +187,68 @@ async def get_invitation(
         )
     return InvitationForm(
         prompt=invitation.prompt,
-        username=invitation.default_username,
-        display_name=invitation.default_display_name,
-        email=invitation.default_email,
+        default_username=invitation.default_username,
+        default_display_name=invitation.default_display_name,
+        default_email=invitation.default_email,
     )
 
 
+class InvitationUpdate(BaseModel, strict=True, frozen=True):
+    prompt: str | None = None
+    default_username: str | None = None
+    default_email: str | None = None
+    default_display_name: str | None = None
+    roles: list[str] | None = None
+
+    def update(self, invitation: Invitation):
+        for key, value in self.model_dump(
+            exclude_unset=True, exclude_none=True
+        ).items():
+            setattr(invitation, key, value)
+
+
+@router.patch(
+    "/invite/{invitation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_404_NOT_FOUND: response_description(
+            "Invitation not found or already accepted"
+        ),
+    },
+)
+async def update_invitation(
+    invitation_id: int,
+    invitation: InvitationUpdate,
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    ## Update Invitation
+
+    Made for fixing spelling and changing roles
+
+    * Only managers can do it
+    """
+    invitation_db = await session.scalar(
+        select(Invitation).where(Invitation.id == invitation_id)
+    )
+    if invitation_db is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found",
+        )
+    if invitation_db.who_accepted_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation already accepted",
+        )
+
+    invitation.update(invitation_db)
+    session.add(invitation_db)
+    await session.commit()
+
+
 @router.delete(
-    "/invite/{key}",
+    "/invite/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -191,7 +258,7 @@ async def get_invitation(
     },
 )
 async def delete_invitation(
-    key: str,
+    id: int,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
@@ -202,12 +269,12 @@ async def delete_invitation(
     * superadmins can delete any invitation
     """
     invitation = await session.scalar(
-        select(Invitation).where(Invitation.url_key == key)
+        select(Invitation).where(Invitation.id == id)
     )
     if invitation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found",
+            detail=f"Invitation not found",
         )
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -228,9 +295,14 @@ async def delete_invitation(
 
 
 class InviteEntry(BaseModel, strict=True):
-    url_key: str
+    id: int
+    url_key: Annotated[
+        str, Field(description="Secret to be sent to inited person")
+    ]
     display_name: str
-    accepted_id: int | None
+    accepted_id: Annotated[
+        int | None, Field(description="User id of the new user")
+    ]
 
 
 @router.get(
@@ -256,15 +328,17 @@ async def list_invites(
 
     invitations = await session.execute(
         select(
+            Invitation.id,
             Invitation.url_key,
             Invitation.default_display_name,
             Invitation.who_accepted_id,
         ).where(Invitation.project_id == project_id)
     )
     ret: list[InviteEntry] = []
-    for url_key, display_name, accepted_id in invitations:
+    for id, url_key, display_name, accepted_id in invitations:
         ret.append(
             InviteEntry(
+                id=id,
                 url_key=url_key,
                 display_name=display_name,
                 accepted_id=accepted_id,

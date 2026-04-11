@@ -482,3 +482,8 @@ update_last_login_at_stmt = (
     .where(User.id == bind_user_id)
     .values(last_login_at=func.now())
 )
+list_roles_descriptions_stmt = (
+    select(Role.id, Role.name, Role.description)
+    .where(Role.project_id == bind_project_id)
+    .order_by(Role.name)
+)

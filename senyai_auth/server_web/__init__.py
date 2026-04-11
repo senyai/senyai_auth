@@ -134,10 +134,13 @@ async def logout():
     return resp
 
 
-@app.get("/invites_table")
-async def invites_table():
-    project_id = request.args.get("project_id", type=int)
-    project_name = request.args.get("project_name")
+#
+# INVITE
+#
+
+
+@app.get("/invites_table/<int:project_id>")
+async def invites_table(project_id: int):
     resp = await app.client.get(
         f"/invites/{project_id}",
         headers={"Authorization": request.cookies.get("Authorization", "")},
@@ -147,13 +150,15 @@ async def invites_table():
             "partials/invites_table.html",
             invites=resp.json(),
             project_id=project_id,
-            project_name=project_name,
         )
     return resp.content, resp.status_code, resp.headers
 
 
 @app.get("/invite")
 async def invite():
+    """
+    New invite form
+    """
     project_id = request.args.get("project_id", type=int)
     project_name = request.args.get("project_name")
     roles_resp = await app.client.get(
@@ -168,6 +173,22 @@ async def invite():
             roles=roles_resp.json(),
         )
     return roles_resp.content, roles_resp.status_code, roles_resp.headers
+
+
+@app.get("/invite/<int:invite_id>")
+async def invite_form(invite_id: int):
+    """
+    Invite form for existing invite
+    """
+    resp = await app.client.get(
+        f"/ui/invite/{invite_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        return await render_template(
+            "forms/invite_form.html", **resp.json()  # :ref:`InviteInfo`
+        )
+    return resp.content, resp.status_code, resp.headers
 
 
 @app.post("/invite")
@@ -192,6 +213,29 @@ async def invite_new():
             201,
             trigger.build(),
         )
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.patch("/invite/<int:invite_id>")
+async def invite_update(invite_id: int):
+    """
+    Update role
+    """
+    form = await request.form
+    data = dict(form)
+    data["roles"] = form.getlist("role")
+
+    resp = await app.client.patch(
+        f"/invite/{invite_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_success_event("Invite updated!")
+        trigger.add_close_modal_event()
+        trigger.add_update_invites_tab()
+        return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
 
 
@@ -229,6 +273,11 @@ async def register_post(key: str):
         resp.headers["HX-Redirect"] = url_for("index")
         return resp
     return api_resp.content, api_resp.status_code, api_resp.headers
+
+
+#
+# PROJECT
+#
 
 
 @app.get("/project/<int:project_id>")
@@ -352,6 +401,11 @@ async def update_project(project_id: str):
         trigger.add_close_modal_event()
         return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
+
+
+#
+# ROLE
+#
 
 
 @app.get("/role")
@@ -486,6 +540,11 @@ async def manage_roles(user_id: int):
 
     trigger.add_close_modal_event()
     return "", 201, trigger.build()
+
+
+#
+# UNORDERED
+#
 
 
 @app.get("/forms/new_project/<parent_id>")

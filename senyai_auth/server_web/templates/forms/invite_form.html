@@ -1,24 +1,24 @@
 {% extends "modal/modal_template.html" %}
 {% block title %}
-Create Invite to {{ project_name }} (Project ID: {{ project_id }})
+{% if form %}Update Invite in this project{% else %}Create Invite to this project{% endif %} (Project ID: {{ project_id }})
 {% endblock title %}
 {% from 'macros/roles.html' import role_tooltip %}
 {% block form %}
-<form role="form" class="form-control" hx-post="{{ url_for('invite_new') }}" hx-target="#modalContent" id="role-form">
+<form role="form" class="form-control" {% if form %}hx-patch="{{ url_for('invite_update', invite_id=form.id) }}"{% else %}hx-post="{{ url_for('invite_new') }}"{% endif %} hx-target="#modalContent" id="role-form">
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form['prompt'] if form else 'Registration' }}">
+        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form.prompt if form else 'Registration' }}">
         <label for="prompt">Prompt:</label>
     </div>
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form['default_display_name'] if form }}" required autofocus>
+        <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form.default_display_name if form }}" required autofocus>
         <label for="default_display_name">Display name:</label>
     </div>
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form['default_username'] if form }}">
+        <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form.default_username if form }}">
         <label for="default_username">Username:</label>
     </div>
     <div class="form-floating mb-3">
-        <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form['default_email'] if form }}">
+        <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form.default_email if form }}">
         <label for="default_email">Email:</label>
     </div>
     <div class="mb-3">
@@ -26,7 +26,7 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
         {% for role in roles %}
         <div class="form-check">
             <label class="form-check-label" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="{{ role_tooltip(role) }}">
-                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox>
+                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox{% if role and role.name in form.roles %} checked{% endif %}>
                 {{ role.name }}
             </label>
         </div>
@@ -36,11 +36,15 @@ Create Invite to {{ project_name }} (Project ID: {{ project_id }})
 </form>
 <script>
 (function(){
-    const tooltipTriggerList = document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]'
+    ).forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 })();
 </script>
 {% endblock form %}
 {% block buttons %}
-<button type="submit" class="btn btn-primary" form="role-form">Create Invite</button>
+{% if form %}
+<button type="submit" form="role-form" class="btn btn-warning">Update Invite</button>
+{% else %}
+<button type="submit" form="role-form" class="btn btn-success">Create Invite</button>
+{% endif %}
 {% endblock buttons %}

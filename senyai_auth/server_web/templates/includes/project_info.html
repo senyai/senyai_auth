@@ -36,7 +36,7 @@
         </div>
         {% if context.can_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
-            hx-get="{{ url_for('invites_table', project_id=context.project_id, project_name=context.display_name ) }}"
+            hx-get="{{ url_for('invites_table', project_id=context.project_id ) }}"
             hx-trigger="updateStale, updateInvitesTab from:body"
             hx-on::after-request="htmx.find('#invites-tab').classList.remove('stale')" hx-target="this">
         </div>
