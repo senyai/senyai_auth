@@ -4,6 +4,7 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     Field,
+    model_validator,
     PlainSerializer,
     StringConstraints,
 )
@@ -51,6 +52,21 @@ class RoleCreate(BaseModel, strict=True, frozen=True):
     permissions_git: str = ""
     permissions_storage: str = ""
     permissions_extra: str = ""
+
+    @model_validator(mode="after")
+    def check_model_does_something(self):
+        if (
+            self.permissions_api == "none"
+            and self.permissions_git
+            == self.permissions_storage
+            == self.permissions_extra
+            == ""
+        ):
+            raise ValueError(
+                "Can't create a Role that does nothing. Please, "
+                "Set at least one field."
+            )
+        return self
 
     def make_role(self):
         return Role(
