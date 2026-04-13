@@ -89,6 +89,7 @@ async def project(
         select(User.id, User.username, User.display_name)
         .join(Member)
         .where(Member.project_id == project_id)
+        .order_by(User.display_name)
     )
 
     role_users_stmt = (
