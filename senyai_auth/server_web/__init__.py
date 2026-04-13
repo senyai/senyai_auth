@@ -299,7 +299,6 @@ async def project(project_id: int):
             "can_user": permission >= PermissionsAPI.user,
             "can_manager": permission >= PermissionsAPI.manager,
             "can_admin": permission >= PermissionsAPI.admin,
-            "project_id": int(project_id),
             "description": project_info.get("description"),
             "parent_id": project_info.get("parent_id"),
             "project_id": project_id,
