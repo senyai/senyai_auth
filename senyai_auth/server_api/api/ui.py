@@ -57,6 +57,7 @@ class RoleDescription(BaseModel, strict=True):
 class ProjectInfo(BaseModel, strict=True):
     display_name: str
     name: str
+    description: str
     members: list[UserItem]
     roles: list[RoleItem]
     permission: PermissionsAPI
@@ -104,7 +105,9 @@ async def project(
     project = await session.get_one(
         Project,
         project_id,
-        options=[load_only(Project.name, Project.display_name)],
+        options=[
+            load_only(Project.name, Project.display_name, Project.description)
+        ],
     )
 
     member = [
@@ -122,6 +125,7 @@ async def project(
     return ProjectInfo(
         display_name=project.display_name,
         name=project.name,
+        description=project.description,
         members=member,
         roles=roles,
         permission=permission,

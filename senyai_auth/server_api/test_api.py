@@ -483,6 +483,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             response.json(),
             {
                 "display_name": "General Markup Creator",
+                "description": "Customizable MDI application",
                 "name": "gmc",
                 "members": [
                     {
