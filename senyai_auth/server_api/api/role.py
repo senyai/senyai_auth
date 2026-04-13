@@ -64,7 +64,7 @@ class RoleCreate(BaseModel, strict=True, frozen=True):
         ):
             raise ValueError(
                 "Can't create a Role that does nothing. Please, "
-                "Set at least one field."
+                "set at least one permission."
             )
         return self
 
