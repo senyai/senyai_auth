@@ -26,7 +26,7 @@
         {% for role in roles %}
         <div class="form-check">
             <label class="form-check-label" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="{{ role_tooltip(role) }}">
-                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox{% if role and role.name in form.roles %} checked{% endif %}>
+                <input type="checkbox" class="form-check-input" name="role" value="{{ role.name }}" data-role-checkbox{% if form and role.name in form.roles %} checked{% endif %}>
                 {{ role.name }}
             </label>
         </div>
