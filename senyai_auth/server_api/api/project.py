@@ -31,6 +31,7 @@ from .exceptions import (
     not_authorized_exception,
     response_description,
     response_with_perm_check,
+    validation_error,
 )
 
 router = APIRouter(tags=["project"])
@@ -41,7 +42,6 @@ type ProjectName = Annotated[
     StringConstraints(
         min_length=2, max_length=32, to_lower=True, strip_whitespace=True
     ),
-    AfterValidator(not_in_blocklist),
 ]
 
 type DisplayName = Annotated[
@@ -60,7 +60,13 @@ class ProjectCreate(BaseModel, strict=True):
     description: Description
     parent_id: Annotated[int, Field(strict=False)]
 
-    def make_project(self):
+    def make_project(self, permission: PermissionsAPI):
+        if permission < PermissionsAPI.superadmin:
+            try:
+                self.name = not_in_blocklist(self.name)
+            except ValueError as e:
+                raise validation_error(e, "name")
+
         return Project(
             name=self.name,
             display_name=self.display_name,
@@ -82,7 +88,16 @@ class ProjectUpdate(BaseModel, strict=True):
         ),
     ] = None
 
-    def update(self, project: Project):
+    def update(self, project: Project, permission: PermissionsAPI):
+        if (
+            self.name is not None
+            and self.name != project.name
+            and permission < PermissionsAPI.superadmin
+        ):
+            try:
+                self.name = not_in_blocklist(self.name)
+            except ValueError as e:
+                raise validation_error(e, "name")
         for key, value in self.model_dump(
             exclude_unset=True, exclude_none=True, exclude={"parent"}
         ).items():
@@ -112,9 +127,10 @@ async def new_project(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project.parent_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.user:
         raise not_authorized_exception
-    project_db = project.make_project()
+    project_db = project.make_project(permission)
     session.add(project_db)
     try:
         await session.commit()
@@ -143,6 +159,7 @@ async def update_project(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     # Don't allow manager to change project name
@@ -155,6 +172,7 @@ async def update_project(
         user_permissions = await session.scalar(
             permissions_api_stmt, {"user_id": user.id}
         )
+        assert user_permissions is not None
         if not user_permissions & PermissionsAPI.superadmin:
             raise not_authorized_exception
         parent = project.parent
@@ -169,9 +187,14 @@ async def update_project(
             parent = parent_by_name
         project_db.parent_id = parent
 
-    project.update(project_db)
+    project.update(project_db, permission)
     session.add(project_db)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        raise conflict_exception(
+            f"Project '{project.name}' already exists", "name"
+        )
 
 
 class ProjectModel(BaseModel, strict=True):
@@ -196,6 +219,7 @@ async def get_project(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.user:
         raise not_authorized_exception
     project_db = await session.get(Project, project_id)
@@ -245,6 +269,7 @@ async def project_list_possible_users(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     id_parent = select(Project.id)
@@ -300,6 +325,7 @@ async def project_add_users(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     res = await session.execute(
@@ -317,6 +343,7 @@ async def project_add_users(
         )
     )
     await session.commit()
+    assert isinstance(res.rowcount, int)
     return res.rowcount
 
 
@@ -345,6 +372,7 @@ async def project_remove_users(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     # remove project members
@@ -360,4 +388,5 @@ async def project_remove_users(
         .where(Role.project_id == project_id, MemberRole.user_id.in_(user_ids))
     )
     await session.commit()
+    assert isinstance(delete_response.rowcount, int)
     return delete_response.rowcount
