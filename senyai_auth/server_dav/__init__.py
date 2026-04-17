@@ -206,7 +206,9 @@ class SenyaiDAV:
         ET.SubElement(error, "{DAV:}privilege")
         ET.SubElement(error, "{DAV:}read")
         self._response_no_permissions_propfind = Response(
-            content=ET.tostring(error, encoding="unicode"),
+            content=ET.tostring(
+                error, encoding="unicode", xml_declaration=True
+            ),
             media_type='application/xml; charset="utf-8"',
             status_code=403,
         )
@@ -401,7 +403,9 @@ class SenyaiDAV:
             return self._response_no_permissions_propfind
 
         return Response(
-            content=ET.tostring(root, encoding="unicode"),
+            content=ET.tostring(
+                root, encoding="unicode", xml_declaration=True
+            ),
             media_type='application/xml; charset="utf-8"',
             status_code=207,  # 207 Multi-Status
         )
