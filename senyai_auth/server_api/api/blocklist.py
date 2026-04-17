@@ -21,6 +21,7 @@ def not_in_blocklist(name: str) -> str:
         "owner",
         "postgres",
         "postmaster",
+        "project",
         "root",
         "sqladmin",
         "superadmin",
