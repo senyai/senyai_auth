@@ -48,7 +48,6 @@ type DisplayName = Annotated[
     str,
     Field(description="Name as it will be displayed in the title"),
     StringConstraints(min_length=3, max_length=79, strip_whitespace=True),
-    AfterValidator(not_in_blocklist),
 ]
 
 type Description = Annotated[str, StringConstraints(max_length=1024)]
@@ -66,6 +65,10 @@ class ProjectCreate(BaseModel, strict=True):
                 self.name = not_in_blocklist(self.name)
             except ValueError as e:
                 raise validation_error(e, "name")
+            try:
+                self.display_name = not_in_blocklist(self.display_name)
+            except ValueError as e:
+                raise validation_error(e, "display_name")
 
         return Project(
             name=self.name,
@@ -98,6 +101,15 @@ class ProjectUpdate(BaseModel, strict=True):
                 self.name = not_in_blocklist(self.name)
             except ValueError as e:
                 raise validation_error(e, "name")
+        if (
+            self.display_name is not None
+            and self.display_name != project.display_name
+            and permission < PermissionsAPI.superadmin
+        ):
+            try:
+                self.display_name = not_in_blocklist(self.display_name)
+            except ValueError as e:
+                raise validation_error(e, "display_name")
         for key, value in self.model_dump(
             exclude_unset=True, exclude_none=True, exclude={"parent"}
         ).items():
