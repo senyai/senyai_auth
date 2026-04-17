@@ -37,5 +37,5 @@ def not_in_blocklist(name: str) -> str:
         raise ValueError("more than half of characters can't be digits")
     if name in bad_names or name.startswith("admin") or name.endswith("admin"):
         if name != "adminov":
-            raise ValueError("is blocked because it is suspicious")
+            raise ValueError("Value in block list")
     return name
