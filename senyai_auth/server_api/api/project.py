@@ -123,6 +123,11 @@ async def new_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> NewProjectInfo:
+    """
+    Create new project
+
+    * Only admins can do it
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project.parent_id},
@@ -155,6 +160,11 @@ async def update_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
+    """
+    Update project fields
+
+    * Only managers can do it
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
@@ -215,6 +225,11 @@ async def get_project(
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> ProjectModel:
+    """
+    Get project info. I think this method is currently unused
+
+    * Only users can do it
+    """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": project_id},
@@ -364,7 +379,7 @@ async def project_remove_users(
     """
     ## Remove users from a project
 
-    * Only managers and above can do this
+    * Only managers can do this
     * Also removes users from Project's Roles
     * Returns number of users deleted
     """
