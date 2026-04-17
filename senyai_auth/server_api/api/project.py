@@ -128,7 +128,7 @@ async def new_project(
         {"user_id": user.id, "project_id": project.parent_id},
     )
     assert permission is not None
-    if permission < PermissionsAPI.user:
+    if permission < PermissionsAPI.admin:
         raise not_authorized_exception
     project_db = project.make_project(permission)
     session.add(project_db)
