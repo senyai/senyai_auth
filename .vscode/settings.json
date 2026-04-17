@@ -2,7 +2,17 @@
     "cSpell.words": [
         "bindparam",
         "blocklist",
+        "creationdate",
+        "displayname",
         "forceescape",
+        "getcontentlength",
+        "getcontenttype",
+        "getlastmodified",
+        "gvfs",
+        "multistatus",
+        "PROPFIND",
+        "propstat",
+        "resourcetype",
         "Senyai",
         "superadmin"
     ]
