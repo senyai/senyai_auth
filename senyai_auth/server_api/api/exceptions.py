@@ -1,5 +1,6 @@
 from __future__ import annotations
 from fastapi import HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 
 
@@ -52,6 +53,24 @@ def conflict_exception(description: str, field: str):
                 "type": "Conflict",
             },
         ),
+    )
+
+
+def validation_error(e: Exception, field: str):
+    """
+    Convenient way to say that model field has an error outside of a model
+
+    `RequestValidationError` will be captured by FastAPI's
+    `request_validation_exception_handler` and return proper 422 error
+    """
+    return RequestValidationError(
+        [
+            {
+                "loc": ("body", field),
+                "msg": str(e),
+                "type": str(type(e)),
+            }
+        ],
     )
 
 
