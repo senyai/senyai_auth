@@ -394,7 +394,8 @@ class SenyaiDAV:
                     self._add_response(root, stat, item_url, item_path)
             except Exception:
                 return self._response_no_permissions_propfind
-        elif depth == "0" and permissions.can_traverse(dav_path):
+        elif depth in ("0", "1") and permissions.can_traverse(dav_path):
+            # Without "1" gvfs refuses to delete file
             self._add_response(root, path.stat(), request.url.path, path)
         else:
             return self._response_no_permissions_propfind
