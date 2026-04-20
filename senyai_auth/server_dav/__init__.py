@@ -424,10 +424,10 @@ class SenyaiDAV:
         propstat = ET.SubElement(response, "{DAV:}propstat")
         prop = ET.SubElement(propstat, "{DAV:}prop")
 
-        # Display name
-        display_name = fs_path.name
-        if not display_name:  # Root
-            display_name = "/"
+        # Give root a `realm` name`
+        display_name = (
+            self._settings.realm if fs_path == self._path else fs_path.name
+        )
         ET.SubElement(prop, "{DAV:}displayname").text = display_name
 
         # Resource type and other properties
