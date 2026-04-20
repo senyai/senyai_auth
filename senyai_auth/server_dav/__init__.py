@@ -27,6 +27,8 @@ import anyio._backends._asyncio  # needed for _drop_privileges
 from .afs import copy, delete
 from .. import __version__
 
+ET.register_namespace("D", "DAV:")
+
 
 class DavSettings(NamedTuple):
     path: str = "."
