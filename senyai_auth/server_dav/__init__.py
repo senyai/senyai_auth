@@ -622,7 +622,7 @@ class SenyaiDAV:
             return Response(
                 status_code=400, content="Destination not specified"
             )
-        if not permissions.has_write_access(DAVPath(destination)):
+        if not permissions.has_write_access(destination):
             return self._response_no_permissions_write
         destination_path = self._path / destination
         successful_response = Response(
