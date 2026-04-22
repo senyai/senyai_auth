@@ -557,7 +557,7 @@ class SenyaiDAV:
         if not permissions.has_write_access(dav_path):
             return self._response_no_permissions_write
         if not path.exists():
-            return Response(status_code=404)
+            return self._response_not_found
 
         try:
             await delete(path)
