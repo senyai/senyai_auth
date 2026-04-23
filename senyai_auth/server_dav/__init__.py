@@ -448,6 +448,12 @@ class SenyaiDAV:
             content_type = mimetypes.get(ext, "application/octet-stream")
             ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
 
+        # Creation date
+        ET.SubElement(prop, "{DAV:}creationdate").text = (
+            datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+        )
         # Last modified
         ET.SubElement(prop, "{DAV:}getlastmodified").text = (
             # st_mtime: last time the file's CONTENTS were changed
