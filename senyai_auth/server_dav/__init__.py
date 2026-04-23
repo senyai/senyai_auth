@@ -1,7 +1,7 @@
 # import os
 from __future__ import annotations
 from typing import NamedTuple, NewType
-from os import stat_result, getenv
+from os import stat_result, getenv, utime
 from stat import S_ISDIR
 from base64 import b64decode
 from collections import defaultdict
@@ -551,6 +551,17 @@ class SenyaiDAV:
             async with aiofiles.open(path, "wb") as f:
                 async for chunk in request.stream():
                     await f.write(chunk)
+            # Total Commander's client send this `x-last-modified`
+            last_modified_str = request.headers.get("x-last-modified")
+            if last_modified_str:
+                try:
+                    dt = datetime.strptime(
+                        last_modified_str, "%a, %d %b %Y %H:%M:%S %Z"
+                    ).timestamp()
+                except Exception:  # ignore unsupported date format
+                    pass
+                else:
+                    utime(path, (dt, dt))
             return Response(status_code=201)
         except Exception as e:
             return Response(status_code=500, content=str(e))
