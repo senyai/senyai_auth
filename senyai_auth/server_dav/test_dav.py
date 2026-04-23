@@ -194,9 +194,13 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_propfind_on_root_directory(self):
         response = self._client.request("PROPFIND", "/", headers=AUTH)
         self.assertEqual(response.status_code, 207)
+        stat = self._path.stat()
         getlastmodified = datetime.fromtimestamp(
-            self._path.stat().st_mtime, timezone.utc
+            stat.st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        creationdate = datetime.fromtimestamp(
+            stat.st_ctime, timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.assertEqual(
             response.content,
             # fmt: off
@@ -208,6 +212,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
                      '<D:displayname>Storage</D:displayname>'
                      '<D:resourcetype><D:collection /></D:resourcetype>'
                      '<D:getcontenttype>httpd/unix-directory</D:getcontenttype>'
+                     f'<D:creationdate>{creationdate}</D:creationdate>'
                      f'<D:getlastmodified>{getlastmodified}</D:getlastmodified>'
                    '</D:prop>'
                    '<D:status>HTTP/1.1 200 OK</D:status>'
@@ -220,9 +225,13 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_propfind_on_a_file(self):
         response = self._client.request("PROPFIND", "/a", headers=AUTH)
         self.assertEqual(response.status_code, 207)
+        stat = (self._path / "a").stat()
         getlastmodified = datetime.fromtimestamp(
-            (self._path / "a").stat().st_mtime, timezone.utc
+            stat.st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        creationdate = datetime.fromtimestamp(
+            stat.st_ctime, timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.assertEqual(
             response.content,
             # fmt: off
@@ -235,6 +244,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
                      '<D:resourcetype />'
                      '<D:getcontentlength>0</D:getcontentlength>'
                      '<D:getcontenttype>application/octet-stream</D:getcontenttype>'
+                     f'<D:creationdate>{creationdate}</D:creationdate>'
                      f'<D:getlastmodified>{getlastmodified}</D:getlastmodified>'
                    '</D:prop>'
                    '<D:status>HTTP/1.1 200 OK</D:status>'
