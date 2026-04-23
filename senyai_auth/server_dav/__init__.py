@@ -7,7 +7,7 @@ from base64 import b64decode
 from collections import defaultdict
 from collections.abc import Callable, Awaitable
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
 from starlette.applications import Starlette
 from starlette.responses import Response, FileResponse
 from starlette.requests import Request
@@ -449,10 +449,12 @@ class SenyaiDAV:
             ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
 
         # Last modified
-        last_modified = datetime.fromtimestamp(stat.st_mtime).strftime(
-            "%a, %d %b %Y %H:%M:%S GMT"
+        ET.SubElement(prop, "{DAV:}getlastmodified").text = (
+            # st_mtime: last time the file's CONTENTS were changed
+            datetime.fromtimestamp(stat.st_mtime, timezone.utc).strftime(
+                "%a, %d %b %Y %H:%M:%S GMT"
+            )
         )
-        ET.SubElement(prop, "{DAV:}getlastmodified").text = last_modified
         ET.SubElement(propstat, "{DAV:}status").text = "HTTP/1.1 200 OK"
 
     async def get(
@@ -521,7 +523,7 @@ class SenyaiDAV:
                 headers={
                     "Content-Length": str(stat.st_size),
                     "Last-Modified": datetime.fromtimestamp(
-                        stat.st_mtime
+                        stat.st_mtime, timezone.utc
                     ).strftime("%a, %d %b %Y %H:%M:%S GMT"),
                     "Content-Type": "application/octet-stream",
                 }

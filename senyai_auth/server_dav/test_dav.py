@@ -9,7 +9,7 @@ import httpx
 from httpx import AsyncClient
 from pathlib import Path
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class PermissionsTest(TestCase):
@@ -195,7 +195,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         response = self._client.request("PROPFIND", "/", headers=AUTH)
         self.assertEqual(response.status_code, 207)
         getlastmodified = datetime.fromtimestamp(
-            self._path.stat().st_mtime
+            self._path.stat().st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
         self.assertEqual(
             response.content,
@@ -221,7 +221,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         response = self._client.request("PROPFIND", "/a", headers=AUTH)
         self.assertEqual(response.status_code, 207)
         getlastmodified = datetime.fromtimestamp(
-            (self._path / "a").stat().st_mtime
+            (self._path / "a").stat().st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
         self.assertEqual(
             response.content,
@@ -302,7 +302,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_head_for_valid_file(self):
         response = self._client.head("/a", headers=AUTH)
         getlastmodified = datetime.fromtimestamp(
-            self._path.stat().st_mtime
+            self._path.stat().st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
