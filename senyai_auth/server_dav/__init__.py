@@ -39,8 +39,8 @@ class DavSettings(NamedTuple):
 
 # path without slash at the beginning and at the end
 DAVPath = NewType("DAVPath", str)
-# non empty authorization string that goes directly into api backend
-Authorization = NewType("Authorization", str)
+# must start with `Bearer `. goes as Authorization header to api backend
+Bearer = NewType("Bearer", str)
 
 ONE_MONTH = 30 * 24 * 60 * 60
 
@@ -135,11 +135,11 @@ def _drop_privileges(username: str) -> None:
     os.setuid(target_uid)
 
 
-async def _authorization_for(
+async def _bearer_for(
     api_client: AsyncClient,
     username: str,
     password: str,
-) -> Authorization | None:
+) -> Bearer | None:
     token_res = await api_client.post(
         "/token",
         data={"username": username, "password": password},
@@ -148,20 +148,19 @@ async def _authorization_for(
         return None
 
     token = token_res.json()
-    return Authorization(
+    return Bearer(
         f"{token['token_type'].capitalize()} {token['access_token']}"
     )
 
 
 async def _permissions_for(
-    api_client: AsyncClient, authorization_str: Authorization
+    api_client: AsyncClient, bearer: Bearer
 ) -> Permissions | None:
     permissions_res = await api_client.get(
-        "/ldap/roles/storage", headers={"Authorization": authorization_str}
+        "/ldap/roles/storage", headers={"Authorization": bearer}
     )
-    if permissions_res.status_code != 200:
-        return None
-    return Permissions(permissions_res.json())
+    if permissions_res.status_code == 200:
+        return Permissions(permissions_res.json())
 
 
 class SenyaiDAV:
@@ -227,10 +226,10 @@ class SenyaiDAV:
             content="Authentication backend is down", status_code=503
         )
         self._auth_cache: dict[
-            tuple[str, str], tuple[float, Future[Authorization | None]]
+            tuple[str, str], tuple[float, Future[Bearer | None]]
         ] = {}
         self._permissions_cache: dict[
-            Authorization, tuple[float, Future[Permissions | None]]
+            Bearer, tuple[float, Future[Permissions | None]]
         ] = {}
 
     async def __call__(
@@ -242,54 +241,48 @@ class SenyaiDAV:
         await response(scope, receive, send)
 
     async def _permissions_for(
-        self, authorization: Authorization, now: float
+        self, bearer: Bearer, now: float
     ) -> Permissions | None:
         cache = self._permissions_cache
-        if authorization in cache:
-            expiration, permissions = cache[authorization]
+        if bearer in cache:
+            expiration, permissions = cache[bearer]
             if expiration > now:  # not expired
                 return await permissions
-            del cache[authorization]
+            del cache[bearer]
         future: Future[Permissions | None] = Future()
         # update permissions every 20 seconds
-        cache[authorization] = now + 20.0, future
-        permissions = await _permissions_for(self._api_client, authorization)
+        cache[bearer] = now + 20.0, future
+        permissions = await _permissions_for(self._api_client, bearer)
         future.set_result(permissions)
         return permissions
 
-    async def _authorization_for(
+    async def _bearer_for(
         self, username_password: tuple[str, str], now: float
-    ) -> Authorization | None:
+    ) -> Bearer | None:
         cache = self._auth_cache
         if username_password in cache:
             expiration, authorization = cache[username_password]
             if expiration > now:  # not expired
                 return await authorization
             del cache[username_password]
-        future: Future[Authorization | None] = Future()
+        future: Future[Bearer | None] = Future()
         cache[username_password] = now + 60.0, future
-        authorization = await _authorization_for(
-            self._api_client, *username_password
-        )
+        authorization = await _bearer_for(self._api_client, *username_password)
         future.set_result(authorization)
         return authorization
 
     async def _check_auth(
         self, request: Request
-    ) -> tuple[Permissions | None, Authorization | None]:
+    ) -> tuple[Permissions | None, Bearer | None]:
         """
         returns:
             * user's Permissions
             * new Bearer that will be stored in a cookie
         """
         now = monotonic()
-        authorization_str = request.cookies.get("Authorization")
-        if authorization_str:
-            return (
-                await self._permissions_for(
-                    Authorization(authorization_str), now
-                )
-            ), None
+        if bearer := request.cookies.get("Authorization"):
+            # most common way of authorization
+            return await self._permissions_for(Bearer(bearer), now), None
 
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Basic "):
@@ -300,18 +293,13 @@ class SenyaiDAV:
                     return None, None
             except Exception:
                 return None, None
-            authorization = await self._authorization_for(
-                username_password, now
-            )
-            if not authorization:
+            bearer = await self._bearer_for(username_password, now)
+            if not bearer:
                 return None, None
-            return (
-                await self._permissions_for(authorization, now),
-                authorization,
-            )
+            return await self._permissions_for(bearer, now), bearer
         elif auth_header.startswith("Bearer "):
-            authorization = Authorization(auth_header)
-            return await self._permissions_for(authorization, now), None
+            bearer = Bearer(auth_header)
+            return await self._permissions_for(bearer, now), None
         return None, None
 
     async def handle(self, request: Request) -> Response:
@@ -321,7 +309,7 @@ class SenyaiDAV:
             return await self.options(None, None, None, None)
 
         try:
-            permissions, authorization = await self._check_auth(request)
+            permissions, bearer = await self._check_auth(request)
         except NetworkError:
             return self._response_api_failure
         if not permissions:
@@ -333,10 +321,8 @@ class SenyaiDAV:
         call = self._methods.get(method)
         if call is not None:
             response = await call(full_path, dav_path, request, permissions)
-            if authorization:
-                response.set_cookie(
-                    "Authorization", authorization, max_age=ONE_MONTH
-                )
+            if bearer:
+                response.set_cookie("Authorization", bearer, max_age=ONE_MONTH)
             return response
         return Response(
             status_code=405, content=f"Method {method} not allowed"
