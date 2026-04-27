@@ -184,6 +184,9 @@ class SenyaiDAV:
             "MKCOL": self.mkcol,
             "COPY": self.copy,
             "MOVE": self.move,
+            "LOCK": self.lock,
+            "UNLOCK": self.unlock,
+            "PROPPATCH": self.proppatch,
         }
         self._response_options = Response(
             headers={
@@ -696,6 +699,136 @@ class SenyaiDAV:
             # Should not happen, as user only works with files and directories
             return Response(status_code=500, content=str(e))
         return successful_response
+
+    async def lock(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        """Fake LOCK for Microsoft client"""
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+
+        lock_scope = "exclusive"  # default
+        lock_type = "write"  # default
+
+        if body := await request.body():
+            try:
+                root = ET.fromstring(body)
+            except ET.ParseError as e:
+                return Response(status_code=400, content=str(e))
+            # Poorly extract lock scope and type
+            for elem in root.iter():
+                if elem.tag.endswith("lock scope"):
+                    lock_scope = elem.text
+                elif elem.tag.endswith("lock type"):
+                    lock_type = elem.text
+
+        lock_discovery = ET.Element("{DAV:}lockdiscovery")
+        active_lock = ET.SubElement(lock_discovery, "{DAV:}activelock")
+
+        lock_scope_elem = ET.SubElement(active_lock, "{DAV:}lockscope")
+        if lock_scope == "exclusive":
+            ET.SubElement(lock_scope_elem, "{DAV:}exclusive")
+        else:
+            ET.SubElement(lock_scope_elem, "{DAV:}shared")
+
+        lock_type_elem = ET.SubElement(active_lock, "{DAV:}locktype")
+        if lock_type == "write":
+            ET.SubElement(lock_type_elem, "{DAV:}write")
+
+        owner = ET.SubElement(active_lock, "{DAV:}owner")
+        owner_href = ET.SubElement(owner, "{DAV:}href")
+        owner_href.text = (
+            request.headers.get("Authorization", "unknown").split()[1]
+            if "Authorization" in request.headers
+            else "anonymous"
+        )
+
+        lock_token = ET.SubElement(active_lock, "{DAV:}locktoken")
+        lock_token_href = ET.SubElement(lock_token, "{DAV:}href")
+        import uuid
+
+        lock_token_href.text = f"opaquelocktoken:{uuid.uuid4()}"
+
+        timeout = request.headers.get("Timeout", "Second-180")
+        if timeout.startswith("Second-"):
+            timeout_seconds = int(timeout[7:])
+        else:
+            timeout_seconds = 180  # default
+        ET.SubElement(active_lock, "{DAV:}timeout").text = (
+            f"Second-{timeout_seconds}"
+        )
+
+        depth = request.headers.get("Depth", "0")
+        ET.SubElement(active_lock, "{DAV:}depth").text = depth
+
+        return Response(
+            content=ET.tostring(
+                lock_discovery, encoding="unicode", xml_declaration=True
+            ),
+            media_type='application/xml; charset="utf-8"',
+            status_code=200,
+            headers={"Lock-Token": f"<{lock_token_href.text}>", "DAV": "1"},
+        )
+
+    async def unlock(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        """Fake UNLOCK for Microsoft client"""
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        lock_token = request.headers.get("Lock-Token", "")
+        return Response(status_code=204)
+
+    async def proppatch(
+        self,
+        path: Path,
+        dav_path: DAVPath,
+        request: Request,
+        permissions: Permissions,
+    ) -> Response:
+        """Fake PROPPATCH for Microsoft client"""
+        if not permissions.has_write_access(dav_path):
+            return self._response_no_permissions_write
+        resource_exists = path.exists()
+
+        root = ET.Element("{DAV:}multistatus")
+        response_elem = ET.SubElement(root, "{DAV:}response")
+        ET.SubElement(response_elem, "{DAV:}href").text = request.url.path
+
+        propstat = ET.SubElement(response_elem, "{DAV:}propstat")
+        prop = ET.SubElement(propstat, "{DAV:}prop")
+
+        if body := await request.body():
+            try:
+                root_elem = ET.fromstring(body)
+            except ET.ParseError as e:
+                return Response(status_code=400, content=str(e))
+            for prop_update in root_elem.findall(".//{DAV:}set/{DAV:}prop"):
+                for child in prop_update:
+                    prop.append(child)
+
+        ET.SubElement(propstat, "{DAV:}status").text = "HTTP/1.1 200 OK"
+
+        if not resource_exists:
+            user_agent = request.headers.get("User-Agent", "")
+            if "Microsoft-WebDAV-MiniRedir" in user_agent:
+                pass
+
+        return Response(
+            content=ET.tostring(
+                root, encoding="unicode", xml_declaration=True
+            ),
+            media_type='application/xml; charset="utf-8"',
+            status_code=207,  # Multi-Status
+        )
 
     async def _run_periodic_tasks(self):
         while True:

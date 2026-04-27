@@ -77,7 +77,7 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
             response.headers,
             {
                 "dav": "1",
-                "allow": "OPTIONS, PROPFIND, GET, HEAD, PUT, DELETE, MKCOL, COPY, MOVE",
+                "allow": "OPTIONS, PROPFIND, GET, HEAD, PUT, DELETE, MKCOL, COPY, MOVE, LOCK, UNLOCK, PROPPATCH",
                 "content-length": "0",
             },
         )
