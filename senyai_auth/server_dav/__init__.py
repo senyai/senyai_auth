@@ -377,7 +377,7 @@ class SenyaiDAV:
             body = await request.body()
             try:
                 ET.fromstring(body)
-            except Exception as e:
+            except ET.ParseError as e:
                 return Response(status_code=400, content=str(e))
 
         # Add children if depth > 0 and it's a directory
