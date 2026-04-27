@@ -552,8 +552,7 @@ class SenyaiDAV:
                 async for chunk in request.stream():
                     await f.write(chunk)
             # Total Commander's client send this `x-last-modified`
-            last_modified_str = request.headers.get("x-last-modified")
-            if last_modified_str:
+            if last_modified_str := request.headers.get("x-last-modified"):
                 try:
                     dt = datetime.strptime(
                         last_modified_str, "%a, %d %b %Y %H:%M:%S %Z"
