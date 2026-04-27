@@ -24,7 +24,7 @@ python -m senyai_auth.server_dav
 Run behind nginx
 ```bash
 hypercorn senyai_auth.server_api.app:app --bind 127.0.0.1:8000
-hypercorn senyai_auth.server_web:app --bind 127.0.0.1:5000 --root-path /root-path --access-logfile - --error-logfile-
-hypercorn senyai_auth.server_dav:app --bind 127.0.0.1:5001 --root-path /root-path --access-logfile - --error-logfile-
+hypercorn senyai_auth.server_web:app --bind 127.0.0.1:5000 --root-path /root-path --access-logfile - --error-logfile -
+hypercorn senyai_auth.server_dav:app --bind 127.0.0.1:5001 --root-path /root-path --access-logfile - --error-logfile -
 python -m senyai_auth.server_ldap --port 10389
 ```
