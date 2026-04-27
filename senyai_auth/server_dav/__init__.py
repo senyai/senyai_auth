@@ -277,6 +277,11 @@ class SenyaiDAV:
     async def _check_auth(
         self, request: Request
     ) -> tuple[Permissions | None, Authorization | None]:
+        """
+        returns:
+            * user's Permissions
+            * new Bearer that will be stored in a cookie
+        """
         now = monotonic()
         authorization_str = request.cookies.get("Authorization")
         if authorization_str:
@@ -286,23 +291,28 @@ class SenyaiDAV:
                 )
             ), None
 
-        auth_header = request.headers.get("Authorization")
-
-        if not auth_header or not auth_header.startswith("Basic "):
-            return None, None
-
-        try:
-            auth_decoded = b64decode(auth_header[6:]).decode()
-            username_password = tuple(auth_decoded.split(":", 1))
-            if len(username_password) != 2:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Basic "):
+            try:
+                auth_decoded = b64decode(auth_header[6:]).decode()
+                username_password = tuple(auth_decoded.split(":", 1))
+                if len(username_password) != 2:
+                    return None, None
+            except Exception:
                 return None, None
-        except Exception:
-            return None, None
-
-        authorization = await self._authorization_for(username_password, now)
-        if not authorization:
-            return None, None
-        return await self._permissions_for(authorization, now), authorization
+            authorization = await self._authorization_for(
+                username_password, now
+            )
+            if not authorization:
+                return None, None
+            return (
+                await self._permissions_for(authorization, now),
+                authorization,
+            )
+        elif auth_header.startswith("Bearer "):
+            authorization = Authorization(auth_header)
+            return await self._permissions_for(authorization, now), None
+        return None, None
 
     async def handle(self, request: Request) -> Response:
         method = request.method
