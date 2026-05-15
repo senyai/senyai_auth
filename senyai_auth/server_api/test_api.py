@@ -3,14 +3,24 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from unittest import TestCase, IsolatedAsyncioTestCase
 from sqlalchemy.exc import IntegrityError
+import logging
 
 from .app import app, get_settings, AppSettings
 from .db import Project, Role, User, PermissionsAPI
+from . import db as db_module
 
-import logging
 
 logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 logging.getLogger("python_multipart.multipart").setLevel(logging.WARNING)
+
+
+def fake_hash(password: str, salt: str, encoding: str, variant: str) -> bytes:
+    from hashlib import blake2b
+
+    return blake2b(f"{password}:{salt}".encode()).hexdigest().encode()
+
+
+db_module.pyargon2_hash = fake_hash
 
 
 def _test_get_settings():
