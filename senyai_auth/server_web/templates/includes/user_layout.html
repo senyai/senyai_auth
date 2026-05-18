@@ -1,0 +1,82 @@
+<div class="container-fluid">
+    <ul class="nav nav-tabs" id="profileTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-tab-pane"
+                type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="true">Profile</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-tab-pane"
+                type="button" role="tab" aria-controls="password-tab-pane" aria-selected="false"><i
+                    class="bi bi-key mx-2"></i>Password</button>
+        </li>
+
+    </ul>
+    <div class="tab-content" id="profileTabContent">
+        <div class="tab-pane fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
+            <form role="form" class="form-control my-3 py-3"
+                hx-patch="{{ url_for('update_user_info', user_id=user.id) }}">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="display_name" name="display_name"
+                        aria-describedby="displayNameHelp" value="{{ user.display_name }}" required>
+                    <label for="display_name">{{ _("Display Name") }}:</label>
+                    <small id="displayNameHelp" class="form-text text-muted">{{ _("This is the name everyone will be able to see you. Example: \"Dmitry Ivanov\"") }}</small>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="email" name="email" aria-describedby="emailHelp"
+                        value="{{ user.email }}" required>
+                    <label for="email">{{ _("Email") }}:</label>
+                    <small id="emailHelp" class="form-text text-muted">{{ _("Email can be used as login and will be visible to all users") }}</small>
+                </div>
+                <div class="form-floating mb-3">
+                    <textarea rows="3" style="height:initial" class="form-control" id="contacts" name="contacts"
+                        aria-describedby="contactsHelp">{{ user.contacts if 'contacts' in user }}</textarea>
+                    <label for="contacts">{{ _("Contacts") }}:</label>
+                    <small id="contactsHelp" class="form-text text-muted">{{ _("Contacts will be visible to all users. Can be empty.") }}</small>
+                </div>
+                <div class="d-grid pt-3">
+                    <button type="submit" class="btn btn-primary">{{ _("Save") }}</button>
+                </div>
+            </form>
+        </div>
+        <div class="tab-pane fade" id="password-tab-pane" role="tabpanel" aria-labelledby="password-tab" tabindex="0">
+            <form role="form" class="form-control my-3 py-3"
+                hx-patch="{{ url_for('update_user_password', user_id=user.id) }}">
+                <div class="input-group mb-3" data-password-root>
+                    <div class="form-floating">
+                        <input class="form-control" type="password" id="old" name="password_old" required data-password-old>
+                        <label for="old">Old password:</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="input-group mb-3" data-password-root>
+                    <div class="form-floating">
+                        <input class="form-control" type="password" id="new" name="password_new" required data-password-new>
+                        <label for="new">New password:</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="input-group mb-3" data-password-root>
+                    <div class="form-floating">
+                        <input class="form-control" type="password" id="confirm" name="password_repeat" required
+                            data-password-confirm>
+                        <label for="confirm">Confirm password:</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="invalid-feedback">
+                    Passwords do not match
+                </div>
+                <div class="d-grid pt-3">
+                    <button type="submit" class="btn btn-warning">{{ _("Update password") }}</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>

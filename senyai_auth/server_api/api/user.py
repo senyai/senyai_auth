@@ -6,6 +6,7 @@ from pydantic import (
     EmailStr,
     field_validator,
     Field,
+    model_validator,
     SecretStr,
     StringConstraints,
     ValidationInfo,
@@ -90,15 +91,17 @@ DisplayName = (
     Field(examples=["Arseniy Terekhin"]),
 )
 
+Password = Annotated[
+    SecretStr, Field(exclude=True, min_length=8, max_length=64)
+]
+
 
 class CreateUserModel(BaseModel, strict=True, frozen=True):
     username: Annotated[str, *Username]
     email: EmailStr
     display_name: Annotated[str, *DisplayName]
-    password: SecretStr = Field(exclude=True, min_length=8, max_length=64)
-    password_repeat: SecretStr = Field(
-        exclude=True, min_length=8, max_length=64
-    )
+    password: Password
+    password_repeat: Password
     contacts: Annotated[str, *Contacts]
 
     @field_validator("password", mode="after")
@@ -176,14 +179,17 @@ async def create_user(
     return NewUserResponse(user_id=user_db.id)
 
 
-class PasswordModel(BaseModel, strict=True, frozen=True):
-    old: SecretStr = Field(min_length=8, max_length=64, exclude=True)
-    new: SecretStr = Field(min_length=8, max_length=64, exclude=True)
+# class PasswordModel(BaseModel, strict=True, frozen=True):
+#     old: SecretStr = Field(min_length=8, max_length=64, exclude=True)
+#     new: SecretStr = Field(min_length=8, max_length=64, exclude=True)
 
 
 class UpdateUserModel(BaseModel, strict=True, frozen=True):
     username: Annotated[str | None, *Username] = None
-    password: PasswordModel | None = None
+    # password: PasswordModel | None = None
+    password_old: Password | None = None
+    password_new: Password | None = None
+    password_repeat: Password | None = None
     email: EmailStr | None = None
     contacts: Annotated[str | None, *Contacts] = None
     display_name: Annotated[str | None, *DisplayName] = None
@@ -192,17 +198,47 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True):
         Field(description="User won't be able to login when disabled"),
     ] = None
 
+    @field_validator("password_repeat", mode="after")
+    @staticmethod
+    def check_passwords_match(value: SecretStr, info: ValidationInfo):
+        if (
+            "password_new" not in info.data
+        ):  # password is too weak, ignore repeat
+            return value
+        if (
+            value.get_secret_value()
+            != info.data["password_new"].get_secret_value()
+        ):
+            raise ValueError(f"Passwords do not match")
+        return value
+
+    @model_validator(mode="after")
+    def check_password_fields(self):
+        if (
+            self.password_old is None
+            and self.password_new is None
+            and self.password_repeat is None
+        ):
+            return self
+        if (
+            self.password_old is None
+            or self.password_new is None
+            or self.password_repeat is None
+        ):
+            raise ValueError("Contract violation")
+        return self
+
     def update(self, user: User, is_superadmin: bool) -> None:
-        if self.password is not None:
+        if self.password_old is not None and self.password_new is not None:
             current_password_hash = user.create_password_hash(
-                self.password.old.get_secret_value(), user.salt
+                self.password_old.get_secret_value(), user.salt
             )
             if current_password_hash != user.password_hash:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Current password does not match",
                 )
-            user.update_password(self.password.new.get_secret_value())
+            user.update_password(self.password_new.get_secret_value())
         if self.username is not None and not is_superadmin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
