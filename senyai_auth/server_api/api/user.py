@@ -184,7 +184,7 @@ async def create_user(
 #     new: SecretStr = Field(min_length=8, max_length=64, exclude=True)
 
 
-class UpdateUserModel(BaseModel, strict=True, frozen=True):
+class UpdateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     username: Annotated[str | None, *Username] = None
     # password: PasswordModel | None = None
     password_old: Password | None = None

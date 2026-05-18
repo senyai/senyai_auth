@@ -641,7 +641,9 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
         response = client.patch(
             f"/user/{my_id}",
             json={
-                "password": {"old": "milkshape3000", "new": "milkshape3001"}
+                "password_old": "milkshape3000",
+                "password_new": "milkshape3001",
+                "password_repeat": "milkshape3001",
             },
             headers={"Authorization": authorization_str},
         )
@@ -656,12 +658,32 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
     ) -> None:
         response = client.patch(
             f"/user/{my_id}",
-            json={"password": {"old": "milkshape300", "new": "milkshape3001"}},
+            json={
+                "password_old": "milkshape300",
+                "password_new": "milkshape3001",
+                "password_repeat": "milkshape3001",
+            },
             headers={"Authorization": authorization_str},
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response.json(), {"detail": "Current password does not match"}
+        )
+
+    async def must_match_new_password(
+        self, authorization_str: str, my_id: int
+    ) -> None:
+        response = client.patch(
+            f"/user/{my_id}",
+            json={
+                "password_old": "milkshape300",
+                "password_new": "milkshape3001",
+                "password_repeat": "milkshape3002",
+            },
+            headers={"Authorization": authorization_str},
+        )
+        self.assertEqual(
+            response.status_code, status.HTTP_422_UNPROCESSABLE_CONTENT
         )
 
     async def cant_change_username(
@@ -684,5 +706,6 @@ class Z_UserUpdateTest(IsolatedAsyncioTestCase):
         )
         my_id = await self.change_display_name(authorization_str)
         await self.must_provide_original_password(authorization_str, my_id)
+        await self.must_match_new_password(authorization_str, my_id)
         await self.cant_change_username(authorization_str, my_id)
         await self.change_password(authorization_str, my_id)
