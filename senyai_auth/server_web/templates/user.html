@@ -1,18 +1,5 @@
 {% extends 'base.html' %}
 {% block content %}
-<!-- <div class="col-md-6 justify-content-center">
-    <div class="row">
-        <div class="col-md-2">
-            user ID: {{ user['id'] }}
-        </div>
-        <div class="col-md-4" title="{{ user['username'] }}">
-            {{ user['display_name'] }}
-        </div>
-        <div class="col-md-6">
-            {{ user['email'] }}
-        </div>
-    </div>
-</div> -->
 <div class="row">
     <div class="col-md-2">
         {% macro render_tree(node) %}
