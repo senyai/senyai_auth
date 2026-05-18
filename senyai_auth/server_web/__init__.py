@@ -60,7 +60,7 @@ async def handle_connect_error(error: httpx.NetworkError):
 @app.context_processor
 async def inject_auth():
     return {
-        "has_auth": "Authorization" in request.cookies,
+        # "has_auth": "Authorization" in request.cookies,
         "version": __version__,
     }
 
@@ -583,4 +583,58 @@ async def get_manage_user_roles_form():
             user_id=user_id,
             roles=roles,
         )
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.get("/profile")
+async def get_profile_page():
+    resp = await app.client.get(
+        f"/ui/main",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return await render_template(
+            "includes/user_layout.html",
+            user=data["user"],
+            _=_get_underscore(request),
+        )
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.patch("/patch_user_info/<user_id>")
+async def update_user_info(user_id: int):
+    # user_id = request.args.get("user_id", type=int)
+    form = await request.form
+    data = dict(form)
+
+    resp = await app.client.patch(
+        f"/user/{user_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
+    )
+
+    if resp.status_code == 204:
+        trigger = HXTrigger().add_success_event("Profile updated!")
+        return "", resp.status_code, trigger.build()
+
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.patch("/patch_user_password/<user_id>")
+async def update_user_password(user_id: int):
+    form = await request.form
+    data = dict(form)
+
+    resp = await app.client.patch(
+        f"/user/{user_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+        json=data,
+    )
+
+    if resp.status_code == 204:
+        resp = await make_response("", 201)
+        resp.headers["HX-Redirect"] = url_for("logout")
+        return resp
+
     return resp.content, resp.status_code, resp.headers

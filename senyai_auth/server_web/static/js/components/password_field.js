@@ -1,17 +1,17 @@
 export function initPasswordField() {
     document.body.addEventListener("click", handleChange);
 
-    document.body.addEventListener("htmx:configRequest", event => {
-        const form = event.target.closest("[data-password-form]");
-        if (!form) return;
+    // document.body.addEventListener("htmx:configRequest", event => {
+    //     const form = event.target.closest("[data-password-form]");
+    //     if (!form) return;
 
-        const valid = validatePasswordForm(form);
+    //     const valid = validatePasswordForm(form);
 
-        if (!valid || !form.checkValidity()) {
-            event.preventDefault();
-            form.classList.add("was-validated");
-        }
-    });
+    //     if (!valid || !form.checkValidity()) {
+    //         event.preventDefault();
+    //         form.classList.add("was-validated");
+    //     }
+    // });
 }
 
 
@@ -33,22 +33,23 @@ function handleChange(event) {
 
 }
 
-function validatePasswordForm(form) {
+// function validatePasswordForm(form) {
 
-    const newPassword = form.querySelector("[data-password-new]");
-    const confirmPassword = form.querySelector("[data-password-confirm]");
+//     const newPassword = form.querySelector("[data-password-new]");
+//     const confirmPassword = form.querySelector("[data-password-confirm]");
 
-    if (!newPassword || !confirmPassword) return;
+//     if (!newPassword || !confirmPassword) return;
 
-    const match = newPassword.value === confirmPassword.value;
+//     const match = newPassword.value === confirmPassword.value;
+//     alert(match);
 
-    if (!match) {
-        confirmPassword.setCustomValidity("Passwords do not match!");
-        confirmPassword.classList.add("is-invalid");
-        return false;
-    }
+//     if (!match) {
+//         confirmPassword.setCustomValidity("Passwords do not match!");
+//         confirmPassword.classList.add("is-invalid");
+//         return false;
+//     }
 
-    confirmPassword.setCustomValidity("");
-    confirmPassword.classList.remove("is-invalid");
-    return true;
-}
+//     confirmPassword.setCustomValidity("");
+//     confirmPassword.classList.remove("is-invalid");
+//     return true;
+// }

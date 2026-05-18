@@ -22,21 +22,27 @@ class HXTrigger:
 
     def add_success_event(self, message: str):
         self.events["successEvent"]["message"].append(message)
+        return self
 
     def add_error_event(self, errors: list[str]):
         self.events["errorEvent"]["errors"].extend(errors)
+        return self
 
     def add_update_projects_tree(self):
         self.events["updateProjects"] = {}
+        return self
 
     def add_update_project_info(self):
         self.events["updateProjectInfo"] = {}
+        return self
 
     def add_close_modal_event(self):
         self.events["closeModal"] = {}
+        return self
 
     def add_update_invites_tab(self):
         self.events["updateInvitesTab"] = {}
+        return self
 
     def build(self):
         return self._build(self.events)
