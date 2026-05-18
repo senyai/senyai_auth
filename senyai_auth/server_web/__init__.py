@@ -60,7 +60,6 @@ async def handle_connect_error(error: httpx.NetworkError):
 @app.context_processor
 async def inject_auth():
     return {
-        # "has_auth": "Authorization" in request.cookies,
         "version": __version__,
     }
 

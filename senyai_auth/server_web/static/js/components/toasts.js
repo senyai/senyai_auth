@@ -20,7 +20,6 @@ export function initToasts() {
 
     document.addEventListener('htmx:responseError', evt => {
         const xhr = evt.detail.xhr;
-
         if (xhr.status == 422 || xhr.status == 409) {
             const form = evt.detail.elt;
             const errors = JSON.parse(xhr.responseText);
