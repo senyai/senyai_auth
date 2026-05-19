@@ -14,7 +14,7 @@ cd senyai_auth/server_api && ./download_static.sh && cd ../..
 cd senyai_auth/server_web && ./download_static.sh && ./babel.sh && cd ../..
 python -m senyai_auth.server_api init
 fastapi dev -e 'senyai_auth.server_api.app:app'
-quart -A senyai_auth.server_web:app run
+QUART_DEBUG=1 quart -A senyai_auth.server_web:app run --reload
 python -m senyai_auth.server_ldap --port 8389
 python -m senyai_auth.server_dav
 ```
