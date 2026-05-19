@@ -179,14 +179,8 @@ async def create_user(
     return NewUserResponse(user_id=user_db.id)
 
 
-# class PasswordModel(BaseModel, strict=True, frozen=True):
-#     old: SecretStr = Field(min_length=8, max_length=64, exclude=True)
-#     new: SecretStr = Field(min_length=8, max_length=64, exclude=True)
-
-
 class UpdateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     username: Annotated[str | None, *Username] = None
-    # password: PasswordModel | None = None
     password_old: Password | None = None
     password_new: Password | None = None
     password_repeat: Password | None = None
