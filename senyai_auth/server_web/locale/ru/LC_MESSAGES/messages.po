@@ -31,6 +31,10 @@ msgstr "Закрыть"
 msgid "Confirm"
 msgstr "Подтвердить"
 
+#: templates/invite_result.html:3
+msgid "Invite created!"
+msgstr "Приглашение создано!"
+
 #: templates/login.html:22
 msgid "Auth"
 msgstr ""

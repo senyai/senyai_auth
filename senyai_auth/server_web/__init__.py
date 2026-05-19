@@ -214,7 +214,9 @@ async def invite_new():
         trigger.add_success_event("Invite created!")
         return (
             await render_template(
-                "invite_result.html", url_key=url["url_key"]
+                "invite_result.html",
+                url_key=url["url_key"],
+                _=_get_underscore(request),
             ),
             201,
             trigger.build(),
