@@ -101,7 +101,10 @@ async def index():
             user = data["user"]
             projects = data["projects"]
             return await render_template(
-                "user.html", user=user, projects=parse_projects(projects)
+                "user.html",
+                user=user,
+                projects=parse_projects(projects),
+                _=_get_underscore(request),
             )
     resp = await make_response(
         await render_template("login.html", _=_get_underscore(request))
@@ -149,6 +152,7 @@ async def invites_table(project_id: int):
             "partials/invites_table.html",
             invites=resp.json(),
             project_id=project_id,
+            _=_get_underscore(request),
         )
     return resp.content, resp.status_code, resp.headers
 
@@ -170,6 +174,7 @@ async def invite():
             project_id=project_id,
             project_name=project_name,
             roles=roles_resp.json(),
+            _=_get_underscore(request),
         )
     return roles_resp.content, roles_resp.status_code, roles_resp.headers
 
@@ -304,7 +309,9 @@ async def project(project_id: int):
         }
 
         return await render_template(
-            "includes/project_info.html", context=context
+            "includes/project_info.html",
+            context=context,
+            _=_get_underscore(request),
         )
 
     return resp.content, resp.status_code, resp.headers
@@ -321,7 +328,10 @@ async def add_users(project_id: int):
         users = resp.json()
 
         return await render_template(
-            "includes/add_users.html", users=users, project_id=project_id
+            "includes/add_users.html",
+            users=users,
+            project_id=project_id,
+            _=_get_underscore(request),
         )
 
     return resp.content, resp.status_code, resp.headers

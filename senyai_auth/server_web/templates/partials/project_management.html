@@ -1,20 +1,20 @@
 <!-- <div class="row"> -->
     <div class="col-8">
-        <div>Project ID: {{ context.project_id }}</div>
-        <div>Project name: {{ context.project_name }}</div>
-        <div>Display_name: {{ context.display_name }}</div>
-        <div>Description: {{ context.description }}</div>
+        <div>{{ _("Project ID") }}: {{ context.project_id }}</div>
+        <div>{{ _("Project name") }}: {{ context.project_name }}</div>
+        <div>{{ _("Display_name") }}: {{ context.display_name }}</div>
+        <div>{{ _("Description") }}: {{ context.description }}</div>
     </div>
     <div class="col-3 p-2">
         <div class="row p-2">
             <button class="btn btn-secondary"
                 hx-get="{{ url_for('get_edit_project_form', project_id=context.project_id) }}" hx-target="#modalContent"
-                data-bs-toggle="modal" data-bs-target="#baseModal">Edit</button>
+                data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Edit") }}</button>
         </div>
         <div class="row p-2">
             <button class="btn btn-secondary"
                 hx-get="{{ url_for('get_new_project_form', parent_id=context.project_id) }}" hx-target="#modalContent"
-                data-bs-toggle="modal" data-bs-target="#baseModal">Create subproject</button>
+                data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Create subproject") }}</button>
         </div>
     </div>
 <!-- </div> -->

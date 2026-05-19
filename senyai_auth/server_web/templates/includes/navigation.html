@@ -29,7 +29,7 @@
           <li><a class="dropdown-item" hx-target="#tabs-container"
               hx-get="{{ url_for('get_profile_page', user_id=user.id) }}">{{ user.display_name }}</a></li>
           <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-              <i class="bi bi-door-open-fill me-1"></i>Logout
+              <i class="bi bi-door-open-fill me-1"></i>{{ _("Logout") }}
             </a></li>
         </ul>
 
