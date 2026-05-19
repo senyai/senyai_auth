@@ -1,7 +1,7 @@
 <table class="table table-hover align-middle" hx-on::after-request="if(event.detail.successful)getModal().toggle()" data-bs-target="#baseModal" hx-target="#modalContent">
     <thead>
         <tr>
-            <th class="col-2">Name</th>
+            <th class="col-2">{{ _("Name") }}</th>
             {% for role in context.roles %}
             <th class="text-center">{{ role.name }}</th>
             {% endfor %}

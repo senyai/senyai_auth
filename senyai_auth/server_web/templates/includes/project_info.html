@@ -4,25 +4,25 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="members-tab" data-bs-toggle="tab" data-bs-target="#members-tab-pane"
                 type="button" role="tab" aria-controls="members-tab-pane" aria-selected="true" hx-preserve>
-                Members
+                {{ _("Members") }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles-tab-pane" type="button"
                 role="tab" aria-controls="roles-tab-pane" aria-selected="false" hx-preserve>
-                Roles
+                {{ _("Roles") }}
             </button>
         </li>
         {% if context.can_manager %}
         <li class="nav-item" role="presentation">
             <button class="nav-link stale" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
                 type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false" hx-preserve>
-                Invitations
+                {{ _("Invitations") }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" type="button" role="tab" aria-controls="manage-tab-pane" aria-selected="false" hx-preserve>
-                Manage
+                {{ _("Manage") }}
             </button>
         </li>
         {% endif %}

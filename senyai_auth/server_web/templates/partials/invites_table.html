@@ -1,7 +1,7 @@
 <table class="table table-hover align-middle" hx-on::after-request="if(event.detail.successful)getModal().toggle()" data-bs-target="#baseModal" hx-target="#modalContent">
     <thead>
         <tr>
-            <th>Display name</th>
+            <th>{{ _("Display name") }}</th>
             <th class="col"></th>
             <th>
                 <button class="btn btn-table" hx-get="{{ url_for('invite', project_id=project_id, project_name=project_name) }}"
