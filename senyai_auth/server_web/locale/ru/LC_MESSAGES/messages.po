@@ -341,7 +341,10 @@ msgstr "Создать подпроект"
 msgid "Role"
 msgstr "Роль"
 
+#: templates/partials/role_table.html:7
+msgid "Create New Role"
+msgstr "Создать Роль"
+
 #: templates/partials/role_table.html:22
 msgid "Delete role"
 msgstr "Удалить роль"
-
