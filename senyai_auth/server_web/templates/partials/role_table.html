@@ -19,7 +19,7 @@
                 <button class="btn btn-table pe-3" hx-get="{{ url_for('role_form', role_id=role.id) }}">
                     <i class="bi bi-pen-fill"></i>
                 </button>
-                <button class="btn btn-table" hx-confirm="Delete role {{ role.name|forceescape }}?" hx-delete="{{ url_for('role_delete', role_id=role.id) }}">
+                <button class="btn btn-table" hx-confirm="{{ _('Delete role') }} {{ role.name|forceescape }}?" hx-delete="{{ url_for('role_delete', role_id=role.id) }}">
                     <i class="bi bi-trash3"></i>
                 </button>
             </td>

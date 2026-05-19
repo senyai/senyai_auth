@@ -190,7 +190,9 @@ async def invite_form(invite_id: int):
     )
     if resp.status_code == 200:
         return await render_template(
-            "forms/invite_form.html", **resp.json()  # :ref:`InviteInfo`
+            "forms/invite_form.html",
+            _=_get_underscore(request),
+            **resp.json(),  # :ref:`InviteInfo`
         )
     return resp.content, resp.status_code, resp.headers
 
@@ -427,6 +429,7 @@ async def role():
         form={},
         project_id=project_id,
         api_options=API_OPTIONS,
+        _=_get_underscore(request),
     )
 
 
@@ -445,6 +448,7 @@ async def role_form(role_id: int):
             form=resp.json(),
             role_id=role_id,
             api_options=API_OPTIONS,
+            _=_get_underscore(request),
         )
     return resp.content, resp.status_code, resp.headers
 
@@ -559,7 +563,9 @@ async def manage_roles(user_id: int):
 async def get_new_project_form(parent_id: str):
     context = {"parent_id": parent_id}
     return await render_template(
-        "forms/upsert_project_form.html", context=context
+        "forms/upsert_project_form.html",
+        context=context,
+        _=_get_underscore(request),
     )
 
 
@@ -572,7 +578,10 @@ async def get_edit_project_form(project_id: str):
     if resp.status_code == 200:
         context = {"project_id": project_id, **resp.json()}
         return await render_template(
-            "forms/upsert_project_form.html", context=context, edit_mode=True
+            "forms/upsert_project_form.html",
+            context=context,
+            edit_mode=True,
+            _=_get_underscore(request),
         )
     return resp.content, resp.status_code, resp.headers
 
@@ -591,6 +600,7 @@ async def get_manage_user_roles_form():
             "forms/manage_user_roles_form.html",
             user_id=user_id,
             roles=roles,
+            _=_get_underscore(request),
         )
     return resp.content, resp.status_code, resp.headers
 
