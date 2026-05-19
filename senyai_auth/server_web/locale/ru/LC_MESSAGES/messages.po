@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  0.0.4\n"
 "Report-Msgid-Bugs-To: senyai@gmail.com\n"
-"POT-Creation-Date: 2026-03-04 19:50+0300\n"
+"POT-Creation-Date: 2026-05-19 18:09+0300\n"
 "PO-Revision-Date: 2026-03-03 14:47+0300\n"
 "Last-Translator: Arseniy Terekhin <senyai@gmail.com>\n"
 "Language: ru\n"
@@ -19,27 +19,40 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: templates/login.html:8
+#: templates/base.html:33
+msgid "Confirmation"
+msgstr "Подтверждение"
+
+#: templates/base.html:38 templates/modal/modal_template.html:13
+msgid "Close"
+msgstr "Закрыть"
+
+#: templates/base.html:39
+msgid "Confirm"
+msgstr "Подтвердить"
+
+#: templates/login.html:22
 msgid "Auth"
 msgstr ""
 
-#: templates/login.html:11
+#: templates/login.html:25
 msgid "Login"
 msgstr "Логин"
 
-#: templates/login.html:15 templates/register.html:27
+#: templates/includes/user_layout.html:10 templates/login.html:30
+#: templates/register.html:32
 msgid "Password"
 msgstr "Пароль"
 
-#: templates/login.html:18
+#: templates/login.html:38
 msgid "Sign in"
 msgstr "Войти"
 
-#: templates/register.html:12
+#: templates/forms/invite_form.html:18 templates/register.html:11
 msgid "Username"
 msgstr "Имя пользователя"
 
-#: templates/register.html:13
+#: templates/register.html:12
 msgid ""
 "Can be used as login and all users will be able to see it. Example: "
 "\"daivanov\""
@@ -47,41 +60,288 @@ msgstr ""
 "Может использоваться в качестве логина, и все пользователи смогут его "
 "видеть. Пример: \"daivanov\""
 
-#: templates/register.html:17
+#: templates/forms/invite_form.html:14
+#: templates/forms/upsert_project_form.html:22
+#: templates/includes/user_layout.html:20 templates/register.html:17
 msgid "Display Name"
 msgstr "Отображаемое имя"
 
-#: templates/register.html:18
+#: templates/includes/user_layout.html:21 templates/register.html:18
 msgid ""
 "This is the name everyone will be able to see you. Example: \"Dmitry "
 "Ivanov\""
 msgstr "Это имя, которое все смогут увидеть. Пример: \"Дмитрий Иванов\""
 
-#: templates/register.html:22
+#: templates/forms/invite_form.html:22 templates/includes/user_layout.html:26
+#: templates/register.html:23
 msgid "Email"
 msgstr "Электронная почта"
 
-#: templates/register.html:23
+#: templates/includes/user_layout.html:27 templates/register.html:24
 msgid "Email can be used as login and will be visible to all users"
 msgstr ""
 "Адрес электронной почты можно использовать для входа в систему, и он "
 "будет виден всем пользователям"
 
-#: templates/register.html:28
+#: templates/register.html:38
 msgid "Password will be safely stored as a hash produced by modern algorithm"
 msgstr ""
 "Пароль будет надежно сохранен в виде хеша, полученного с помощью "
 "современного алгоритма."
 
-#: templates/register.html:32
+#: templates/register.html:47
+msgid "Confirm Password"
+msgstr "Подтверждение пароля"
+
+#: templates/register.html:54
+msgid "Please re-enter your password to confirm"
+msgstr "Пожалуйста, повторно введите свой пароль для подтверждения."
+
+#: templates/includes/user_layout.html:32 templates/register.html:60
 msgid "Contacts"
 msgstr "Контакты"
 
-#: templates/register.html:33
+#: templates/includes/user_layout.html:33 templates/register.html:61
 msgid "Contacts will be visible to all users. Can be empty."
 msgstr "Контакты будут видны всем пользователям. Можно оставить пустым."
 
-#: templates/register.html:36
+#: templates/register.html:65
 msgid "Sign Up"
 msgstr "Зарегистрироваться"
+
+#: templates/forms/invite_form.html:3
+msgid "Update Invite in this project"
+msgstr "Обновить приглашение в проекте"
+
+#: templates/forms/invite_form.html:3
+msgid "Create Invite to this project"
+msgstr "Создать приглашение в проект"
+
+#: templates/forms/invite_form.html:3
+#: templates/partials/project_management.html:3
+msgid "Project ID"
+msgstr "ID проекта"
+
+#: templates/forms/invite_form.html:9
+msgid "Registration"
+msgstr "Регистрация"
+
+#: templates/forms/invite_form.html:10
+msgid "Prompt"
+msgstr "Приглашение"
+
+#: templates/forms/invite_form.html:25
+msgid "Auto add roles"
+msgstr "Автоматически добавить роли"
+
+#: templates/forms/invite_form.html:46
+msgid "Update Invite"
+msgstr "Обновить приглашение"
+
+#: templates/forms/invite_form.html:48
+msgid "Create Invite"
+msgstr "Создать приглашение"
+
+#: templates/forms/manage_user_roles_form.html:3
+msgid "Manage Roles"
+msgstr "Управление ролями"
+
+#: templates/forms/manage_user_roles_form.html:25
+#: templates/includes/user_layout.html:36
+msgid "Save"
+msgstr "Сохранить"
+
+#: templates/forms/upsert_project_form.html:4
+msgid "Update Project info"
+msgstr "Обновить информацию о проекте"
+
+#: templates/forms/upsert_project_form.html:6
+#: templates/forms/upsert_project_form.html:41
+msgid "Create Project"
+msgstr "Создать Проект"
+
+#: templates/forms/upsert_project_form.html:17
+#: templates/partials/members_table.html:4
+msgid "Name"
+msgstr "Имя"
+
+#: templates/forms/upsert_project_form.html:27
+#: templates/forms/upsert_role_form.html:19
+#: templates/partials/project_management.html:6
+#: templates/partials/role_table.html:5
+msgid "Description"
+msgstr "Описание"
+
+#: templates/forms/upsert_project_form.html:39
+msgid "Update Project"
+msgstr "Обновить проект"
+
+#: templates/forms/upsert_role_form.html:4
+#: templates/forms/upsert_role_form.html:71
+msgid "Update Role"
+msgstr "Обновить роль"
+
+#: templates/forms/upsert_role_form.html:6
+#: templates/forms/upsert_role_form.html:73
+msgid "Create Role"
+msgstr "Создать Роль"
+
+#: templates/forms/upsert_role_form.html:14
+msgid "Role Name"
+msgstr "Имя роли"
+
+#: templates/forms/upsert_role_form.html:27
+msgid "API Permissions"
+msgstr "Права на API"
+
+#: templates/forms/upsert_role_form.html:29
+msgid "can't see projects"
+msgstr "не видит проект"
+
+#: templates/forms/upsert_role_form.html:30
+msgid "can see projects"
+msgstr "видит проект"
+
+#: templates/forms/upsert_role_form.html:31
+msgid "can assign roles"
+msgstr "может назначать права"
+
+#: templates/forms/upsert_role_form.html:32
+msgid "can manage roles and projects"
+msgstr "может управлять ролями и проектами"
+
+#: templates/forms/upsert_role_form.html:33
+msgid "can do everything, <span class=\"text-warning\">do not use!</span>"
+msgstr ""
+"может делать что угодно, <span class=\"text-warning\">не "
+"используйте!</span>"
+
+#: templates/forms/upsert_role_form.html:39
+msgid "Git permissions"
+msgstr "Права на Git"
+
+#: templates/forms/upsert_role_form.html:41
+msgid "usual git user"
+msgstr "обычный git пользователь"
+
+#: templates/forms/upsert_role_form.html:42
+msgid "git superuser"
+msgstr "git суперпользователь"
+
+#: templates/forms/upsert_role_form.html:48
+msgid "Storage permissions"
+msgstr "Права на хранилище"
+
+#: templates/forms/upsert_role_form.html:50
+msgid "<b>folder</b> or <b>folder:r</b> — read access to a directory"
+msgstr "<b>folder</b> или <b>folder:r</b> — доступ на чтение к директории"
+
+#: templates/forms/upsert_role_form.html:51
+msgid "<b>folder:w</b> — read and write access to a directory"
+msgstr "<b>folder:w</b> — доступ на чтение и запись к директории"
+
+#: templates/forms/upsert_role_form.html:52
+msgid "<b>⤶ (new line)</b> — separator"
+msgstr "<b>⤶ (новая строка)</b> — разделитель"
+
+#: templates/forms/upsert_role_form.html:58
+msgid "Extra permissions"
+msgstr "Дополнительные парава"
+
+#: templates/forms/upsert_role_form.html:60
+msgid "unused"
+msgstr "не используются"
+
+#: templates/includes/add_users.html:2 templates/includes/add_users.html:20
+msgid "Add Users"
+msgstr "Добавить пользователей"
+
+#: templates/includes/add_users.html:5
+msgid "Users"
+msgstr "Пользователи"
+
+#: templates/includes/add_users.html:7
+msgid ""
+"No users to add. Either all users are already added, or you don't have "
+"permissions to list more users."
+msgstr ""
+"Нет пользователей для добавления. Либо все пользователи уже добавлены, "
+"либо у вас нет прав на отображение списка дополнительных пользователей."
+
+#: templates/includes/navigation.html:33
+msgid "Logout"
+msgstr "Выход"
+
+#: templates/includes/project_info.html:7
+msgid "Members"
+msgstr "Участники"
+
+#: templates/includes/project_info.html:13
+msgid "Roles"
+msgstr "Роли"
+
+#: templates/includes/project_info.html:20
+msgid "Invitations"
+msgstr "Приглашения"
+
+#: templates/includes/project_info.html:25
+msgid "Manage"
+msgstr "Управление"
+
+#: templates/includes/user_layout.html:5
+msgid "Profile"
+msgstr "Профиль"
+
+#: templates/includes/user_layout.html:46
+msgid "Old password"
+msgstr "Старый пароль"
+
+#: templates/includes/user_layout.html:55
+msgid "New password"
+msgstr "Новый пароль"
+
+#: templates/includes/user_layout.html:65
+msgid "Confirm password"
+msgstr "Подтверждение пароля"
+
+#: templates/includes/user_layout.html:72
+msgid "Update password"
+msgstr "Обновить пароль"
+
+#: templates/partials/invites_table.html:4
+#: templates/partials/project_management.html:5
+msgid "Display name"
+msgstr "Отображаемое имя"
+
+#: templates/partials/invites_table.html:29
+msgid "Delete invitation for"
+msgstr "Удалить приглашение для"
+
+#: templates/partials/members_table.html:9
+msgid "Add user from other projects"
+msgstr "Добавить пользователя из другого проекта"
+
+#: templates/partials/members_table.html:30
+msgid "Delete user"
+msgstr "Удалить пользователя"
+
+#: templates/partials/project_management.html:4
+msgid "Project name"
+msgstr "Имя проекта"
+
+#: templates/partials/project_management.html:12
+msgid "Edit"
+msgstr "Редактировать"
+
+#: templates/partials/project_management.html:17
+msgid "Create subproject"
+msgstr "Создать подпроект"
+
+#: templates/partials/role_table.html:4
+msgid "Role"
+msgstr "Роль"
+
+#: templates/partials/role_table.html:22
+msgid "Delete role"
+msgstr "Удалить роль"
 

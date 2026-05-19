@@ -1,6 +1,6 @@
 {% extends "modal/modal_template.html" %}
 {% block title %}
-Manage roles
+{{ _("Manage Roles") }}
 {% endblock title %}
 {% from 'macros/roles.html' import role_tooltip %}
 {% block form %}
@@ -22,5 +22,5 @@ Manage roles
 </script>
 {% endblock form %}
 {% block buttons %}
-<button type="submit" form="manage-form" class="btn btn-primary" data-role-submit disabled>Save</button>
+<button type="submit" form="manage-form" class="btn btn-primary" data-role-submit disabled>{{ _("Save") }}</button>
 {% endblock %}

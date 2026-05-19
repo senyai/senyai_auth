@@ -1,9 +1,9 @@
 {% extends "modal/modal_template.html" %}
 {% block title %}
 {% if edit_mode %}
-Update Project info
+{{ _("Update Project info") }}
 {% else %}
-Create Project
+{{ _("Create Project") }}
 {% endif %}
 {% endblock title %}
 
@@ -14,17 +14,17 @@ Create Project
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="project_name" name="name" value="{{ context.name if context.name }}"
             required autofocus>
-        <label for="project_name">Name:</label>
+        <label for="project_name">{{ _("Name") }}:</label>
     </div>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="display_name" name="display_name"
             value="{{ context.display_name if context.display_name }}" required>
-        <label for="display_name">Display name:</label>
+        <label for="display_name">{{ _("Display Name") }}:</label>
     </div>
     <div class="form-floating mb-3">
         <textarea rows="5" class="form-control" id="description"
             name="description">{{ context.description if context.description }}</textarea>
-        <label for="description">Description:</label>
+        <label for="description">{{ _("Description") }}:</label>
     </div>
     {% if not edit_mode %}
     <div class="form-floating mb-3">
@@ -35,6 +35,9 @@ Create Project
 </form>
 {% endblock form %}
 {% block buttons %}
-<button type="submit" class="btn btn-primary" form="project-form">{% if edit_mode %}Update{% else %}Create{% endif
-    %}</button>
+{% if edit_mode %}
+<button type="submit" class="btn btn-warning" form="project-form">{{ _("Update Project") }}</button>
+{% else %}
+<button type="submit" class="btn btn-success" form="project-form">{{ _("Create Project") }}</button>
+{% endif %}
 {% endblock buttons %}

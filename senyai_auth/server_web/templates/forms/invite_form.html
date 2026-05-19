@@ -1,28 +1,28 @@
 {% extends "modal/modal_template.html" %}
 {% block title %}
-{% if form %}Update Invite in this project{% else %}Create Invite to this project{% endif %} (Project ID: {{ project_id }})
+{% if form %}{{ _("Update Invite in this project") }}{% else %}{{ _("Create Invite to this project") }}{% endif %} ({{ _("Project ID") }}: {{ project_id }})
 {% endblock title %}
 {% from 'macros/roles.html' import role_tooltip %}
 {% block form %}
 <form role="form" class="form-control" {% if form %}hx-patch="{{ url_for('invite_update', invite_id=form.id) }}"{% else %}hx-post="{{ url_for('invite_new') }}"{% endif %} hx-target="#modalContent" id="role-form">
     <div class="form-floating mb-3">
-        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form.prompt if form else 'Registration' }}">
-        <label for="prompt">Prompt:</label>
+        <input type="text" class="form-control" id="prompt" name="prompt" value="{{ form.prompt if form else _('Registration') }}">
+        <label for="prompt">{{ _("Prompt") }}:</label>
     </div>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form.default_display_name if form }}" required autofocus>
-        <label for="default_display_name">Display name:</label>
+        <label for="default_display_name">{{ _("Display Name") }}:</label>
     </div>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form.default_username if form }}">
-        <label for="default_username">Username:</label>
+        <label for="default_username">{{ _("Username") }}:</label>
     </div>
     <div class="form-floating mb-3">
         <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form.default_email if form }}">
-        <label for="default_email">Email:</label>
+        <label for="default_email">{{ _("Email") }}:</label>
     </div>
     <div class="mb-3">
-        <label class="mb-2">Auto add roles</label>
+        <label class="mb-2">{{ _("Auto add roles") }}</label>
         {% for role in roles %}
         <div class="form-check">
             <label class="form-check-label" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="{{ role_tooltip(role) }}">
@@ -43,8 +43,8 @@
 {% endblock form %}
 {% block buttons %}
 {% if form %}
-<button type="submit" form="role-form" class="btn btn-warning">Update Invite</button>
+<button type="submit" form="role-form" class="btn btn-warning">{{ _("Update Invite") }}</button>
 {% else %}
-<button type="submit" form="role-form" class="btn btn-success">Create Invite</button>
+<button type="submit" form="role-form" class="btn btn-success">{{ _("Create Invite") }}</button>
 {% endif %}
 {% endblock buttons %}
