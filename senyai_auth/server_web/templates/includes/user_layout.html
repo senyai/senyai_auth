@@ -2,14 +2,13 @@
     <ul class="nav nav-tabs" id="profileTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-tab-pane"
-                type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="true">Profile</button>
+                type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="true">{{ _("Profile") }}</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-tab-pane"
                 type="button" role="tab" aria-controls="password-tab-pane" aria-selected="false"><i
-                    class="bi bi-key mx-2"></i>Password</button>
+                    class="bi bi-key mx-2"></i>{{ _("Password") }}</button>
         </li>
-
     </ul>
     <div class="tab-content" id="profileTabContent">
         <div class="tab-pane fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
@@ -44,7 +43,7 @@
                 <div class="input-group mb-3" data-password-root>
                     <div class="form-floating">
                         <input class="form-control" type="password" id="old" name="password_old" required data-password-old>
-                        <label for="old">Old password:</label>
+                        <label for="old">{{ _("Old password") }}:</label>
                     </div>
                     <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
                         <i class="bi bi-eye"></i>
@@ -53,7 +52,7 @@
                 <div class="input-group mb-3" data-password-root>
                     <div class="form-floating">
                         <input class="form-control" type="password" id="new" name="password_new" required data-password-new>
-                        <label for="new">New password:</label>
+                        <label for="new">{{ _("New password") }}:</label>
                     </div>
                     <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
                         <i class="bi bi-eye"></i>
@@ -63,14 +62,11 @@
                     <div class="form-floating">
                         <input class="form-control" type="password" id="confirm" name="password_repeat" required
                             data-password-confirm>
-                        <label for="confirm">Confirm password:</label>
+                        <label for="confirm">{{ _("Confirm password") }}:</label>
                     </div>
                     <button type="button" class="btn btn-outline-secondary" data-password-show tabindex="-1">
                         <i class="bi bi-eye"></i>
                     </button>
-                </div>
-                <div class="invalid-feedback">
-                    Passwords do not match
                 </div>
                 <div class="d-grid pt-3">
                     <button type="submit" class="btn btn-warning">{{ _("Update password") }}</button>
