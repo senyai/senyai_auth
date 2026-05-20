@@ -48,7 +48,7 @@ type DisplayName = Annotated[
 type Description = Annotated[str, StringConstraints(max_length=1024)]
 
 
-class ProjectCreate(BaseModel, strict=True):
+class ProjectCreate(BaseModel, strict=True, extra="forbid"):
     name: ProjectName
     display_name: DisplayName
     description: Description
@@ -73,7 +73,7 @@ class ProjectCreate(BaseModel, strict=True):
         )
 
 
-class ProjectUpdate(BaseModel, strict=True):
+class ProjectUpdate(BaseModel, strict=True, extra="forbid"):
     name: ProjectName | None = None
     display_name: DisplayName | None = None
     description: Description | None = None
@@ -170,7 +170,7 @@ async def update_project(
     """
     Update project fields
 
-    * Only managers can do it
+    * Managers only
     """
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -285,7 +285,9 @@ async def project_list_possible_users(
     """
     ## List all users that current user can add to the project
 
-    * Only managers and above can do this
+    * Managers only
+    * List all members of projects (and all its children) where
+      current user is a manager
     """
     permission = await session.scalar(
         auth_for_project_stmt,
@@ -341,7 +343,7 @@ async def project_add_users(
     """
     ## Add users to a project
 
-    * Only managers and above can do this
+    * Managers only
     * Returns number of users added
     """
     permission = await session.scalar(
@@ -387,7 +389,7 @@ async def project_remove_users(
     """
     ## Remove users from a project
 
-    * Only managers can do this
+    * Managers only
     * Also removes users from Project's Roles
     * Returns number of users deleted
     """
