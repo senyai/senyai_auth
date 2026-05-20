@@ -94,6 +94,10 @@ DisplayName = (
 Password = Annotated[
     SecretStr, Field(exclude=True, min_length=8, max_length=64)
 ]
+OptionalPassword = Annotated[
+    SecretStr | None,
+    Field(exclude=True, min_length=8, max_length=64, default=None),
+]
 
 
 class CreateUserModel(BaseModel, strict=True, frozen=True):
@@ -181,9 +185,9 @@ async def create_user(
 
 class UpdateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     username: Annotated[str | None, *Username] = None
-    password_old: Password | None = None
-    password_new: Password | None = None
-    password_repeat: Password | None = None
+    password_old: OptionalPassword
+    password_new: OptionalPassword
+    password_repeat: OptionalPassword
     email: EmailStr | None = None
     contacts: Annotated[str | None, *Contacts] = None
     display_name: Annotated[str | None, *DisplayName] = None
