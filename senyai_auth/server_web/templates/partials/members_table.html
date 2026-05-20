@@ -5,10 +5,10 @@
             {% for role in context.roles %}
             <th class="text-center">{{ role.name }}</th>
             {% endfor %}
-            <th>
+            <th>{% if is_manager %}
                 <button class="btn btn-table" hx-get="{{ url_for('add_users', project_id=context.project_id) }}" title="{{ _("Add user from other projects") }}">
                     <i class="bi bi-plus-circle-fill"></i>
-                </button>
+                </button>{% endif %}
             </th>
         </tr>
     </thead>
@@ -24,11 +24,13 @@
             </td>
             {% endfor %}
             <td hx-vals='{"user_id": {{ member.id }}}'>
+                {% if is_manager %}
                 <button class="btn btn-table pe-3 edit-btn" hx-get="{{ url_for('get_manage_user_roles_form', project_id=context.project_id) }}">
-                    <i class="bi bi-pen-fill"></i>
+                    <i class="bi bi-pen-fill"></i>{% endif %}
                 </button>
+                {% if is_admin %}
                 <button class="btn btn-table del-btn" hx-confirm="{{ _('Delete user') }} {{ member.username }}?" hx-delete="{{ url_for('delete_users', project_id=context.project_id) }}">
-                    <i class="bi bi-trash3"></i>
+                    <i class="bi bi-trash3"></i>{% endif %}
                 </button>
             </td>
         </tr>

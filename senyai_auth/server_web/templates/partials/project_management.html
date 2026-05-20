@@ -1,20 +1,25 @@
-<!-- <div class="row"> -->
-    <div class="col-8">
-        <div>{{ _("Project ID") }}: {{ context.project_id }}</div>
-        <div>{{ _("Project name") }}: {{ context.project_name }}</div>
-        <div>{{ _("Display name") }}: {{ context.display_name }}</div>
-        <div>{{ _("Description") }}: {{ context.description }}</div>
+<table class="table">
+  <style>table.table th[scope="row"] {
+  width: 1%;
+  white-space: nowrap;
+}</style>
+  <tbody>
+    <tr><th scope="row">{{ _("Project ID") }}</th><td>{{ context.project_id }}</td></tr>
+    <tr><th scope="row">{{ _("Project name") }}</th><td>{{ context.project_name }}</td></tr>
+    <tr><th scope="row">{{ _("Display name") }}</th><td>{{ context.display_name }}</td></tr>
+    <tr><th scope="row">{{ _("Description") }}</th><td>{{ context.description }}</td></tr>
+    <tr><th scope="row">{{ _("User API Permission") }}</th><td>{{ permission }}</td></tr>
+  </tbody>
+</table>
+{% if is_admin %}<div class="col-3 p-2">
+    <div class="row p-2">
+        <button class="btn btn-secondary"
+            hx-get="{{ url_for('get_edit_project_form', project_id=context.project_id) }}" hx-target="#modalContent"
+            data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Edit") }}</button>
     </div>
-    <div class="col-3 p-2">
-        <div class="row p-2">
-            <button class="btn btn-secondary"
-                hx-get="{{ url_for('get_edit_project_form', project_id=context.project_id) }}" hx-target="#modalContent"
-                data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Edit") }}</button>
-        </div>
-        <div class="row p-2">
-            <button class="btn btn-secondary"
-                hx-get="{{ url_for('get_new_project_form', parent_id=context.project_id) }}" hx-target="#modalContent"
-                data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Create subproject") }}</button>
-        </div>
+    <div class="row p-2">
+        <button class="btn btn-secondary"
+            hx-get="{{ url_for('get_new_project_form', parent_id=context.project_id) }}" hx-target="#modalContent"
+            data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Create subproject") }}</button>
     </div>
-<!-- </div> -->
+</div>{% endif %}

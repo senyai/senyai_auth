@@ -304,9 +304,6 @@ async def project(project_id: int):
             "roles": project_info.get("roles"),
             "display_name": project_info.get("display_name"),
             "project_name": project_info.get("name"),
-            "can_user": permission >= PermissionsAPI.user,
-            "can_manager": permission >= PermissionsAPI.manager,
-            "can_admin": permission >= PermissionsAPI.admin,
             "description": project_info.get("description"),
             "parent_id": project_info.get("parent_id"),
             "project_id": project_id,
@@ -314,6 +311,10 @@ async def project(project_id: int):
 
         return await render_template(
             "includes/project_info.html",
+            is_user=permission >= PermissionsAPI.user,
+            is_manager=permission >= PermissionsAPI.manager,
+            is_admin=permission >= PermissionsAPI.admin,
+            permission=PermissionsAPI(permission).name,
             context=context,
             _=_get_underscore(request),
         )
