@@ -309,12 +309,13 @@ async def project_list_possible_users(
             id_parent.join(base, Project.parent_id == base.c.id),
         )
     )
+    current_users = select(Member.id).where(Member.project_id == project_id)
     stmt = (
         select(User)
         .join(Member)
         .where(
             Member.project_id.in_(stmt_projects),
-            Member.project_id != project_id,
+            ~Member.user_id.in_(current_users),
         )
         .distinct()
         .order_by(User.display_name)
