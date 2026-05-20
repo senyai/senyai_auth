@@ -13,7 +13,7 @@
                 {{ _("Roles") }}
             </button>
         </li>
-        {% if context.can_manager %}
+        {% if is_manager %}
         <li class="nav-item" role="presentation">
             <button class="nav-link stale" id="invites-tab" data-bs-toggle="tab" data-bs-target="#invites-tab-pane"
                 type="button" role="tab" aria-controls="invites-tab-pane" aria-selected="false" hx-preserve>
@@ -34,15 +34,15 @@
         <div class="tab-pane fade" id="roles-tab-pane" role="tabpanel" aria-labelledby="roles-tab" tabindex="0">
             {% include "partials/role_table.html" %}
         </div>
-        {% if context.can_manager %}
+        {% if is_manager %}
         <div class="tab-pane fade" id="invites-tab-pane" role="tabpanel" aria-labelledby="invites-tab" tabindex="0"
             hx-get="{{ url_for('invites_table', project_id=context.project_id ) }}"
             hx-trigger="updateStale, updateInvitesTab from:body"
             hx-on::after-request="htmx.find('#invites-tab').classList.remove('stale')" hx-target="this">
         </div>
+        {% endif %}
         <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
             {% include "partials/project_management.html" %}
         </div>
-        {% endif %}
     </div>
 </div>
