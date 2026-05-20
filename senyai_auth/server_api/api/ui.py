@@ -21,7 +21,7 @@ from ..db import (
 )
 from .auth import get_current_user
 from .user import UserInfo
-from .invite import InvitationForm, get_invitation
+from .invite import InvitationForm
 from .role import RoleInfo
 from ..app import get_async_session
 from pydantic import BaseModel, Field
