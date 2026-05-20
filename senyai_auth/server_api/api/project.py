@@ -2,12 +2,7 @@ from __future__ import annotations
 from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    Field,
-    StringConstraints,
-)
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import delete, select, insert, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
