@@ -8,7 +8,7 @@
 <div class="modal-body">
     <div class="input-group">
         <input id="url" class="form-control" type="text" value="{{ url_for( 'register', key=url_key, _external=True, _scheme='https' ) }}" readonly>
-        <button class="btn btn-outline-secondary" id="copyBtn">
+        <button class="btn btn-outline-secondary" id="copyBtn" hx-on:click="navigator.clipboard.writeText(htmx.find('#url').value)">
             <i class="bi bi-clipboard"></i>
         </button>
     </div>
@@ -16,9 +16,3 @@
 <div class="modal-footer">
     <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
 </div>
-<script>
-document.getElementById("copyBtn").addEventListener("click", async () => {
-    const text = document.getElementById("url").value;
-    await navigator.clipboard.writeText(text);
-});
-</script>
