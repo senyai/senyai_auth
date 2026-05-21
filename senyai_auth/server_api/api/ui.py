@@ -275,7 +275,7 @@ async def project_roles_for_user(
     """
     ## For Invite update form
 
-    * Only admins can do it
+    * Managers only
     """
 
     invitation = await session.scalar(
@@ -293,7 +293,7 @@ async def project_roles_for_user(
     )
 
     assert permission is not None
-    if permission < PermissionsAPI.admin:
+    if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
     form = InvitationFormExt(
