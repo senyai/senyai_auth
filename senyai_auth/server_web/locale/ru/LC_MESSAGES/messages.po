@@ -333,6 +333,10 @@ msgstr "Удалить пользователя"
 msgid "Project name"
 msgstr "Имя проекта"
 
+#: templates/partials/project_management.html:11
+msgid "User API Permission"
+msgstr "Права пользователя на API"
+
 #: templates/partials/project_management.html:12
 msgid "Edit"
 msgstr "Редактировать"
