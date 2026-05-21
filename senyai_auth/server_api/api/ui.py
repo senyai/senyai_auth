@@ -267,7 +267,7 @@ class InviteInfo(BaseModel, strict=True):
         ),
     },
 )
-async def project_roles_for_user(
+async def invite_info_for_update(
     id: int,
     user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
