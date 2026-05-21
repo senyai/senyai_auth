@@ -119,12 +119,13 @@ async def invite_user(
     """
     ## Create new invite
 
-    Only managers can do it
+    * Managers only
     """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": user.project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
@@ -204,7 +205,7 @@ async def get_invitation(
     )
 
 
-class InvitationUpdate(BaseModel, strict=True, frozen=True):
+class InvitationUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     prompt: str | None = None
     default_username: str | None = None
     default_email: str | None = None
@@ -343,6 +344,7 @@ async def list_invites(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
