@@ -163,13 +163,12 @@ async def create_user(
     """
     ## Create a new user.
 
-    Who can do it:
-
-    * Superadmin
+    * Superadmin only
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
+    assert permissions is not None
     if not permissions & PermissionsAPI.superadmin:
         raise not_authorized_exception
     user_db = user.make_user()
