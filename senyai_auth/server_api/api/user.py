@@ -100,7 +100,7 @@ OptionalPassword = Annotated[
 ]
 
 
-class CreateUserModel(BaseModel, strict=True, frozen=True):
+class CreateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     username: Annotated[str, *Username]
     email: EmailStr
     display_name: Annotated[str, *DisplayName]
