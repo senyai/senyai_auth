@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 from sqlalchemy import select
 
-from ..db import User, Invitation
+from ..db import User, Role, Invitation
 from .auth import get_current_user
 from .exceptions import (
     not_authorized_exception,
@@ -86,12 +86,14 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
         ),
     ]
 
-    def make_invitation_by(self, inviter: User) -> Invitation:
+    def make_invitation_by(
+        self, inviter: User, allowed_roles: set[str]
+    ) -> Invitation:
         url_key = _get_key_32()
         return Invitation(
             url_key=url_key,
             project_id=self.project_id,
-            roles=self.roles,
+            roles=sorted(set(self.roles) & allowed_roles),
             inviter=inviter,
             prompt=self.prompt,
             default_username=self.default_username,
@@ -126,7 +128,16 @@ async def invite_user(
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
 
-    invitation_db = user.make_invitation_by(auth_user)
+    # because managers must not be allowed to assign admin roles
+    allowed_roles = set(
+        await session.scalars(
+            select(Role.name).where(
+                Role.project_id == user.project_id,
+                Role.permissions_api <= permission,
+            )
+        )
+    )
+    invitation_db = user.make_invitation_by(auth_user, allowed_roles)
     session.add(invitation_db)
     await session.commit()
     return InviteResult(url_key=invitation_db.url_key)
@@ -211,6 +222,7 @@ class InvitationUpdate(BaseModel, strict=True, frozen=True):
     "/invite/{invitation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
         status.HTTP_404_NOT_FOUND: response_description(
             "Invitation not found or already accepted"
         ),
@@ -219,6 +231,7 @@ class InvitationUpdate(BaseModel, strict=True, frozen=True):
 async def update_invitation(
     invitation_id: int,
     invitation: InvitationUpdate,
+    auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """
@@ -226,16 +239,23 @@ async def update_invitation(
 
     Made for fixing spelling and changing roles
 
-    * Only managers can do it
+    * Managers only
     """
-    invitation_db = await session.scalar(
-        select(Invitation).where(Invitation.id == invitation_id)
-    )
+    invitation_db = await session.get(Invitation, invitation_id)
     if invitation_db is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
+
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": auth_user.id, "project_id": invitation_db.project_id},
+    )
+    assert permission is not None
+    if permission < PermissionsAPI.manager:
+        raise not_authorized_exception
+
     if invitation_db.who_accepted_id is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

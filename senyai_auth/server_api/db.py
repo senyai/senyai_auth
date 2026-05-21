@@ -484,6 +484,13 @@ update_last_login_at_stmt = (
 )
 list_roles_descriptions_stmt = (
     select(Role.id, Role.name, Role.description)
-    .where(Role.project_id == bind_project_id)
+    .where(
+        Role.project_id == bind_project_id,
+        Role.permissions_api <= bindparam("permission", type_=Integer),
+    )
     .order_by(Role.name)
 )
+"""
+List all roles a user can assign for another user.
+Ordered by name.
+"""

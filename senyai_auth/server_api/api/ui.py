@@ -119,7 +119,8 @@ async def project(
             id=id, name=name, description=description, users=roles_dict[id]
         )
         for id, name, description in await session.execute(
-            list_roles_descriptions_stmt, {"project_id": project_id}
+            list_roles_descriptions_stmt,
+            {"project_id": project_id, "permission": permission},
         )
     ]
     return ProjectInfo(
@@ -308,7 +309,8 @@ async def invite_info_for_update(
     roles = [
         RoleDescription(id=id, name=name, description=description)
         for id, name, description in await session.execute(
-            list_roles_descriptions_stmt, {"project_id": invitation.project_id}
+            list_roles_descriptions_stmt,
+            {"project_id": invitation.project_id, "permission": permission},
         )
     ]
     return InviteInfo(form=form, roles=roles, project_id=invitation.project_id)
