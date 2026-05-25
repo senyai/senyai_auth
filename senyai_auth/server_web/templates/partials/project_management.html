@@ -15,11 +15,16 @@
     <div class="row p-2">
         <button class="btn btn-secondary"
             hx-get="{{ url_for('get_edit_project_form', project_id=context.project_id) }}" hx-target="#modalContent"
-            data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Edit") }}</button>
+            data-bs-toggle="modal" data-bs-target="#baseModal"><i class="bi bi-pen-fill"></i> {{ _("Edit") }}</button>
     </div>
     <div class="row p-2">
-        <button class="btn btn-secondary"
+        <button class="btn btn-success"
             hx-get="{{ url_for('get_new_project_form', parent_id=context.project_id) }}" hx-target="#modalContent"
-            data-bs-toggle="modal" data-bs-target="#baseModal">{{ _("Create subproject") }}</button>
+            data-bs-toggle="modal" data-bs-target="#baseModal"><i class="bi bi-plus"></i> {{ _("Create subproject") }}</button>
     </div>
+    {% if is_superadmin %}<div class="row p-2">
+        <button class="btn btn-danger"
+            hx-confirm="{{ _('Delete this project permanently?') }}"
+            hx-delete="{{ url_for('delete_project', project_id=context.project_id) }}"><i class="bi bi-trash3"></i> {{ _("Delete project") }}</button>
+    </div>{% endif %}
 </div>{% endif %}

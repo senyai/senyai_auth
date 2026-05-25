@@ -345,6 +345,14 @@ msgstr "Редактировать"
 msgid "Create subproject"
 msgstr "Создать подпроект"
 
+#: templates/partials/project_management.html:27
+msgid "Delete this project permanently?"
+msgstr "Удалить проект навсегда?"
+
+#: templates/partials/project_management.html:28
+msgid "Delete project"
+msgstr "Удалить проект"
+
 #: templates/partials/role_table.html:4
 msgid "Role"
 msgstr "Роль"

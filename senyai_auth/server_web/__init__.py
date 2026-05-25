@@ -314,6 +314,7 @@ async def project(project_id: int):
             is_user=permission >= PermissionsAPI.user,
             is_manager=permission >= PermissionsAPI.manager,
             is_admin=permission >= PermissionsAPI.admin,
+            is_superadmin=permission >= PermissionsAPI.superadmin,
             permission=PermissionsAPI(permission).name,
             context=context,
             _=_get_underscore(request),
@@ -412,6 +413,19 @@ async def update_project(project_id: str):
         trigger.add_update_project_info()
         trigger.add_success_event("Project updated!")
         trigger.add_close_modal_event()
+        return "", resp.status_code, trigger.build()
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.delete("/project/<project_id>")
+async def delete_project(project_id: str):
+    resp = await app.client.delete(
+        f"/project/{project_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger()
+        trigger.add_success_event("Project deleted!")
         return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
 

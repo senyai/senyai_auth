@@ -31,6 +31,10 @@ from .exceptions import (
 
 router = APIRouter(tags=["project"])
 
+project_not_found = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+)
+
 type ProjectName = Annotated[
     str,
     Field(description="Name as it will be used in url string"),
@@ -184,7 +188,7 @@ async def update_project(
         raise not_authorized_exception
     project_db = await session.get(Project, project_id)
     if project_db is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise project_not_found
     if "parent" in project.model_fields_set:
         user_permissions = await session.scalar(
             permissions_api_stmt, {"user_id": user.id}
@@ -246,7 +250,7 @@ async def get_project(
         raise not_authorized_exception
     project_db = await session.get(Project, project_id)
     if project_db is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise project_not_found
     return ProjectModel(
         name=project_db.name,
         display_name=project_db.display_name,
@@ -377,7 +381,6 @@ async def project_add_users(
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
-        status.HTTP_404_NOT_FOUND: response_description("Project not found"),
     },
 )
 async def project_remove_users(
@@ -415,3 +418,35 @@ async def project_remove_users(
     await session.commit()
     assert isinstance(delete_response.rowcount, int)
     return delete_response.rowcount
+
+
+@router.delete(
+    "/project/{project_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Project not found"),
+    },
+)
+async def delete_project(
+    project_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    ## Remove project and all its children
+
+    * Superadmins only
+    """
+    permission = await session.scalar(
+        auth_for_project_stmt,
+        {"user_id": user.id, "project_id": project_id},
+    )
+    assert permission is not None
+    if permission < PermissionsAPI.superadmin:
+        raise not_authorized_exception
+    project_db = await session.get(Project, project_id)
+    if project_db is None:
+        raise project_not_found
+    await session.delete(project_db)
+    await session.commit()
