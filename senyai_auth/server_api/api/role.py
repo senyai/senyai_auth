@@ -47,7 +47,7 @@ type PermissionsType = Literal[
 ]
 
 
-class RoleCreate(BaseModel, strict=True, frozen=True):
+class RoleCreate(BaseModel, strict=True, frozen=True, extra="forbid"):
     project_id: Annotated[int, Field(strict=False)]
     name: RoleName
     description: Description = ""
@@ -71,12 +71,20 @@ class RoleCreate(BaseModel, strict=True, frozen=True):
             )
         return self
 
-    def make_role(self):
+    def make_role(self, user_permission: PermissionsAPI):
+        permissions = PermissionsAPI[self.permissions_api]
+        if permissions > user_permission:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"User can't create role with higher permissions"
+                f"({permissions.name} > {user_permission.name})",
+            )
+
         return Role(
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            permissions_api=PermissionsAPI[self.permissions_api],
+            permissions_api=permissions,
             permissions_git=self.permissions_git,
             permissions_storage=self.permissions_storage,
             permissions_extra=self.permissions_extra,
@@ -104,14 +112,17 @@ async def new_role(
 ) -> RoleModel:
     """
     ## Create Role for a project
+
+    * Admins only
     """
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role.project_id},
     )
-    if permission < PermissionsAPI.manager:
+    assert permission is not None
+    if permission < PermissionsAPI.admin:
         raise not_authorized_exception
-    role_db = role.make_role()
+    role_db = role.make_role(permission)
     session.add(role_db)
     try:
         await session.commit()
@@ -166,12 +177,13 @@ async def role(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
     return RoleInfo.from_role(role_db)
 
 
-class RoleUpdate(BaseModel, strict=True, frozen=True):
+class RoleUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     name: RoleName | None = None
     description: Description | None = None
     permissions_api: Annotated[
