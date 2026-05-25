@@ -207,7 +207,7 @@ async def update_role(
     """
     ## Update role
 
-    * Only managers can do it
+    * Admins only
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
@@ -216,8 +216,15 @@ async def update_role(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
     )
-    if permission < PermissionsAPI.manager:
+    assert permission is not None
+    if permission < PermissionsAPI.admin:
         raise not_authorized_exception
+    if role_db.permissions_api > permission:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User can't update role to have higher permissions "
+            f"({role_db.permissions_api.name} > {permission.name})",
+        )
     role.update(role_db)
     session.add(role_db)
     await session.commit()
