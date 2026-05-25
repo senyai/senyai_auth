@@ -439,6 +439,7 @@ def _create_get_all_users_for_domain(field: InstrumentedAttribute[str]):
 
 bind_project_id = bindparam("project_id", type_=Integer)
 bind_user_id = bindparam("user_id", type_=Integer)
+bind_permission = bindparam("permission", type_=Integer)
 
 auth_for_project_stmt = _create_auth_for_project_stmt()
 permissions_api_stmt = _create_permissions_api_stmt()
@@ -473,7 +474,10 @@ select_user_roles_stmt = (
         )
         .label("is_member"),
     )
-    .where(Role.project_id == bind_project_id)
+    .where(
+        Role.project_id == bind_project_id,
+        Role.permissions_api <= bind_permission,
+    )
     .order_by(Role.name)
 )
 
@@ -486,7 +490,7 @@ list_roles_descriptions_stmt = (
     select(Role.id, Role.name, Role.description)
     .where(
         Role.project_id == bind_project_id,
-        Role.permissions_api <= bindparam("permission", type_=Integer),
+        Role.permissions_api <= bind_permission,
     )
     .order_by(Role.name)
 )
