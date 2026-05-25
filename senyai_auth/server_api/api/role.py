@@ -344,6 +344,9 @@ async def remove_users_from_role(
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
+    """
+    * Managers only
+    """
     role_db = await session.get(Role, role_id)
     if role_db is None:
         raise role_not_found
@@ -351,8 +354,15 @@ async def remove_users_from_role(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": role_db.project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
+    if role_db.permissions_api > permission:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"No permissions for removing users from role {role_db.name}"
+            f"({role_db.permissions_api.name} > {permission.name})",
+        )
 
     affected = await session.execute(
         delete(MemberRole).where(
