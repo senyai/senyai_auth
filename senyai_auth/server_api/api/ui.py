@@ -186,7 +186,7 @@ async def project_roles(
     """
     ## List roles of a project for an invitation form
 
-    * Only manages can do it
+    * Managers only
     """
 
     permission = await session.scalar(
@@ -216,9 +216,9 @@ async def project_roles_for_user(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[tuple[RoleInfo, bool]]:
     """
-    ## List roles of a user in a project
+    ## List roles of a user in a project that current user can assign
 
-    * Only manages can do it
+    * Managers only
     """
 
     permission = await session.scalar(
@@ -233,7 +233,11 @@ async def project_roles_for_user(
         (RoleInfo.from_role(role), checked)
         for role, checked in await session.execute(
             select_user_roles_stmt,
-            {"project_id": project_id, "user_id": user_id},
+            {
+                "project_id": project_id,
+                "user_id": user_id,
+                "permission": permission,
+            },
         )
     ]
 
