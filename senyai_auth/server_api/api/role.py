@@ -240,7 +240,7 @@ async def delete_role(
     """
     ## Delete role
 
-    * Only managers can do it
+    * Admins only
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
@@ -249,7 +249,8 @@ async def delete_role(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
     )
-    if permission < PermissionsAPI.manager:
+    assert permission is not None
+    if permission < PermissionsAPI.admin:
         raise not_authorized_exception
     await session.delete(role_db)
     await session.commit()
