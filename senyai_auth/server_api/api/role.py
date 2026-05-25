@@ -32,6 +32,9 @@ from .exceptions import (
 )
 
 router = APIRouter(tags=["role"])
+role_not_found = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+)
 
 type RoleName = Annotated[
     str,
@@ -158,7 +161,7 @@ async def role(
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise role_not_found
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
@@ -208,7 +211,7 @@ async def update_role(
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise role_not_found
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
@@ -241,9 +244,7 @@ async def delete_role(
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
-        )
+        raise role_not_found
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": user.id, "project_id": role_db.project_id},
@@ -278,7 +279,7 @@ async def add_users_to_a_role(
 
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise role_not_found
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": role_db.project_id},
@@ -318,7 +319,7 @@ async def remove_users_from_role(
 ) -> Response:
     role_db = await session.get(Role, role_id)
     if role_db is None:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise role_not_found
     permission = await session.scalar(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": role_db.project_id},
