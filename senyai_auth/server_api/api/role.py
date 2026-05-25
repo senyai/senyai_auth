@@ -273,7 +273,7 @@ async def add_users_to_a_role(
     """
     ## Add users to a group
 
-    * Only managers can perform this action
+    * Managers only
     * `user_ids` must be existing members of Role's project
     """
 
@@ -284,8 +284,15 @@ async def add_users_to_a_role(
         auth_for_project_stmt,
         {"user_id": auth_user.id, "project_id": role_db.project_id},
     )
+    assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
+    if role_db.permissions_api > permission:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"No permissions for adding users to role {role_db.name}"
+            f"({role_db.permissions_api.name} > {permission.name})",
+        )
 
     await session.execute(
         insert(MemberRole).from_select(
