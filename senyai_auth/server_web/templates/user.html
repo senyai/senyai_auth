@@ -6,7 +6,7 @@
         <li>
             {% if node.children %}
                 <span class="toggle" data-bs-toggle="collapse" data-bs-target="#node{{ node.id }}">
-                    <i class="bi bi-folder-plus folder-check fs-4"></i>
+                    <i class="bi bi-folder-minus folder-check fs-4"></i>
                 </span>
                 <a class="icon-link icon-link-hover" href="#" hx-get="{{ url_for( 'project', project_id=node.id) }}" hx-trigger="click">
                     {{ node.display_name }}
@@ -15,7 +15,7 @@
                     </svg>
                 </a>
 
-                <ul id="node{{ node.id }}" class="collapse list-unstyled ms-4">
+                <ul id="node{{ node.id }}" class="collapse show list-unstyled ms-4">
                     {% for child in node.children %}
                         {{ render_tree(child) }}
                     {% endfor %}
