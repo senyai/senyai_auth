@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, Field, StringConstraints
-from sqlalchemy import delete, select, insert, literal
+from sqlalchemy import delete, exists, update, select, insert, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -17,6 +17,7 @@ from ..db import (
     Project,
     Role,
     User,
+    Invitation,
 )
 from ..app import get_async_session
 from .auth import get_current_user
@@ -434,7 +435,7 @@ async def delete_project(
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """
-    ## Remove project and all its children
+    ## Remove project (and all its children, but not right now)
 
     * Superadmins only
     """
@@ -448,5 +449,36 @@ async def delete_project(
     project_db = await session.get(Project, project_id)
     if project_db is None:
         raise project_not_found
+    if project_db.parent_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Root project is not deletable",
+        )
+
+    project_has_children = await session.scalar(
+        select(exists().where(Project.parent_id == project_db.id))
+    )
+    if project_has_children:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Can'n delete project with child projects",
+        )
+
+    # remove unaccepted invitation
+    await session.execute(
+        delete(Invitation).where(
+            Invitation.project_id == project_db.id,
+            Invitation.who_accepted_id.is_(None),
+        )
+    )
+    # reparent accepted invitations
+    await session.execute(
+        update(Invitation)
+        .where(
+            Invitation.project_id == project_db.id,
+            Invitation.who_accepted_id.is_not(None),
+        )
+        .values(project_id=project_db.parent_id)
+    )
     await session.delete(project_db)
     await session.commit()

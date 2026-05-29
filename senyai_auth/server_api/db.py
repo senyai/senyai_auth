@@ -181,7 +181,9 @@ class Project(Base):
         overlaps="user,project",
     )
     children: Mapped[list[Project]] = relationship(back_populates="parent")
-    roles: Mapped[list[Role]] = relationship(back_populates="project")
+    roles: Mapped[list[Role]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} project_id={self.name}!r>"

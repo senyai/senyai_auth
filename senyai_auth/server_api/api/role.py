@@ -168,7 +168,7 @@ async def role(
     """
     ## Get role
 
-    * Only managers can do it
+    * Managers only
     """
     role_db = await session.get(Role, role_id)
     if role_db is None:
