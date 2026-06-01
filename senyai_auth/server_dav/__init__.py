@@ -123,6 +123,9 @@ class Permissions:
                     return None
         return list(node.children)
 
+    def __repr__(self) -> str:
+        return f"{super().__repr__()[:-1]} {self._root}>"
+
 
 def _drop_privileges(username: str) -> None:
     import pwd, os
