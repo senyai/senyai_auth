@@ -547,7 +547,7 @@ class SenyaiDAV:
     ) -> Response:
         if not permissions.has_write_access(dav_path):
             return self._response_no_permissions_write
-        path.parent.mkdir(exist_ok=True, parents=True)
+        await aiofiles.os.makedirs(path.parent, exist_ok=True)
 
         try:
             async with aiofiles.open(path, "wb") as f:
