@@ -311,19 +311,24 @@ class DavAppTest(IsolatedAsyncioTestCase):
 
     def test_head_for_valid_file(self):
         response = self._client.head("/a", headers=AUTH)
-        getlastmodified = datetime.fromtimestamp(
-            self._path.stat().st_mtime, timezone.utc
-        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        getlastmodified = (
+            datetime.fromtimestamp(self._path.stat().st_mtime, timezone.utc)
+            .strftime("%a, %d %b %Y %H:%M:%S GMT")
+            .encode()
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.headers,
-            {
-                "content-length": "0",
-                "last-modified": getlastmodified,
-                "content-type": "application/octet-stream",
-                "set-cookie": 'Authorization="My_type my_access"; Max-Age=2592000; Path=/; '
-                "SameSite=lax",
-            },
+            response.headers.raw,
+            [
+                (b"content-length", b"0"),
+                (b"last-modified", getlastmodified),
+                (b"content-type", b"application/octet-stream"),
+                (
+                    b"set-cookie",
+                    b'Authorization="My_type my_access"; '
+                    b"Max-Age=2592000; Path=/; SameSite=lax",
+                ),
+            ],
         )
         self.assertEqual(response.content, b"")
 
