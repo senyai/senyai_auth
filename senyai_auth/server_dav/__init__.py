@@ -6,6 +6,7 @@ from stat import S_ISDIR
 from base64 import b64decode
 from collections import defaultdict
 from collections.abc import Callable, Awaitable
+from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from starlette.applications import Starlette
@@ -641,7 +642,7 @@ class SenyaiDAV:
     def destination(request: Request) -> DAVPath | None:
         destination = request.headers.get("Destination")
         if destination is not None:
-            return DAVPath(URL(destination).path.strip("/"))
+            return DAVPath(URL(unquote(destination)).path.strip("/"))
 
     async def copy(
         self,
