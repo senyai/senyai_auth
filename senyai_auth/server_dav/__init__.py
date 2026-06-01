@@ -393,8 +393,15 @@ class SenyaiDAV:
 
                 for item_path in items:
                     item_url = f"{base_url}/{item_path.name}"
-                    stat = item_path.stat()
-                    if S_ISDIR(stat.st_mode):
+                    try:
+                        stat = item_path.stat()
+                        if S_ISDIR(stat.st_mode):
+                            item_url += "/"
+                    except FileNotFoundError:
+                        # user added permission for a directory but didn't
+                        # create it beforehand, for convenience crate is here
+                        await aiofiles.os.mkdir(item_path)
+                        stat = item_path.stat()
                         item_url += "/"
 
                     self._add_response(root, stat, item_url, item_path)
@@ -490,10 +497,18 @@ class SenyaiDAV:
             for item_path in item_path:
                 name = item_path.name
                 url = f"{base_url}/{name}"
-                if item_path.is_dir():
+                try:
+                    stat = item_path.stat()
+                    if S_ISDIR(stat.st_mode):
+                        item = f'<li><a href="{url}/">{name}/</a></li>'
+                    else:
+                        item = f'<li><a href="{url}">{name}</a></li>'
+                except FileNotFoundError:
+                    # user added permission for a directory but didn't
+                    # create it beforehand, for convenience crate is here
+                    await aiofiles.os.mkdir(item_path)
+                    stat = item_path.stat()
                     item = f'<li><a href="{url}/">{name}/</a></li>'
-                else:
-                    item = f'<li><a href="{url}">{name}</a></li>'
                 items.append(item)
 
             html = f"""<html>
