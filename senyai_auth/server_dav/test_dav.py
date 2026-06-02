@@ -384,3 +384,103 @@ class DavAppTest(IsolatedAsyncioTestCase):
         response = self._client.put("/x", headers=AUTH, content=b"X")
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"Write permission denied")
+
+    def test_copy_without_destination(self):
+        response = self._client.request("COPY", "/x", headers=AUTH)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b"Destination not specified")
+
+    def test_move_without_destination(self):
+        response = self._client.request("MOVE", "/d", headers=AUTH)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b"Destination not specified")
+
+    def test_move_non_existing_file(self):
+        response = self._client.request(
+            "MOVE",
+            "/d/non_existing_file",
+            headers={**AUTH, "Destination": "/d/file_dst"},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content, b"")
+
+    def test_rename(self):
+        pass
+
+    def test_move_basic(self):
+        CONTENT = b"A file to be moved by test"
+        response = self._client.put(
+            "/d/move_me", headers=AUTH, content=CONTENT
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, b"")
+
+        response = self._client.request(
+            "MOVE",
+            "/d/move_me",
+            headers={
+                **AUTH,
+                "Destination": "http://example.com/d/move%20destination.txt",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(
+            response.headers.raw,
+            [
+                (
+                    b"location",
+                    b"http://testserver/d/move%20destination.txt",
+                ),
+                (b"content-length", b"0"),
+            ],
+        )
+
+        response = self._client.get("/d/move%20destination.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, CONTENT)
+
+        response = self._client.get("/d/move_me")
+        self.assertEqual(response.status_code, 404)
+
+        response = self._client.delete(
+            "/d/move%20destination.txt", headers=AUTH
+        )
+        self.assertEqual(response.status_code, 204)
+
+    def test_copy_basic(self):
+        CONTENT = b"A file to be copied by test"
+        response = self._client.put(
+            "/d/copy_me", headers=AUTH, content=CONTENT
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, b"")
+
+        response = self._client.request(
+            "COPY",
+            "/d/copy_me",
+            headers={
+                **AUTH,
+                "Destination": "http://example.com/d/copy%20destination.txt",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(
+            response.headers.raw,
+            [
+                (
+                    b"location",
+                    b"http://testserver/d/copy%20destination.txt",
+                ),
+                (b"content-length", b"0"),
+            ],
+        )
+
+        response = self._client.get("/d/copy%20destination.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, CONTENT)
+
+        response = self._client.get("/d/copy_me")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, CONTENT)

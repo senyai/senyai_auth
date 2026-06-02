@@ -6,7 +6,7 @@ from stat import S_ISDIR
 from base64 import b64decode
 from collections import defaultdict
 from collections.abc import Callable, Awaitable
-from urllib.parse import unquote
+from urllib.parse import unquote, quote
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from starlette.applications import Starlette
@@ -639,10 +639,26 @@ class SenyaiDAV:
             return Response(status_code=500, content=str(e))
 
     @staticmethod
-    def destination(request: Request) -> DAVPath | None:
+    def destination(
+        request: Request,
+    ) -> tuple[DAVPath, str] | tuple[None, None]:
+        """
+        DAV clients send us "Destination" field in headers in url format
+        for example ('http://example.com/dir/p%20x.FCStd`).
+        """
         destination = request.headers.get("Destination")
         if destination is not None:
-            return DAVPath(URL(unquote(destination)).path.strip("/"))
+            base_url = request.base_url  # URL('http://example.com/storage/')
+            dst_path = unquote(
+                URL(destination).path
+            )  # '/storage/move destination.txt'
+            base_path = base_url.path.rstrip("/")  # example "/storage"
+            location = str(base_url.replace(path=quote(base_path + dst_path)))
+            return (
+                DAVPath(dst_path.removeprefix(base_path).strip("/")),
+                location,
+            )
+        return None, None
 
     async def copy(
         self,
@@ -653,7 +669,7 @@ class SenyaiDAV:
     ) -> Response:
         if not permissions.has_read_access(dav_path):
             return self._response_no_permissions_write
-        destination = self.destination(request)
+        destination, location = self.destination(request)
         if not destination:
             return Response(
                 status_code=400, content="Destination not specified"
@@ -661,17 +677,20 @@ class SenyaiDAV:
         if not permissions.has_write_access(destination):
             return self._response_no_permissions_write
         destination_path = self._path / destination
-        successful_response = Response(
-            status_code=201, headers={"Location": destination}
-        )
 
         if destination_path.exists():
             overwrite = request.headers.get("Overwrite", "T").upper() == "T"
             if overwrite:
                 await delete(destination_path)
-                successful_response.status_code = 204
+                # 204 - No Content, Location should be omitted (rfc4918)
+                successful_response = Response(status_code=204)
             else:
                 return Response(status_code=412)
+        else:
+            assert location is not None
+            successful_response = Response(
+                status_code=201, headers={"Location": location}
+            )
         try:
             await copy(source_path, destination_path)
         except FileNotFoundError as e:
@@ -690,7 +709,7 @@ class SenyaiDAV:
     ) -> Response:
         if not permissions.has_write_access(dav_path):
             return self._response_no_permissions_write
-        destination = self.destination(request)
+        destination, location = self.destination(request)
         if not destination:
             return Response(
                 status_code=400, content="Destination not specified"
@@ -699,17 +718,21 @@ class SenyaiDAV:
             return self._response_no_permissions_write
         overwrite = request.headers.get("Overwrite", "T").upper() == "T"
         destination_path = self._path / destination
-        successful_response = Response(
-            status_code=201, headers={"Location": destination}
-        )
         if destination_path.exists():
             if overwrite:
                 await delete(destination_path)
-                successful_response.status_code = 204
+                successful_response = Response(status_code=204)
             else:
                 return Response(status_code=412)
+        else:
+            assert location is not None
+            successful_response = Response(
+                status_code=201, headers={"Location": location}
+            )
         try:
             await aiofiles.os.rename(source_path, destination_path)
+        except FileNotFoundError:
+            return Response(status_code=404)
         except Exception as e:
             # Should not happen, as user only works with files and directories
             return Response(status_code=500, content=str(e))
