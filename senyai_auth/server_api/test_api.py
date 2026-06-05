@@ -406,6 +406,71 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_10_user_accepts_invitation_and_uses_blocklisted_name(self):
+        user = {
+            "username": "root",
+            "password": "12345678",
+            "password_repeat": "12345678",
+            "display_name": "Invited User",
+            "email": "ted@example.com",
+            "contacts": "home address",
+        }
+        response = client.post(f"/register/{invitation_str}", json=user)
+        self.assertEqual(
+            response.status_code, status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "ctx": {"error": {}},
+                        "input": "root",
+                        "loc": ["body", "username"],
+                        "msg": "Value error, Value in block list",
+                        "type": "value_error",
+                    }
+                ]
+            },
+        )
+
+    async def test_10_user_accepts_invitation_and_uses_uses_extra_field_and_bad_username(
+        self,
+    ):
+        user = {
+            "extra": "field",
+            "username": "root",
+            "password": "12345678",
+            "password_repeat": "12345678",
+            "display_name": "Invited User",
+            "email": "ted@example.com",
+            "contacts": "home address",
+        }
+        response = client.post(f"/register/{invitation_str}", json=user)
+        self.assertEqual(
+            response.status_code, status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": [
+                    {
+                        "ctx": {"error": {}},
+                        "input": "root",
+                        "loc": ["body", "username"],
+                        "msg": "Value error, Value in block list",
+                        "type": "value_error",
+                    },
+                    {
+                        "input": "field",
+                        "loc": ["body", "extra"],
+                        "msg": "Extra inputs are not permitted",
+                        "type": "extra_forbidden",
+                    },
+                ]
+            },
+        )
+
     async def test_10_user_accepts_invitation_success(self):
         user = {
             "username": "invited_user",
