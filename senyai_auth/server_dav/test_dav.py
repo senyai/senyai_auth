@@ -312,7 +312,9 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_head_for_valid_file(self):
         response = self._client.head("/a", headers=AUTH)
         getlastmodified = (
-            datetime.fromtimestamp(self._path.stat().st_mtime, timezone.utc)
+            datetime.fromtimestamp(
+                (self._path / "a").stat().st_mtime, timezone.utc
+            )
             .strftime("%a, %d %b %Y %H:%M:%S GMT")
             .encode()
         )
