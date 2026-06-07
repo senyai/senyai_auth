@@ -17,7 +17,7 @@ from ..db import (
 from .exceptions import response_description
 from sqlalchemy.ext.asyncio import AsyncSession
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 
 class Token(BaseModel, strict=True, frozen=True):
@@ -92,9 +92,15 @@ async def login_for_access_token(
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str | None, Depends(oauth2_scheme)],
     session: AsyncSession = Depends(get_async_session),
 ) -> User:
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         payload = cast(
             TokenData,
