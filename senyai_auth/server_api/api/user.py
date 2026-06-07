@@ -1,14 +1,16 @@
 from __future__ import annotations
-from typing import Annotated
+from typing import Annotated, Any
 from pydantic import (
     AfterValidator,
     BaseModel,
+    Discriminator,
     EmailStr,
     field_validator,
     Field,
     model_validator,
     SecretStr,
     StringConstraints,
+    Tag,
     ValidationInfo,
 )
 from .blocklist import not_in_blocklist
@@ -27,7 +29,7 @@ from ..db import (
     Role,
     User,
 )
-from .auth import get_current_user
+from .auth import get_current_user, oauth2_scheme
 from ..app import get_async_session
 from .exceptions import (
     conflict_description,
@@ -143,6 +145,10 @@ class CreateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
         )
 
 
+class Empty(BaseModel, frozen=True, extra="forbid"):
+    pass
+
+
 class NewUserResponse(BaseModel, strict=True):
     user_id: int
 
@@ -166,6 +172,7 @@ async def create_user(
     ## Create a new user.
 
     * Superadmin only
+    * Should not be available through WebUI
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
@@ -367,11 +374,16 @@ async def delete_user(
 )
 async def create_user_by_invitation(
     key: str,
-    user: CreateUserModel,
+    user: Annotated[
+        Annotated[Empty, Tag("empty")]
+        | Annotated[CreateUserModel, Tag("user")],
+        Discriminator(lambda v: "user" if v else "empty"),
+    ],
     session: AsyncSession = Depends(get_async_session),
+    token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ) -> NewUserResponse:
     """
-    ## Create a new user.
+    ## Create a new user or add existing user to a project
 
     Using invitation key
     """
@@ -388,27 +400,43 @@ async def create_user_by_invitation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation already accepted",
         )
-    user_db = user.make_user()
+    if invitation.for_new_user:
+        assert isinstance(user, CreateUserModel)
+        user_db = user.make_user()
+        session.add(user_db)
+        try:
+            await session.flush((user_db,))
+        except IntegrityError:
+            raise conflict_exception(
+                f"User '{user.username}' already exists", "username"
+            )
+    else:
+        assert isinstance(user, Empty)
+        user_db = await get_current_user(token, session)
     invitation.who_accepted = user_db
-    session.add(Member(project_id=invitation.project_id, user=user_db))
+    # Update `invitation.who_accepted` field
     session.add(invitation)
-    session.add(user_db)
+    # Add member
+    session.add(Member(project_id=invitation.project_id, user=user_db))
     try:
-        await session.flush((user_db,))
+        # Assign roles
+        await session.execute(
+            insert(MemberRole).from_select(
+                ("user_id", "role_id"),
+                select(
+                    literal(user_db.id).label("user_id"),
+                    Role.id.label("role_id"),
+                ).where(
+                    Role.project_id == invitation.project_id,
+                    Role.name.in_(invitation.roles),
+                ),
+            )
+        )
+        await session.commit()
     except IntegrityError:
         raise conflict_exception(
-            f"User '{user.username}' already exists", "username"
+            "Users are not allowed to accept invitations "
+            "to a project they are already a part of",
+            "username",
         )
-    await session.execute(
-        insert(MemberRole).from_select(
-            ("user_id", "role_id"),
-            select(
-                literal(user_db.id).label("user_id"), Role.id.label("role_id")
-            ).where(
-                Role.project_id == invitation.project_id,
-                Role.name.in_(invitation.roles),
-            ),
-        )
-    )
-    await session.commit()
     return NewUserResponse(user_id=user_db.id)

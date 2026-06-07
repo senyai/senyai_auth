@@ -13,6 +13,16 @@
         <input type="text" class="form-control" id="default_display_name" name="default_display_name" value="{{ form.default_display_name if form }}" required autofocus>
         <label for="default_display_name">{{ _("Display Name") }}:</label>
     </div>
+    {% set is_new = form.for_new_user if form else True %}
+    <div class="form-floating mb-3">
+        <div class="btn-group" role="group" aria-label="Existing user button group">
+            <input type="radio" class="btn-check{% if is_new %} active{% endif %}" name="for_new_user" value="true" id="btnradio_new"{% if is_new %} checked{% endif %}>
+            <label class="btn btn-outline-info" for="btnradio_new">{{ _('New User') }}</label>
+            <input type="radio" class="btn-check{% if not is_new %} active{% endif %}" name="for_new_user"  value="false" id="btnradio_existing"{% if not is_new %} checked{% endif %}>
+            <label class="btn btn-outline-info" for="btnradio_existing">{{ _('Existing User') }}</label>
+        </div>
+    </div>
+    <div class="new_user_values"{% if not is_new %} style="display: none"{% endif %}>
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="default_username" name="default_username" value="{{ form.default_username if form }}">
         <label for="default_username">{{ _("Username") }}:</label>
@@ -20,6 +30,7 @@
     <div class="form-floating mb-3">
         <input type="email" class="form-control" id="default_email" name="default_email" value="{{ form.default_email if form }}">
         <label for="default_email">{{ _("Email") }}:</label>
+    </div>
     </div>
     <div class="mb-3">
         <label class="mb-2">{{ _("Auto add roles") }}</label>
@@ -32,12 +43,16 @@
         </div>
         {% endfor %}
     </div>
-    <input type="hidden" name="project_id" value="{{ project_id }}">
+    {% if not form %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
 </form>
 <script>
 (function(){
-    document.currentScript.previousElementSibling.querySelectorAll('[data-bs-toggle="tooltip"]'
+    let frm = document.currentScript.previousElementSibling;
+    frm.querySelectorAll('[data-bs-toggle="tooltip"]'
     ).forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    frm.querySelector('.btn-group').addEventListener('change', e =>
+        frm.querySelector('.new_user_values').style.display = e.target.value == "true" ? "" : "none"
+    );
 })();
 </script>
 {% endblock form %}

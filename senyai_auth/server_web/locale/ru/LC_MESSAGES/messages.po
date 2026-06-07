@@ -134,7 +134,15 @@ msgstr "Регистрация"
 msgid "Prompt"
 msgstr "Приглашение"
 
-#: templates/forms/invite_form.html:25
+#: templates/forms/invite_form.html:20
+msgid "New User"
+msgstr "Новый пользователь"
+
+#: templates/forms/invite_form.html:22
+msgid "Existing User"
+msgstr "Существующий пользователь"
+
+#: templates/forms/invite_form.html:36
 msgid "Auto add roles"
 msgstr "Автоматически добавить роли"
 

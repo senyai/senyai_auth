@@ -34,7 +34,7 @@ def _get_key_32() -> str:
     return base64.urlsafe_b64encode(os.urandom(24)).decode()
 
 
-class InviteUserModel(BaseModel, strict=True, frozen=True):
+class InviteUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     project_id: Annotated[
         int,
         Field(
@@ -66,7 +66,6 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
         ),
         Field(description="For convenience. Should be left empty."),
     ]
-
     default_display_name: Annotated[
         str,
         DisplayName[0],
@@ -76,7 +75,9 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
             "who awaits/got invitation"
         ),
     ]
-
+    for_new_user: Annotated[
+        bool, Field(description="Invite new user or existing one")
+    ]
     roles: Annotated[
         list[str],  # list of `Role.name`` for current `project_id`
         Field(
@@ -99,6 +100,7 @@ class InviteUserModel(BaseModel, strict=True, frozen=True):
             default_username=self.default_username,
             default_display_name=self.default_display_name,
             default_email=self.default_email,
+            for_new_user=self.for_new_user,
         )
 
 
@@ -155,6 +157,10 @@ class InvitationForm(BaseModel, strict=True):
         str, Field(description="Default Display Name")
     ]
     default_email: Annotated[str, Field(description="Default Email")]
+    for_new_user: Annotated[
+        bool,
+        Field(description="Allow user to register or use existing account"),
+    ]
 
 
 @router.get(
@@ -184,6 +190,7 @@ async def get_invitation(
                 Invitation.default_display_name,
                 Invitation.default_email,
                 Invitation.who_accepted_id,
+                Invitation.for_new_user,
             )
         )
     )
@@ -202,6 +209,7 @@ async def get_invitation(
         default_username=invitation.default_username,
         default_display_name=invitation.default_display_name,
         default_email=invitation.default_email,
+        for_new_user=invitation.for_new_user,
     )
 
 
@@ -211,6 +219,7 @@ class InvitationUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     default_email: str | None = None
     default_display_name: str | None = None
     roles: list[str] | None = None
+    for_new_user: bool | None = None
 
     def update(self, invitation: Invitation):
         for key, value in self.model_dump(

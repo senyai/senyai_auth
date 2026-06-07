@@ -330,6 +330,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "default_email": "newuser@example.com",
             "default_display_name": "New User",
             "roles": ["non_existent", "test_role"],
+            "for_new_user": True,
         }
         response = client.post(
             "/invite",
@@ -352,6 +353,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
             "default_email": "",
             "default_display_name": "ABC",
             "roles": [],
+            "for_new_user": True,
         }
         response = client.post(
             "/invite",
@@ -379,6 +381,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                 "default_email": "newuser@example.com",
                 "prompt": "Welcome",
                 "default_username": "newuser",
+                "for_new_user": True,
             },
         )
 
@@ -426,7 +429,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                     {
                         "ctx": {"error": {}},
                         "input": "root",
-                        "loc": ["body", "username"],
+                        "loc": ["body", "user", "username"],
                         "msg": "Value error, Value in block list",
                         "type": "value_error",
                     }
@@ -457,13 +460,13 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                     {
                         "ctx": {"error": {}},
                         "input": "root",
-                        "loc": ["body", "username"],
+                        "loc": ["body", "user", "username"],
                         "msg": "Value error, Value in block list",
                         "type": "value_error",
                     },
                     {
                         "input": "field",
-                        "loc": ["body", "extra"],
+                        "loc": ["body", "user", "extra"],
                         "msg": "Extra inputs are not permitted",
                         "type": "extra_forbidden",
                     },
