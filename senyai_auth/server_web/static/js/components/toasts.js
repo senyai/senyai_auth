@@ -25,17 +25,19 @@ export function initToasts() {
             const errors = JSON.parse(xhr.responseText);
 
             for (const error of errors['detail']) {
-                const name = error.loc[1];
-                if (!name) {
-                    showToast("danger", error.msg)
-                    continue;
-                }
-                const field = form.querySelector(`[name="${name}"]`);
-
-                field.setCustomValidity(error.msg);
-                field.onfocus = () => field.reportValidity();
-                field.onchange = () => field.setCustomValidity('');
-                field.reportValidity();
+                const err = (() => {
+                    const name = error.loc.at(-1);
+                    if (!name)
+                        return error
+                    const field = form.querySelector(`[name="${name}"]`);
+                    if (!field || field.type == "hidden")
+                        return error;
+                    field.setCustomValidity(error.msg);
+                    field.onfocus = () => field.reportValidity();
+                    field.onchange = () => field.setCustomValidity('');
+                    field.reportValidity();
+                })();
+                if (err) showToast("danger", err.msg);
             }
         } else {
             let danger;
@@ -47,7 +49,6 @@ export function initToasts() {
             showToast("danger", danger);
         }
     });
-
 
     const container = document.getElementById("toast-container");
     container.addEventListener("focusin", (e) => e.stopPropagation());
