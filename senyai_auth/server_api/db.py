@@ -268,6 +268,7 @@ class Invitation(Base):
     default_username: Mapped[str] = mapped_column(nullable=False)
     default_display_name: Mapped[str] = mapped_column(nullable=False)
     default_email: Mapped[str] = mapped_column(nullable=False)
+    for_new_user: Mapped[bool] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )

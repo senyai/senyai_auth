@@ -306,6 +306,7 @@ async def invite_info_for_update(
         default_display_name=invitation.default_display_name,
         default_email=invitation.default_email,
         roles=invitation.roles,
+        for_new_user=invitation.for_new_user,
     )
 
     roles = [

@@ -202,6 +202,8 @@ async def invite_new():
     form = await request.form
     data = dict(form)
     data["roles"] = form.getlist("role")
+    data.pop("role", None)
+    data["for_new_user"] = data.get("for_new_user") == "true"
     resp = await app.client.post(
         "/invite",
         headers={"Authorization": request.cookies.get("Authorization", "")},
@@ -232,6 +234,8 @@ async def invite_update(invite_id: int):
     form = await request.form
     data = dict(form)
     data["roles"] = form.getlist("role")
+    data.pop("role", None)
+    data["for_new_user"] = data.get("for_new_user") == "true"
 
     resp = await app.client.patch(
         f"/invite/{invite_id}",
@@ -275,7 +279,12 @@ async def register(key: str):
 @app.post("/register/<key>")
 async def register_post(key: str):
     form = await request.form
-    api_resp = await app.client.post(f"/register/{key}", json=dict(form))
+    api_resp = await app.client.post(
+        f"/register/{key}",
+        json=dict(form),
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+
     if api_resp.status_code == 201:
         resp = await make_response("", 201)
         resp.headers["HX-Redirect"] = url_for("index")
@@ -345,11 +354,10 @@ async def add_users(project_id: int):
 
 @app.post("/project/<int:project_id>/users")
 async def add_users_post(project_id: int):
-    token = request.cookies.get("Authorization", "")
     user_ids = (await request.form).getlist("user")
     resp = await app.client.post(
         f"/project/{project_id}/users",
-        headers={"Authorization": token},
+        headers={"Authorization": request.cookies.get("Authorization", "")},
         json=user_ids,
     )
     if resp.status_code == 200:
