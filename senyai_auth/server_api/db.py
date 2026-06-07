@@ -287,10 +287,8 @@ def _create_auth_for_project_stmt():
     Let's say user wants to add a `Role`. We must ensure he or she have
     permissions. That's the intent of this function.
     """
-    project_id = bindparam("project_id", type_=Integer)
-    user_id = bindparam("user_id", type_=Integer)
     id_and_parent = select(Project.id, Project.parent_id)
-    base = id_and_parent.where(Project.id == project_id).cte(
+    base = id_and_parent.where(Project.id == bind_project_id).cte(
         name="base", recursive=True
     )
     user_projects = base.union_all(
@@ -301,7 +299,8 @@ def _create_auth_for_project_stmt():
         .join(user_projects, user_projects.c.id == Role.project_id)
         .join(
             MemberRole,
-            (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+            (MemberRole.role_id == Role.id)
+            & (MemberRole.user_id == bind_user_id),
         )
     )
 
@@ -310,10 +309,9 @@ def _create_permissions_api_stmt():
     """
     For `user_id` aggregate sum(Role.permissions_api)
     """
-    user_id = bindparam("user_id", type_=Integer)
     return select(func.max(Role.permissions_api)).join(
         MemberRole,
-        (MemberRole.role_id == Role.id) & (MemberRole.user_id == user_id),
+        (MemberRole.role_id == Role.id) & (MemberRole.user_id == bind_user_id),
     )
 
 
@@ -324,13 +322,12 @@ def _create_permissions_stmt(field: InstrumentedAttribute[str]):
 
     :param field: Field of a `Role` class
     """
-    user_id = bindparam("user_id", type_=Integer)
     return (
         select(
             func.aggregate_strings(field, "|"),
         )
         .join(MemberRole, MemberRole.role_id == Role.id)
-        .where(MemberRole.user_id == user_id, field != "")
+        .where(MemberRole.user_id == bind_user_id, field != "")
     )
 
 
@@ -338,14 +335,13 @@ def _create_list_projects_stmt():
     """
     For a user `user_id` recursively select all users's projects
     """
-    user_id = bindparam("user_id", type_=Integer)
     id_name_parent = select(
         Project.id, Project.name, Project.display_name, Project.parent_id
     )
     base = (
         id_name_parent.join(Role, Role.project_id == Project.id)
         .join(MemberRole, MemberRole.role_id == Role.id)
-        .where(MemberRole.user_id == user_id)
+        .where(MemberRole.user_id == bind_user_id)
         .cte(name="base", recursive=True)
     )
     recursive_cte = base.union_all(
