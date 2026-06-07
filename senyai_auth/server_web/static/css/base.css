@@ -335,13 +335,6 @@ legend {
     border: none;
 }
 
-.btn-check:checked+.btn {
-    background-color: var(--bs-primary-bg-subtle);
-    border: none;
-    border-radius: 0;
-}
-
-
 .toast-error{
   --bs-toast-color: var(--bs-danger-text-emphasis);
   --bs-toast-bg: var(--bs-danger-bg-subtle);
