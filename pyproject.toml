@@ -23,6 +23,7 @@ dependencies = [
   "zxcvbn>=4.5.0",
   "Quart>=0.20.0",
   "babel>=2.18.0",
+  "httpx2>=2.3.0",
 ]
 [project.urls]
 "Homepage" = "https://github.com/iitpvisionlab/senyai_auth"
