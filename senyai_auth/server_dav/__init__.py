@@ -19,7 +19,7 @@ import aiofiles
 import aiofiles.os
 from pathlib import Path
 from mimetypes import types_map as mimetypes
-from httpx import AsyncClient, NetworkError
+from httpx2 import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
 from asyncio import Future, create_task, sleep

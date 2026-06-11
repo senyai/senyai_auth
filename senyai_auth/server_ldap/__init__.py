@@ -7,7 +7,7 @@ from typing import AsyncGenerator, cast, NamedTuple
 
 import asyncio
 import json
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from pyasn1.type import univ, tag, namedtype, namedval, constraint
 from pyasn1.codec.ber import decoder, encoder
 from pyasn1.error import EndOfStreamError, PyAsn1Error

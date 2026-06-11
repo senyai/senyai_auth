@@ -10,7 +10,7 @@ from quart import (
     Request,
     url_for,
 )
-import httpx
+import httpx2 as httpx
 import json
 
 from .. import __version__

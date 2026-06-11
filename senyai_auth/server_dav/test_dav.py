@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, patch
 from starlette.testclient import TestClient
 from . import Permissions, DAVPath, SenyaiDAV, DavSettings
 from senyai_auth import server_dav, __version__ as version
-import httpx
-from httpx import AsyncClient
+import httpx2 as httpx
+from httpx2 import AsyncClient
 from pathlib import Path
 import tempfile
 from datetime import datetime, timezone
@@ -161,8 +161,6 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_get_no_permissions(self):
         # we have no permissions, because we don't sent Authorization
         response = self._client.get("")
-        if response.status_code == 200:
-            breakpoint()
         self.assertEqual(response.status_code, 401)
         response = self._client.get("/xxx")
         self.assertEqual(response.status_code, 401)
