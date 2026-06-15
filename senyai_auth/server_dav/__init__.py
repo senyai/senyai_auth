@@ -22,7 +22,7 @@ from mimetypes import types_map as mimetypes
 from httpx2 import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
-from asyncio import Future, create_task, sleep
+from asyncio import Future, create_task, sleep, get_running_loop
 import httpcore  # needed for _drop_privileges
 import anyio._backends._asyncio  # needed for _drop_privileges
 from .afs import copy, delete
@@ -253,11 +253,16 @@ class SenyaiDAV:
             if expiration > now:  # not expired
                 return await permissions
             del cache[bearer]
-        future: Future[Permissions | None] = Future()
+        future: Future[Permissions | None] = get_running_loop().create_future()
         # update permissions every 20 seconds
         cache[bearer] = now + 20.0, future
-        permissions = await _permissions_for(self._api_client, bearer)
-        future.set_result(permissions)
+        try:
+            permissions = await _permissions_for(self._api_client, bearer)
+        except BaseException as e:  # just in case
+            future.set_exception(e)
+            raise
+        else:
+            future.set_result(permissions)
         return permissions
 
     async def _bearer_for(
@@ -269,10 +274,17 @@ class SenyaiDAV:
             if expiration > now:  # not expired
                 return await authorization
             del cache[username_password]
-        future: Future[Bearer | None] = Future()
+        future: Future[Bearer | None] = get_running_loop().create_future()
         cache[username_password] = now + 60.0, future
-        authorization = await _bearer_for(self._api_client, *username_password)
-        future.set_result(authorization)
+        try:
+            authorization = await _bearer_for(
+                self._api_client, *username_password
+            )
+        except BaseException as e:  # just in case
+            future.set_exception(e)
+            raise
+        else:
+            future.set_result(authorization)
         return authorization
 
     async def _check_auth(
