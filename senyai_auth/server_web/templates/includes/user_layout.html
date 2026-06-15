@@ -10,6 +10,11 @@
                 type="button" role="tab" aria-controls="password-tab-pane" aria-selected="false"><i
                     class="bi bi-key mx-2"></i>{{ _("Password") }}</button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="permissions-tab" data-bs-toggle="tab" data-bs-target="#permissions-tab-pane"
+                type="button" role="tab" aria-controls="password-tab-pane" aria-selected="false"><i
+                    class="bi bi-card-list mx-2"></i>{{ _("Permissions") }}</button>
+        </li>
     </ul>
     <div class="tab-content" id="profileTabContent">
         <div class="tab-pane fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
@@ -74,6 +79,28 @@
                 </div>
             </form>
         </div>
-
+        <div class="tab-pane fade" id="permissions-tab-pane" role="tabpanel" aria-labelledby="permissions-tab" tabindex="0" style="padding:1em">
+            <style>
+                #permissions-tab-pane>button{
+                    height: 4em;
+                }
+                #permissions-tab-pane>button.htmx-request>span {
+                    display: none;
+                }
+                #permissions-tab-pane .spinner-border {
+                    display: none;
+                    margin: 0.3em auto;
+                }
+                #permissions-tab-pane>button>.spinner-border.htmx-request {
+                    display: inherit;
+                }
+            </style>
+            <button hx-get="{{ url_for('permissions', domain='git') }}" hx-target="next" class="btn btn-primary" hx-indicator="#spinner1">
+                <span>Git</span> <div id="spinner1" class="htmx-indicator spinner-border text-info" role="status"></div></button>
+            <div></div>
+            <button hx-get="{{ url_for('permissions', domain='storage') }}" hx-target="next" class="btn btn-primary" hx-indicator="#spinner2">
+                <span>{{ _("Storage") }}</span> <div id="spinner2" class="htmx-indicator spinner-border text-info" role="status"></div></button>
+            <div></div>
+        </div>
     </div>
 </div>

@@ -284,6 +284,10 @@ msgstr ""
 msgid "Logout"
 msgstr "Выход"
 
+#: templates/includes/permissions.html:7
+msgid "No permissions"
+msgstr "Нет разрешений"
+
 #: templates/includes/project_info.html:7
 msgid "Members"
 msgstr "Участники"
@@ -319,6 +323,10 @@ msgstr "Подтверждение пароля"
 #: templates/includes/user_layout.html:72
 msgid "Update password"
 msgstr "Обновить пароль"
+
+#: templates/includes/user_layout.html:102
+msgid "Storage"
+msgstr "Хранилище"
 
 #: templates/partials/invites_table.html:4
 #: templates/partials/project_management.html:5

@@ -1,0 +1,8 @@
+<h3>{{ domain }}</h3>
+{% if permissions %}
+<ul>{% for item in permissions %}
+    <li>{{ item }}</li>
+{% endfor %}</ul>
+{% else %}
+<span>{{ _("No permissions") }}</span>
+{% endif %}
