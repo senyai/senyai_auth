@@ -682,3 +682,22 @@ async def update_user_password(user_id: int):
         return resp
 
     return resp.content, resp.status_code, resp.headers
+
+
+@app.get("/permissions/<domain>")
+async def permissions(domain: str):
+    if domain not in ("git", "storage"):
+        return "Not found", 404
+    resp = await app.client.get(
+        f"/ldap/roles/{domain}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        return await render_template(
+            "includes/permissions.html",
+            domain=domain,
+            permissions=resp.json(),
+            _=_get_underscore(request),
+        )
+
+    return resp.content, resp.status_code, resp.headers
