@@ -127,7 +127,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         # Setup test directory
         cls._temp_dir = tempfile.TemporaryDirectory()
         cls._path = Path(cls._temp_dir.name)
-        for idx, name in enumerate("abc"):
+        for idx, name in enumerate([*"abc", "ёлки иголки.png"]):
             (cls._path / name).write_text(name * idx * 3)
 
         # Path settings and create `app``
@@ -178,6 +178,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
 <li><a href="/a">a</a></li>
 <li><a href="/b">b</a></li>
 <li><a href="/c">c</a></li>
+<li><a href="/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
 </ul>
 <hr><small>Powered by senyai_auth {version}</small>
 </body>
@@ -189,16 +190,21 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"b" * 3)
 
-    def test_propfind_on_root_directory(self):
-        response = self._client.request("PROPFIND", "/", headers=AUTH)
-        self.assertEqual(response.status_code, 207)
-        stat = self._path.stat()
+    @staticmethod
+    def _file_stat(path: Path):
+        stat = path.stat()
         getlastmodified = datetime.fromtimestamp(
             stat.st_mtime, timezone.utc
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
         creationdate = datetime.fromtimestamp(
             stat.st_ctime, timezone.utc
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return creationdate, getlastmodified
+
+    def test_propfind_on_root_directory_with_default_depth_0(self):
+        response = self._client.request("PROPFIND", "/", headers=AUTH)
+        self.assertEqual(response.status_code, 207)
+        creationdate, getlastmodified = self._file_stat(self._path)
         self.assertEqual(
             response.content,
             # fmt: off
@@ -217,6 +223,109 @@ class DavAppTest(IsolatedAsyncioTestCase):
                  '</D:propstat>'
                '</D:response>'
              '</D:multistatus>').encode(),
+            # fmt: on
+        )
+
+    def test_propfind_on_root_directory_with_depth_1(self):
+        response = self._client.request(
+            "PROPFIND", "/", headers={**AUTH, "Depth": "1"}
+        )
+        self.assertEqual(response.status_code, 207)
+        root_cd, root_lm = self._file_stat(self._path)
+        a_cd, a_lm = self._file_stat(self._path / "a")
+        b_cd, b_lm = self._file_stat(self._path / "b")
+        c_cd, c_lm = self._file_stat(self._path / "c")
+        d_cd, d_lm = self._file_stat(self._path / "d")
+        ei_cd, ei_lm = self._file_stat(self._path / "ёлки иголки.png")
+
+        self.assertEqual(
+            response.content,
+            # fmt: off
+            ("<?xml version='1.0' encoding='utf-8'?>\n"
+             "<D:multistatus xmlns:D=\"DAV:\">"
+             "<D:response>"
+                 "<D:href>/</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>Storage</D:displayname>"
+                     "<D:resourcetype><D:collection /></D:resourcetype>"
+                     "<D:getcontenttype>httpd/unix-directory</D:getcontenttype>"
+                     f"<D:creationdate>{root_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{root_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "<D:response>"
+                 "<D:href>/a</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>a</D:displayname>"
+                     "<D:resourcetype />"
+                     "<D:getcontentlength>0</D:getcontentlength>"
+                     "<D:getcontenttype>application/octet-stream</D:getcontenttype>"
+                     f"<D:creationdate>{a_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{a_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "<D:response>"
+                 "<D:href>/b</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>b</D:displayname>"
+                     "<D:resourcetype />"
+                     "<D:getcontentlength>3</D:getcontentlength>"
+                     "<D:getcontenttype>application/octet-stream</D:getcontenttype>"
+                     f"<D:creationdate>{b_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{b_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "<D:response>"
+                 "<D:href>/c</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>c</D:displayname>"
+                     "<D:resourcetype />"
+                     "<D:getcontentlength>6</D:getcontentlength>"
+                     "<D:getcontenttype>application/octet-stream</D:getcontenttype>"
+                     f"<D:creationdate>{c_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{c_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "<D:response>"
+                 "<D:href>/d/</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>d</D:displayname>"
+                     "<D:resourcetype><D:collection /></D:resourcetype>"
+                     "<D:getcontenttype>httpd/unix-directory</D:getcontenttype>"
+                     f"<D:creationdate>{d_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{d_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "<D:response>"
+                 "<D:href>/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png</D:href>"
+                 "<D:propstat>"
+                 "<D:prop>"
+                     "<D:displayname>ёлки иголки.png</D:displayname>"
+                     "<D:resourcetype />"
+                     "<D:getcontentlength>225</D:getcontentlength>"
+                     "<D:getcontenttype>image/png</D:getcontenttype>"
+                     f"<D:creationdate>{ei_cd}</D:creationdate>"
+                     f"<D:getlastmodified>{ei_lm}</D:getlastmodified>"
+                 "</D:prop>"
+                 "<D:status>HTTP/1.1 200 OK</D:status>"
+                 "</D:propstat>"
+             "</D:response>"
+             "</D:multistatus>").encode(),
             # fmt: on
         )
 

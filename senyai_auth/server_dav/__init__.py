@@ -397,15 +397,15 @@ class SenyaiDAV:
 
         # Add children if depth > 0 and it's a directory
         if depth in ("1", "infinity") and path.is_dir():
-            base_url = request.url.path.rstrip("/")
+            base_url = quote(request.url.path.rstrip("/"))
             try:
                 items = self.paths_for(path, dav_path, permissions)
                 if items is None:
                     return self._response_no_permissions_read
-                self._add_response(root, path.stat(), request.url.path, path)
+                self._add_response(root, path.stat(), f"{base_url}/", path)
 
                 for item_path in items:
-                    item_url = f"{base_url}/{item_path.name}"
+                    item_url = f"{base_url}/{quote(item_path.name)}"
                     try:
                         stat = item_path.stat()
                         if S_ISDIR(stat.st_mode):
@@ -505,11 +505,11 @@ class SenyaiDAV:
             items: list[str] = []
             if dav_path:
                 items.append('<li><a href="../">../</a></li>')
-            base_url = request.url.path.rstrip("/")
+            base_url = quote(request.url.path.rstrip("/"))
 
             for item_path in item_path:
                 name = item_path.name
-                url = f"{base_url}/{name}"
+                url = f"{base_url}/{quote(name)}"
                 try:
                     stat = item_path.stat()
                     if S_ISDIR(stat.st_mode):
