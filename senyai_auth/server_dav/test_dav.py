@@ -330,27 +330,25 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
 
     def test_propfind_on_a_file(self):
-        response = self._client.request("PROPFIND", "/a", headers=AUTH)
+        response = self._client.request(
+            "PROPFIND", "/ёлки иголки.png", headers=AUTH
+        )
         self.assertEqual(response.status_code, 207)
-        stat = (self._path / "a").stat()
-        getlastmodified = datetime.fromtimestamp(
-            stat.st_mtime, timezone.utc
-        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
-        creationdate = datetime.fromtimestamp(
-            stat.st_ctime, timezone.utc
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        creationdate, getlastmodified = self._file_stat(
+            self._path / "ёлки иголки.png"
+        )
         self.assertEqual(
             response.content,
             # fmt: off
             ("<?xml version='1.0' encoding='utf-8'?>\n"
              '<D:multistatus xmlns:D="DAV:">'
-               '<D:response><D:href>/a</D:href>'
+               '<D:response><D:href>/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png</D:href>'
                  '<D:propstat>'
                    '<D:prop>'
-                     '<D:displayname>a</D:displayname>'
+                     '<D:displayname>ёлки иголки.png</D:displayname>'
                      '<D:resourcetype />'
-                     '<D:getcontentlength>0</D:getcontentlength>'
-                     '<D:getcontenttype>application/octet-stream</D:getcontenttype>'
+                     '<D:getcontentlength>225</D:getcontentlength>'
+                     '<D:getcontenttype>image/png</D:getcontenttype>'
                      f'<D:creationdate>{creationdate}</D:creationdate>'
                      f'<D:getlastmodified>{getlastmodified}</D:getlastmodified>'
                    '</D:prop>'
