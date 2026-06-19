@@ -175,10 +175,10 @@ class DavAppTest(IsolatedAsyncioTestCase):
 <body>
 <h1>Index of /</h1>
 <ul>
-<li><a href="/a">a</a></li>
-<li><a href="/b">b</a></li>
-<li><a href="/c">c</a></li>
-<li><a href="/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
+<li><a href="a">a</a></li>
+<li><a href="b">b</a></li>
+<li><a href="c">c</a></li>
+<li><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
 </ul>
 <hr><small>Powered by senyai_auth {version}</small>
 </body>
