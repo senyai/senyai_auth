@@ -88,7 +88,7 @@ DisplayName = (
         min_length=3,
         max_length=79,
         strip_whitespace=True,
-        pattern=r"^[\w ]*$",
+        pattern=r"^[\w_ ’'-]*$",
     ),
     Field(examples=["Arseniy Terekhin"]),
 )
