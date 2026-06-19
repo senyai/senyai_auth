@@ -23,7 +23,9 @@ export function initToasts() {
         if (xhr.status == 422 || xhr.status == 409) {
             const form = evt.detail.elt;
             const errors = JSON.parse(xhr.responseText);
-
+            if (typeof errors['detail'] === "string") {  // general error
+                return showToast("danger", errors['detail']);
+            }
             for (const error of errors['detail']) {
                 const err = (() => {
                     const name = error.loc.at(-1);
