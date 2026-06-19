@@ -34,6 +34,29 @@ client = TestClient(app)
 client.__enter__()
 
 
+class TestValidation(TestCase):
+    def test_names(self):
+        from .api.user import DisplayName, Annotated
+        from pydantic import BaseModel, ValidationError
+
+        class TestName(BaseModel):
+            display_name: Annotated[str, *DisplayName]
+
+        for name in ("$$$", "%%", "##", "John$Doe"):
+            with self.assertRaises(ValidationError):
+                TestName(display_name=name)
+
+        for name in (
+            "Арсений",
+            "X Æ A-12",
+            "Olive-May",
+            "O’Brien",
+            "John Doe",
+            "123",
+        ):
+            TestName(display_name=name)
+
+
 class UnauthorizedTest(TestCase):
     def test_all(self):
         for path, method in (
