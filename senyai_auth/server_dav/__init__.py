@@ -505,11 +505,10 @@ class SenyaiDAV:
             items: list[str] = []
             if dav_path:
                 items.append('<li><a href="../">../</a></li>')
-            base_url = quote(request.url.path.rstrip("/"))
 
             for item_path in item_path:
                 name = item_path.name
-                url = f"{base_url}/{quote(name)}"
+                url = quote(name)
                 try:
                     stat = item_path.stat()
                     if S_ISDIR(stat.st_mode):
