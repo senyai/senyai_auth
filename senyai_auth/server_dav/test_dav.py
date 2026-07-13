@@ -13,17 +13,17 @@ from datetime import datetime, timezone
 
 
 class PermissionsTest(TestCase):
-    def test_user_can_only_see_their_folder(self):
+    def test_user_can_only_see_their_folder(self) -> None:
         perm = Permissions(["user1"])
         folders = perm.list_children(DAVPath(""))
         self.assertEqual(folders, ["user1"])
 
-    def test_user_have_no_access_to_outside_directory(self):
+    def test_user_have_no_access_to_outside_directory(self) -> None:
         perm = Permissions(["user1"])
         folders = perm.list_children(DAVPath("xx"))
         self.assertIsNone(folders)
 
-    def test_duplicate_permissions(self):
+    def test_duplicate_permissions(self) -> None:
         perm = Permissions(
             ["user1", "user1", "user2", "user2:w", "user1:w", "user3", "user3"]
         )
@@ -54,10 +54,10 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
         cls._client = TestClient(cls._app).__enter__()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls._client.__exit__()
 
-    def test_get_root(self):
+    def test_get_root(self) -> None:
         response = self._client.get("/")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.content, b"Authentication required")
@@ -69,7 +69,7 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
             },
         )
 
-    def test_options(self):
+    def test_options(self) -> None:
         response = self._client.options("/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"")
@@ -82,7 +82,7 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
             },
         )
 
-    def test_authentication_is_required_for_unsupported_method(self):
+    def test_authentication_is_required_for_unsupported_method(self) -> None:
         response = self._client.request("CRACK", "/")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.content, b"Authentication required")
@@ -93,7 +93,7 @@ AUTH = {"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="}
 
 class DavAppTest(IsolatedAsyncioTestCase):
     @staticmethod
-    def fake_api_post(url: Any, **kwds: Any):
+    def fake_api_post(url: Any, **kwds: Any) -> httpx.Response:
         if kwds.get("data") != {
             "password": "password",
             "username": "username",
@@ -108,7 +108,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         raise ValueError(url)
 
     @staticmethod
-    def fake_api_get(url: Any, **kwds: Any):
+    def fake_api_get(url: Any, **kwds: Any) -> httpx.Response:
         if kwds.get("data") != {
             "password": "password",
             "username": "username",
@@ -150,7 +150,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         cls._fake_api.start()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls._temp_dir.cleanup()
         cls._client.__exit__()
         cls._fake_api.stop()
@@ -158,14 +158,14 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def tearDown(self) -> None:
         self._client.cookies.clear()
 
-    def test_get_no_permissions(self):
+    def test_get_no_permissions(self) -> None:
         # we have no permissions, because we don't sent Authorization
         response = self._client.get("")
         self.assertEqual(response.status_code, 401)
         response = self._client.get("/xxx")
         self.assertEqual(response.status_code, 401)
 
-    def test_get_root_directory(self):
+    def test_get_root_directory(self) -> None:
         response = self._client.get("/", headers=AUTH)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -186,7 +186,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
 </html>""".encode(),
         )
 
-    def test_get_file(self):
+    def test_get_file(self) -> None:
         response = self._client.get("/b", headers=AUTH)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"b" * 3)
@@ -251,7 +251,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
             ]
         ).encode()
 
-    def test_propfind_on_root_directory_with_default_depth_0(self):
+    def test_propfind_on_root_directory_with_default_depth_0(self) -> None:
         response = self._client.request("PROPFIND", "/", headers=AUTH)
         self.assertEqual(response.status_code, 207)
         self.assertEqual(
@@ -263,7 +263,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
             ),
         )
 
-    def test_propfind_on_root_directory_with_depth_1(self):
+    def test_propfind_on_root_directory_with_depth_1(self) -> None:
         response = self._client.request(
             "PROPFIND", "/", headers={**AUTH, "Depth": "1"}
         )
@@ -303,7 +303,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
             ),
         )
 
-    def test_propfind_on_a_file(self):
+    def test_propfind_on_a_file(self) -> None:
         response = self._client.request(
             "PROPFIND", "/ёлки иголки.png", headers=AUTH
         )
@@ -333,34 +333,34 @@ class DavAppTest(IsolatedAsyncioTestCase):
             # fmt: on
         )
 
-    def test_propfind_on_non_existing_file(self):
+    def test_propfind_on_non_existing_file(self) -> None:
         response = self._client.request(
             "PROPFIND", "/non_existing_file", headers=AUTH
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"404 Not Found")
 
-    def test_delete_on_non_existing_file(self):
+    def test_delete_on_non_existing_file(self) -> None:
         response = self._client.delete("/d/non_existing_file", headers=AUTH)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"404 Not Found")
 
-    def test_mkcol_non_existing_directory(self):
+    def test_mkcol_non_existing_directory(self) -> None:
         response = self._client.request("MKCOL", "/d", headers=AUTH)
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.content, b"")
 
-    def test_mkcol_non_existing_directory_again(self):
+    def test_mkcol_non_existing_directory_again(self) -> None:
         response = self._client.request("MKCOL", "/d", headers=AUTH)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.content, b"Collection already exists")
 
-    def test_mkcol_parent_collection_does_not_exist(self):
+    def test_mkcol_parent_collection_does_not_exist(self) -> None:
         response = self._client.request("MKCOL", "/d/a/b/c", headers=AUTH)
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.content, b"Parent collection does not exist")
 
-    def test_mkcol_with_body(self):
+    def test_mkcol_with_body(self) -> None:
         response = self._client.request(
             "MKCOL", "/d/test_failed", content="body", headers=AUTH
         )
@@ -369,17 +369,17 @@ class DavAppTest(IsolatedAsyncioTestCase):
             response.content, b"MKCOL request must not contain a body"
         )
 
-    def test_mkcol_without_write_permission(self):
+    def test_mkcol_without_write_permission(self) -> None:
         response = self._client.request("MKCOL", "/l", headers=AUTH)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"Write permission denied")
 
-    def test_unsupported_method(self):
+    def test_unsupported_method(self) -> None:
         response = self._client.request("CRACK", "/", headers=AUTH)
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.content, b"Method CRACK not allowed")
 
-    def test_propfind_with_invalid_xml(self):
+    def test_propfind_with_invalid_xml(self) -> None:
         response = self._client.request(
             "PROPFIND", "/", content="<hello>", headers=AUTH
         )
@@ -388,7 +388,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
             response.content, b"no element found: line 1, column 7"
         )
 
-    def test_head_for_valid_file(self):
+    def test_head_for_valid_file(self) -> None:
         response = self._client.head("/a", headers=AUTH)
         getlastmodified = (
             datetime.fromtimestamp(
@@ -413,7 +413,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.content, b"")
 
-    def test_head_for_valid_directory(self):
+    def test_head_for_valid_directory(self) -> None:
         response = self._client.head("/", headers=AUTH)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -426,12 +426,12 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.content, b"")
 
-    def test_head_for_non_existing_path(self):
+    def test_head_for_non_existing_path(self) -> None:
         response = self._client.head("/non_existing_file", headers=AUTH)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"")
 
-    def test_delete_existing_file(self):
+    def test_delete_existing_file(self) -> None:
         CONTENT = b"A file to be deleted by test"
         response = self._client.put(
             "/d/deleteme", headers=AUTH, content=CONTENT
@@ -451,32 +451,32 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"404 Not Found")
 
-    def test_delete_non_existing_file(self):
+    def test_delete_non_existing_file(self) -> None:
         response = self._client.delete("/d/non_existing_file", headers=AUTH)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"404 Not Found")
 
-    def test_delete_file_without_having_write_permission(self):
+    def test_delete_file_without_having_write_permission(self) -> None:
         response = self._client.delete("/a", headers=AUTH)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"Write permission denied")
 
-    def test_put_without_write_permission(self):
+    def test_put_without_write_permission(self) -> None:
         response = self._client.put("/x", headers=AUTH, content=b"X")
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"Write permission denied")
 
-    def test_copy_without_destination(self):
+    def test_copy_without_destination(self) -> None:
         response = self._client.request("COPY", "/x", headers=AUTH)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b"Destination not specified")
 
-    def test_move_without_destination(self):
+    def test_move_without_destination(self) -> None:
         response = self._client.request("MOVE", "/d", headers=AUTH)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b"Destination not specified")
 
-    def test_move_non_existing_file(self):
+    def test_move_non_existing_file(self) -> None:
         response = self._client.request(
             "MOVE",
             "/d/non_existing_file",
@@ -485,10 +485,10 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"")
 
-    def test_rename(self):
+    def test_rename(self) -> None:
         pass
 
-    def test_move_basic(self):
+    def test_move_basic(self) -> None:
         CONTENT = b"A file to be moved by test"
         response = self._client.put(
             "/d/move_me", headers=AUTH, content=CONTENT
@@ -529,7 +529,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 204)
 
-    def test_copy_basic(self):
+    def test_copy_basic(self) -> None:
         CONTENT = b"A file to be copied by test"
         response = self._client.put(
             "/d/copy_me", headers=AUTH, content=CONTENT
