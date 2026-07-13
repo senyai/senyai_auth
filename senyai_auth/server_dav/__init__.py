@@ -44,6 +44,8 @@ DAVPath = NewType("DAVPath", str)
 Bearer = NewType("Bearer", str)
 
 ONE_MONTH = 30 * 24 * 60 * 60
+PERMISSIONS_NAME = "permissions.txt"
+PERMISSIONS_PATH = Path(PERMISSIONS_NAME)
 
 
 def _get_settings() -> DavSettings:
@@ -76,6 +78,7 @@ class Node:
 class Permissions:
     def __init__(self, paths: list[str]) -> None:
         self._root = root = Node()
+        self._paths = paths
         for path_rw in paths:
             node = root
             path, sep, rights = path_rw.rpartition(":")
@@ -123,6 +126,16 @@ class Permissions:
                 else:
                     return None
         return list(node.children)
+
+    def txt(self) -> str:
+        try:
+            return self._txt
+        except AttributeError:
+            self._txt = "\n".join(f"* {path}" for path in self._paths)
+        return self._txt
+
+    def stat(self) -> stat_result:
+        return stat_result((0, 0, 0, 0, 0, 0, len(self.txt()), 0, 0, 0))
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} {self._root}>"
@@ -365,6 +378,8 @@ class SenyaiDAV:
             if children is None:
                 return
             items = [self._path / dav_path / child for child in children]
+        if not dav_path:
+            items.append(PERMISSIONS_PATH)
         items.sort()
         return items
 
@@ -380,7 +395,10 @@ class SenyaiDAV:
         except FileNotFoundError:
             if not permissions.has_read_access(dav_path):
                 return self._response_no_permissions_read
-            return self._response_not_found
+            if dav_path != PERMISSIONS_NAME:
+                return self._response_not_found
+            else:
+                stat = permissions.stat()
 
         depth = request.headers.get("Depth", "0")
         root = ET.Element("{DAV:}multistatus")
@@ -409,11 +427,14 @@ class SenyaiDAV:
                         if S_ISDIR(stat.st_mode):
                             item_url += "/"
                     except FileNotFoundError:
-                        # user added permission for a directory but didn't
-                        # create it beforehand, for convenience crate is here
-                        await aiofiles.os.mkdir(item_path)
-                        stat = item_path.stat()
-                        item_url += "/"
+                        if item_path is PERMISSIONS_PATH:
+                            stat = permissions.stat()
+                        else:
+                            # user added permission for a directory but didn't
+                            # create it beforehand, for convenience crate is here
+                            await aiofiles.os.mkdir(item_path)
+                            stat = item_path.stat()
+                            item_url += "/"
 
                     self._add_response(root, stat, item_url, item_path)
             except Exception:
@@ -495,6 +516,8 @@ class SenyaiDAV:
         except FileNotFoundError:
             if not permissions.has_read_access(dav_path):
                 return self._response_no_permissions_read
+            if dav_path == PERMISSIONS_NAME:
+                return Response(permissions.txt(), media_type="text/plain")
             return self._response_not_found
 
         if S_ISDIR(stat.st_mode):
@@ -516,10 +539,14 @@ class SenyaiDAV:
                     else:
                         item = f'<li><a href="{url}">{name}</a></li>'
                 except FileNotFoundError:
-                    # user added permission for a directory but didn't
-                    # create it beforehand, for convenience crate is here
-                    await aiofiles.os.mkdir(item_path)
-                    item = f'<li><a href="{url}/">{name}/</a></li>'
+                    if item_path is PERMISSIONS_PATH:
+                        item = f'<li><a style="color:red" href="{url}">{name}</a></li>'
+                    else:
+                        # user added permission for a directory but didn't
+                        # create it beforehand, for convenience crate is here
+                        await aiofiles.os.mkdir(item_path)
+                        # stat = item_path.stat()
+                        item = f'<li><a href="{url}/">{name}/</a></li>'
                 items.append(item)
 
             html = f"""<html>
