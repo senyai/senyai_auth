@@ -490,12 +490,14 @@ class SenyaiDAV:
         request: Request,
         permissions: Permissions,
     ) -> Response:
-        if not path.exists():
+        try:
+            stat = await aiofiles.os.stat(path)
+        except FileNotFoundError:
             if not permissions.has_read_access(dav_path):
                 return self._response_no_permissions_read
             return self._response_not_found
 
-        if path.is_dir():
+        if S_ISDIR(stat.st_mode):
             item_path = self.paths_for(path, dav_path, permissions)
             if item_path is None:
                 return self._response_no_permissions_read
@@ -517,7 +519,6 @@ class SenyaiDAV:
                     # user added permission for a directory but didn't
                     # create it beforehand, for convenience crate is here
                     await aiofiles.os.mkdir(item_path)
-                    stat = item_path.stat()
                     item = f'<li><a href="{url}/">{name}/</a></li>'
                 items.append(item)
 
