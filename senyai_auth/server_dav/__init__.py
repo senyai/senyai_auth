@@ -375,7 +375,9 @@ class SenyaiDAV:
         request: Request,
         permissions: Permissions,
     ) -> Response:
-        if not path.exists():
+        try:
+            stat = await aiofiles.os.stat(path)
+        except FileNotFoundError:
             if not permissions.has_read_access(dav_path):
                 return self._response_no_permissions_read
             return self._response_not_found
@@ -398,7 +400,7 @@ class SenyaiDAV:
                 items = self.paths_for(path, dav_path, permissions)
                 if items is None:
                     return self._response_no_permissions_read
-                self._add_response(root, path.stat(), f"{base_url}/", path)
+                self._add_response(root, stat, f"{base_url}/", path)
 
                 for item_path in items:
                     item_url = f"{base_url}/{quote(item_path.name)}"
@@ -418,9 +420,7 @@ class SenyaiDAV:
                 return self._response_no_permissions_propfind
         elif depth in ("0", "1") and permissions.can_traverse(dav_path):
             # Without "1" gvfs refuses to delete file
-            self._add_response(
-                root, path.stat(), quote(request.url.path), path
-            )
+            self._add_response(root, stat, quote(request.url.path), path)
         else:
             return self._response_no_permissions_propfind
 
