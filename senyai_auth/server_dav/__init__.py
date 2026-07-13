@@ -301,7 +301,10 @@ class SenyaiDAV:
         now = monotonic()
         if bearer := request.cookies.get("Authorization"):
             # most common way of authorization
-            return await self._permissions_for(Bearer(bearer), now), None
+            permissions = await self._permissions_for(Bearer(bearer), now)
+            # when permissions is None, it means that the Bearer has expired
+            if permissions is not None:
+                return permissions, None
 
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Basic "):
