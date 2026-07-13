@@ -178,7 +178,6 @@ class SenyaiDAV:
                 [Path, DAVPath, Request, Permissions], Awaitable[Response]
             ],
         ] = {
-            "OPTIONS": self.options,
             "PROPFIND": self.propfind,
             "GET": self.get,
             "HEAD": self.head,
@@ -194,7 +193,7 @@ class SenyaiDAV:
         self._response_options = Response(
             headers={
                 "DAV": "1",
-                "Allow": ", ".join(self._methods),
+                "Allow": "OPTIONS, " + ", ".join(self._methods),
                 "Content-Length": "0",
             }
         )
@@ -320,9 +319,8 @@ class SenyaiDAV:
 
     async def handle(self, request: Request) -> Response:
         method = request.method
-
         if method == "OPTIONS":
-            return await self.options(None, None, None, None)
+            return self._response_options
 
         try:
             permissions, bearer = await self._check_auth(request)
@@ -343,15 +341,6 @@ class SenyaiDAV:
         return Response(
             status_code=405, content=f"Method {method} not allowed"
         )
-
-    async def options(
-        self,
-        path: Path | None,
-        dav_path: DAVPath | None,
-        request: Request | None,
-        permissions: Permissions | None,
-    ) -> Response:
-        return self._response_options
 
     def paths_for(
         self, path: Path, dav_path: DAVPath, permissions: Permissions
