@@ -160,6 +160,10 @@ async def _bearer_for(
 async def _permissions_for(
     api_client: AsyncClient, bearer: Bearer
 ) -> Permissions | None:
+    """
+    returns: `None` when not authorized (implicitly 401 error)
+             or valid `Permissions`
+    """
     permissions_res = await api_client.get(
         "/ldap/roles/storage", headers={"Authorization": bearer}
     )
