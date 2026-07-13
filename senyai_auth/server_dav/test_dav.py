@@ -3,7 +3,7 @@ from typing import Any
 from unittest import TestCase, IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 from starlette.testclient import TestClient
-from . import Permissions, DAVPath, SenyaiDAV, DavSettings
+from . import Permissions, DAVPath, SenyaiDAV, DavSettings, PERMISSIONS_NAME
 from senyai_auth import server_dav, __version__ as version
 import httpx2 as httpx
 from httpx2 import AsyncClient
@@ -179,6 +179,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
 <li><a href="b">b</a></li>
 <li><a href="c">c</a></li>
 <li><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
+<li><a style="color:red" href="{PERMISSIONS_NAME}">{PERMISSIONS_NAME}</a></li>
 </ul>
 <hr><small>Powered by senyai_auth {version}</small>
 </body>
@@ -191,7 +192,9 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.content, b"b" * 3)
 
     @staticmethod
-    def _file_stat(path: Path):
+    def _file_stat(path: Path) -> tuple[str, str]:
+        if path.name == PERMISSIONS_NAME:
+            return "1970-01-01T00:00:00Z", "Thu, 01 Jan 1970 00:00:00 GMT"
         stat = path.stat()
         getlastmodified = datetime.fromtimestamp(
             stat.st_mtime, timezone.utc
@@ -289,6 +292,13 @@ class DavAppTest(IsolatedAsyncioTestCase):
                     "/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png",
                     "image/png",
                     225,
+                ),
+                self._pf_response(
+                    self._path / PERMISSIONS_NAME,
+                    PERMISSIONS_NAME,
+                    f"/{PERMISSIONS_NAME}",
+                    "text/plain",
+                    12,
                 ),
             ),
         )
