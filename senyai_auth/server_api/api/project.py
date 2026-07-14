@@ -323,6 +323,7 @@ async def project_list_possible_users(
         .where(
             Member.project_id.in_(stmt_projects),
             ~Member.user_id.in_(current_users),
+            ~User.username.startswith("bot-"),
         )
         .distinct()
         .order_by(User.display_name)
