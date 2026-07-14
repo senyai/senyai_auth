@@ -412,7 +412,7 @@ class SenyaiDAV:
                 return Response(status_code=400, content=str(e))
 
         # Add children if depth > 0 and it's a directory
-        if depth in ("1", "infinity") and path.is_dir():
+        if depth in ("1", "infinity") and S_ISDIR(stat.st_mode):
             base_url = quote(request.url.path.rstrip("/"))
             try:
                 items = self.paths_for(path, dav_path, permissions)
