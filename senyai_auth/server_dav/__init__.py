@@ -91,7 +91,7 @@ class Permissions:
             node.can_write |= rights == "w"
             node.is_leaf = True
 
-    def closet_node(self, path: DAVPath) -> Node:
+    def closest_node(self, path: DAVPath) -> Node:
         node = self._root
         for item in path.split("/"):
             if item in node.children:
@@ -101,16 +101,16 @@ class Permissions:
         return node
 
     def has_write_access(self, path: DAVPath) -> bool:
-        node = self.closet_node(path)
+        node = self.closest_node(path)
         return node.is_leaf and node.can_write
 
     def has_read_access(self, path: DAVPath) -> bool:
-        return self.closet_node(path).is_leaf
+        return self.closest_node(path).is_leaf
 
     def can_traverse(self, path: DAVPath) -> bool:
         return (
             not path
-            or self.closet_node(path) is not self._root
+            or self.closest_node(path) is not self._root
             or self._root.is_leaf
         )
 
