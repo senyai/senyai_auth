@@ -1,8 +1,9 @@
 # import os
 from __future__ import annotations
 from typing import NamedTuple, NewType
-from os import stat_result, getenv, utime
-from stat import S_ISDIR
+from os import stat_result, getenv, utime, scandir
+from os.path import splitext
+from stat import S_ISDIR, S_ISREG, S_IFCHR
 from base64 import b64decode
 from collections import defaultdict
 from collections.abc import Callable, Awaitable
@@ -16,6 +17,7 @@ from starlette.routing import Route
 from starlette.types import Scope, Receive, Send
 from starlette.datastructures import URL
 import aiofiles
+import aiofiles.base
 import aiofiles.os
 from pathlib import Path
 from mimetypes import types_map as mimetypes
@@ -114,9 +116,10 @@ class Permissions:
             or self._root.is_leaf
         )
 
-    def list_children(self, path: DAVPath) -> list[str] | None:
+    def list_children(self, path: DAVPath) -> tuple[Node, list[str] | None]:
         """
-        List nodes
+        Returns: Closest node, optional list of children that
+                 user has permissions to
         """
         node = self._root
         if path:
@@ -124,8 +127,8 @@ class Permissions:
                 if item in node.children:
                     node = node.children[item]
                 else:
-                    return None
-        return list(node.children)
+                    return node, None
+        return node, list(node.children)
 
     def txt(self) -> str:
         try:
@@ -135,7 +138,7 @@ class Permissions:
         return self._txt
 
     def stat(self) -> stat_result:
-        return stat_result((0, 0, 0, 0, 0, 0, len(self.txt()), 0, 0, 0))
+        return stat_result((S_IFCHR, 0, 0, 0, 0, 0, len(self.txt()), 0, 0, 0))
 
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} {self._root}>"
@@ -362,26 +365,47 @@ class SenyaiDAV:
             status_code=405, content=f"Method {method} not allowed"
         )
 
+    @aiofiles.base.wrap
     def paths_for(
         self, path: Path, dav_path: DAVPath, permissions: Permissions
-    ) -> list[Path] | None:
+    ) -> list[tuple[str, stat_result]] | None:
         """
         :returns: None, when access is denied
         """
-        if permissions.has_read_access(dav_path):
+        closes_node, children = permissions.list_children(dav_path)
+        if closes_node.is_leaf:
             try:
-                items = list(path.iterdir())
+                with scandir(path) as scandir_it:
+                    items = {di.name: di.stat() for di in scandir_it}
             except PermissionError:
                 return  # disk permissions screwed up
+            if children is not None:
+                for name in children:
+                    if name not in items:
+                        child_path = path / name
+                        try:
+                            stat = child_path.stat()
+                        except FileNotFoundError:
+                            # user added permission for a directory but didn't
+                            # create it beforehand, for convenience crate is here
+                            child_path.mkdir()
+                            stat = child_path.stat()
+                        items[name] = stat
         else:
-            children = permissions.list_children(dav_path)
             if children is None:
                 return
-            items = [self._path / dav_path / child for child in children]
+            items: dict[str, stat_result] = {}
+            for name in children:
+                child_path = path / name
+                try:
+                    stat = child_path.stat()
+                except FileNotFoundError:
+                    child_path.mkdir()
+                    stat = child_path.stat()
+                items[name] = stat
         if not dav_path:
-            items.append(PERMISSIONS_PATH)
-        items.sort()
-        return items
+            items[PERMISSIONS_NAME] = permissions.stat()
+        return sorted(items.items())
 
     async def propfind(
         self,
@@ -415,33 +439,31 @@ class SenyaiDAV:
         if depth in ("1", "infinity") and S_ISDIR(stat.st_mode):
             base_url = quote(request.url.path.rstrip("/"))
             try:
-                items = self.paths_for(path, dav_path, permissions)
+                items = await self.paths_for(path, dav_path, permissions)
                 if items is None:
                     return self._response_no_permissions_read
-                self._add_response(root, stat, f"{base_url}/", path)
+                self._add_response(
+                    root,
+                    stat,
+                    f"{base_url}/",
+                    self._settings.realm if path == self._path else path.name,
+                )
 
-                for item_path in items:
-                    item_url = f"{base_url}/{quote(item_path.name)}"
-                    try:
-                        stat = item_path.stat()
-                        if S_ISDIR(stat.st_mode):
-                            item_url += "/"
-                    except FileNotFoundError:
-                        if item_path is PERMISSIONS_PATH:
-                            stat = permissions.stat()
-                        else:
-                            # user added permission for a directory but didn't
-                            # create it beforehand, for convenience crate is here
-                            await aiofiles.os.mkdir(item_path)
-                            stat = item_path.stat()
-                            item_url += "/"
-
-                    self._add_response(root, stat, item_url, item_path)
+                for name, stat in items:
+                    item_url = f"{base_url}/{quote(name)}"
+                    if S_ISDIR(stat.st_mode):
+                        item_url += "/"
+                    self._add_response(root, stat, item_url, name)
             except Exception:
                 return self._response_no_permissions_propfind
         elif depth in ("0", "1") and permissions.can_traverse(dav_path):
             # Without "1" gvfs refuses to delete file
-            self._add_response(root, stat, quote(request.url.path), path)
+            self._add_response(
+                root,
+                stat,
+                quote(request.url.path),
+                self._settings.realm if path == self._path else path.name,
+            )
         else:
             return self._response_no_permissions_propfind
 
@@ -458,7 +480,7 @@ class SenyaiDAV:
         parent: ET.Element,
         stat: stat_result,
         url_path: str,
-        fs_path: Path,
+        display_name: str,
     ) -> None:
         """Add a response element for a resource."""
         response = ET.SubElement(parent, "{DAV:}response")
@@ -467,10 +489,6 @@ class SenyaiDAV:
         propstat = ET.SubElement(response, "{DAV:}propstat")
         prop = ET.SubElement(propstat, "{DAV:}prop")
 
-        # Give root a `realm` name`
-        display_name = (
-            self._settings.realm if fs_path == self._path else fs_path.name
-        )
         ET.SubElement(prop, "{DAV:}displayname").text = display_name
 
         # Resource type and other properties
@@ -485,7 +503,7 @@ class SenyaiDAV:
             ET.SubElement(prop, "{DAV:}getcontentlength").text = str(
                 stat.st_size
             )
-            ext = fs_path.suffix.lower()
+            ext = splitext(display_name)[1].lower()
             content_type = mimetypes.get(ext, "application/octet-stream")
             ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
 
@@ -521,7 +539,7 @@ class SenyaiDAV:
             return self._response_not_found
 
         if S_ISDIR(stat.st_mode):
-            item_path = self.paths_for(path, dav_path, permissions)
+            item_path = await self.paths_for(path, dav_path, permissions)
             if item_path is None:
                 return self._response_no_permissions_read
             # Simple directory listing
@@ -529,24 +547,14 @@ class SenyaiDAV:
             if dav_path:
                 items.append('<li><a href="../">../</a></li>')
 
-            for item_path in item_path:
-                name = item_path.name
-                url = quote(name)
-                try:
-                    stat = item_path.stat()
-                    if S_ISDIR(stat.st_mode):
-                        item = f'<li><a href="{url}/">{name}/</a></li>'
-                    else:
-                        item = f'<li><a href="{url}">{name}</a></li>'
-                except FileNotFoundError:
-                    if item_path is PERMISSIONS_PATH:
-                        item = f'<li><a style="color:red" href="{url}">{name}</a></li>'
-                    else:
-                        # user added permission for a directory but didn't
-                        # create it beforehand, for convenience crate is here
-                        await aiofiles.os.mkdir(item_path)
-                        # stat = item_path.stat()
-                        item = f'<li><a href="{url}/">{name}/</a></li>'
+            for name, stat in item_path:
+                href = quote(name)
+                if S_ISREG(stat.st_mode):
+                    item = f'<li><a href="{href}">{name}</a></li>'
+                elif S_ISDIR(stat.st_mode):
+                    item = f'<li><a href="{href}/">{name}/</a></li>'
+                else:
+                    item = f'<li><a style="color:red" href="{href}">{name}</a></li>'
                 items.append(item)
 
             html = f"""<html>

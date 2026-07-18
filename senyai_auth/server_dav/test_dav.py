@@ -15,19 +15,21 @@ from datetime import datetime, timezone
 class PermissionsTest(TestCase):
     def test_user_can_only_see_their_folder(self) -> None:
         perm = Permissions(["user1"])
-        folders = perm.list_children(DAVPath(""))
+        _node, folders = perm.list_children(DAVPath(""))
         self.assertEqual(folders, ["user1"])
 
     def test_user_have_no_access_to_outside_directory(self) -> None:
         perm = Permissions(["user1"])
-        folders = perm.list_children(DAVPath("xx"))
+        node, folders = perm.list_children(DAVPath("xx"))
         self.assertIsNone(folders)
+        self.assertIs(node, getattr(perm, "_root"))
 
     def test_duplicate_permissions(self) -> None:
         perm = Permissions(
             ["user1", "user1", "user2", "user2:w", "user1:w", "user3", "user3"]
         )
-        folders = perm.list_children(DAVPath(""))
+        node, folders = perm.list_children(DAVPath(""))
+        self.assertIs(node, getattr(perm, "_root"))
         self.assertEqual(folders, ["user1", "user2", "user3"])
         self.assertTrue(perm.has_read_access(DAVPath("user1")))
         self.assertTrue(perm.has_write_access(DAVPath("user1")))
@@ -178,8 +180,9 @@ class DavAppTest(IsolatedAsyncioTestCase):
 <li><a href="a">a</a></li>
 <li><a href="b">b</a></li>
 <li><a href="c">c</a></li>
-<li><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
+<li><a href="d/">d/</a></li>
 <li><a style="color:red" href="{PERMISSIONS_NAME}">{PERMISSIONS_NAME}</a></li>
+<li><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></li>
 </ul>
 <hr><small>Powered by senyai_auth {version}</small>
 </body>
@@ -268,40 +271,52 @@ class DavAppTest(IsolatedAsyncioTestCase):
             "PROPFIND", "/", headers={**AUTH, "Depth": "1"}
         )
         self.assertEqual(response.status_code, 207)
-        self.assertEqual(
-            response.content,
-            self._multistatus(
-                self._pf_response(
-                    self._path, "Storage", "/", "httpd/unix-directory"
-                ),
-                self._pf_response(
-                    self._path / "a", "a", "/a", "application/octet-stream", 0
-                ),
-                self._pf_response(
-                    self._path / "b", "b", "/b", "application/octet-stream", 3
-                ),
-                self._pf_response(
-                    self._path / "c", "c", "/c", "application/octet-stream", 6
-                ),
-                self._pf_response(
-                    self._path / "d", "d", "/d/", "httpd/unix-directory"
-                ),
-                self._pf_response(
-                    self._path / "ёлки иголки.png",
-                    "ёлки иголки.png",
-                    "/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png",
-                    "image/png",
-                    225,
-                ),
-                self._pf_response(
-                    self._path / PERMISSIONS_NAME,
-                    PERMISSIONS_NAME,
-                    f"/{PERMISSIONS_NAME}",
-                    "text/plain",
-                    12,
-                ),
+        ref_content = self._multistatus(
+            self._pf_response(
+                self._path, "Storage", "/", "httpd/unix-directory"
+            ),
+            self._pf_response(
+                self._path / "a", "a", "/a", "application/octet-stream", 0
+            ),
+            self._pf_response(
+                self._path / "b", "b", "/b", "application/octet-stream", 3
+            ),
+            self._pf_response(
+                self._path / "c", "c", "/c", "application/octet-stream", 6
+            ),
+            self._pf_response(
+                self._path / "d", "d", "/d/", "httpd/unix-directory"
+            ),
+            self._pf_response(
+                self._path / PERMISSIONS_NAME,
+                PERMISSIONS_NAME,
+                f"/{PERMISSIONS_NAME}",
+                "text/plain",
+                12,
+            ),
+            self._pf_response(
+                self._path / "ёлки иголки.png",
+                "ёлки иголки.png",
+                "/%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png",
+                "image/png",
+                225,
             ),
         )
+        self.assertEqual(response.content, ref_content)
+
+    def test_propfind_on_root_directory_with_permissions(self) -> None:
+        response = self._client.request(
+            "PROPFIND", "/d", headers={**AUTH, "Depth": "1"}
+        )
+        self.assertEqual(response.status_code, 207)
+        d_path = self._path / "d"
+        ref_content = self._multistatus(
+            self._pf_response(d_path, "d", "/d/", "httpd/unix-directory"),
+            self._pf_response(
+                d_path / "new", "new", "/d/new/", "httpd/unix-directory"
+            ),
+        )
+        self.assertEqual(response.content, ref_content)
 
     def test_propfind_on_a_file(self) -> None:
         response = self._client.request(
@@ -346,7 +361,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.content, b"404 Not Found")
 
     def test_mkcol_non_existing_directory(self) -> None:
-        response = self._client.request("MKCOL", "/d", headers=AUTH)
+        response = self._client.request("MKCOL", "/d/new", headers=AUTH)
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.content, b"")
 
@@ -565,3 +580,8 @@ class DavAppTest(IsolatedAsyncioTestCase):
         response = self._client.get("/d/copy_me")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, CONTENT)
+
+    def test_get_permissions_txt(self):
+        response = self._client.get("/permissions.txt", headers=AUTH)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"* /:r\n* /d:w")
