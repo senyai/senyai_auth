@@ -333,6 +333,28 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.content, ref_content)
 
+    def test_propfind_on_root_directory_with_depth_1_strict(self) -> None:
+        response = self._client.request(
+            "PROPFIND", "/", headers={**AUTH_RO_D, "Depth": "1"}
+        )
+        self.assertEqual(response.status_code, 207)
+        ref_content = self._multistatus(
+            self._pf_response(
+                self._path, "Storage", "/", "httpd/unix-directory"
+            ),
+            self._pf_response(
+                self._path / "d", "d", "/d/", "httpd/unix-directory"
+            ),
+            self._pf_response(
+                self._path / PERMISSIONS_NAME,
+                PERMISSIONS_NAME,
+                f"/{PERMISSIONS_NAME}",
+                "text/plain",
+                5,
+            ),
+        )
+        self.assertEqual(response.content, ref_content)
+
     def test_propfind_on_root_directory_with_permissions(self) -> None:
         response = self._client.request(
             "PROPFIND", "/d", headers={**AUTH, "Depth": "1"}
