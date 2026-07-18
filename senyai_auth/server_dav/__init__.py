@@ -532,10 +532,10 @@ class SenyaiDAV:
         try:
             stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
-            if not permissions.has_read_access(dav_path):
-                return self._response_no_permissions_read
             if dav_path == PERMISSIONS_NAME:
                 return Response(permissions.txt(), media_type="text/plain")
+            if not permissions.has_read_access(dav_path):
+                return self._response_no_permissions_read
             return self._response_not_found
 
         if S_ISDIR(stat.st_mode):

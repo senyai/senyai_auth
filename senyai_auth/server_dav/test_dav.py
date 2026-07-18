@@ -91,39 +91,72 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
 
 
 AUTH = {"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ="}
+AUTH_RO_D = {"Authorization": "Basic cm86cjFiMQ=="}
 
 
-class DavAppTest(IsolatedAsyncioTestCase):
-    @staticmethod
-    def fake_api_post(url: Any, **kwds: Any) -> httpx.Response:
-        if kwds.get("data") != {
+class FakeApi:
+    USERS = {
+        "username": {
             "password": "password",
-            "username": "username",
-        }:
+            "permissions": ["/:r", "/d:w"],
+            "token": {"token_type": "my_type", "access_token": "my_access"},
+        },
+        "ro": {
+            "password": "r1b1",
+            "permissions": ["d:r"],
+            "token": {"token_type": "my_type", "access_token": "yyy"},
+        },
+    }
+
+    def __new__(cls):
+        return patch.multiple(
+            AsyncClient,
+            post=AsyncMock(side_effect=cls.fake_api_post),
+            get=AsyncMock(side_effect=cls.fake_api_get),
+        )
+
+    @classmethod
+    def fake_api_post(cls, url: Any, data: Any, **kwds: Any) -> httpx.Response:
+        user = cls.USERS.get(data["username"])
+        if user is None or user["password"] != data["password"]:
             return httpx.Response(status_code=401)
         if url == "/token":
             return httpx.Response(
-                json={"token_type": "my_type", "access_token": "my_access"},
+                json=user["token"],
                 status_code=200,
                 headers={"Content-Type": "text/json"},
             )
         raise ValueError(url)
 
-    @staticmethod
-    def fake_api_get(url: Any, **kwds: Any) -> httpx.Response:
-        if kwds.get("data") != {
-            "password": "password",
-            "username": "username",
-        } and kwds.get("headers") != {"Authorization": "My_type my_access"}:
-            return httpx.Response(status_code=401)
+    @classmethod
+    def fake_api_get(
+        cls, url: Any, data: Any = None, headers: Any = None, **kwds: Any
+    ) -> httpx.Response:
+        if data is not None:
+            user = cls.USERS.get(data["username"])
+            if user is None or user["password"] != data["password"]:
+                return httpx.Response(status_code=401)
+        elif headers is not None:
+            tp, access = headers["Authorization"].split()
+            token = {"token_type": tp.lower(), "access_token": access}
+            query = (
+                user for user in cls.USERS.values() if user["token"] == token
+            )
+            user = next(query, None)
+            if user is None:
+                return httpx.Response(status_code=401)
+        else:
+            assert False
         if url == "/ldap/roles/storage":
             return httpx.Response(
-                json=["/:r", "/d:w"],
+                json=user["permissions"],
                 status_code=200,
                 headers={"Content-Type": "text/json"},
             )
         raise ValueError(url)
 
+
+class DavAppTest(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Setup test directory
@@ -144,11 +177,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         cls._client = TestClient(cls._app).__enter__()
 
         # Patch API
-        cls._fake_api = patch.multiple(
-            AsyncClient,
-            post=AsyncMock(side_effect=cls.fake_api_post),
-            get=AsyncMock(side_effect=cls.fake_api_get),
-        )
+        cls._fake_api = FakeApi()
         cls._fake_api.start()
 
     @classmethod
@@ -585,3 +614,8 @@ class DavAppTest(IsolatedAsyncioTestCase):
         response = self._client.get("/permissions.txt", headers=AUTH)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"* /:r\n* /d:w")
+
+    def test_get_permissions_txt_strict(self):
+        response = self._client.get("/permissions.txt", headers=AUTH_RO_D)
+        self.assertEqual(response.status_code, 200)
+        # self.assertEqual(response.content, b"* /:r\n* /d:w")
