@@ -31,6 +31,7 @@ from .afs import copy, delete
 from .. import __version__
 
 ET.register_namespace("D", "DAV:")
+ET.register_namespace("Z", "urn:schemas-microsoft-com:")
 
 
 class DavSettings(NamedTuple):
@@ -75,6 +76,18 @@ class Node:
             f"<{type(self).__name__} {dict(self.children)}"
             f"{' leaf' if self.is_leaf else ''} can_write={self.can_write}>"
         )
+
+
+def _parse_rfc1123(text: str) -> float | None:
+    try:
+        # we expect text to always end with ' GMT' so we replace the timezone
+        return (
+            datetime.strptime(text, "%a, %d %b %Y %H:%M:%S %Z")
+            .replace(tzinfo=timezone.utc)
+            .timestamp()
+        )
+    except Exception:
+        pass
 
 
 class Permissions:
@@ -614,15 +627,9 @@ class SenyaiDAV:
             async with aiofiles.open(path, "wb") as f:
                 async for chunk in request.stream():
                     await f.write(chunk)
-            # Total Commander's client send this `x-last-modified`
+            # Total Commander's client sends this `x-last-modified`
             if last_modified_str := request.headers.get("x-last-modified"):
-                try:
-                    dt = datetime.strptime(
-                        last_modified_str, "%a, %d %b %Y %H:%M:%S %Z"
-                    ).timestamp()
-                except Exception:  # ignore unsupported date format
-                    pass
-                else:
+                if dt := _parse_rfc1123(last_modified_str) is not None:
                     utime(path, (dt, dt))
             return Response(status_code=201)
         except Exception as e:
@@ -894,9 +901,19 @@ class SenyaiDAV:
                 root_elem = ET.fromstring(body)
             except ET.ParseError as e:
                 return Response(status_code=400, content=str(e))
+            atime = mtime = None  # access time and modification time
             for prop_update in root_elem.findall(".//{DAV:}set/{DAV:}prop"):
                 for child in prop_update:
+                    child.tail = None  # remove needless spaces in output
                     prop.append(child)
+                    if resource_exists and child.text:
+                        # ignoring Win32CreationTime
+                        if child.tag.endswith("Win32LastAccessTime"):
+                            atime = _parse_rfc1123(child.text)
+                        elif child.tag.endswith("Win32LastModifiedTime"):
+                            mtime = _parse_rfc1123(child.text)
+            if atime is not None and mtime is not None:
+                utime(path, (atime, mtime))
 
         ET.SubElement(propstat, "{DAV:}status").text = "HTTP/1.1 200 OK"
 
