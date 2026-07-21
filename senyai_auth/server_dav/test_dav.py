@@ -640,4 +640,55 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_get_permissions_txt_strict(self):
         response = self._client.get("/permissions.txt", headers=AUTH_RO_D)
         self.assertEqual(response.status_code, 200)
-        # self.assertEqual(response.content, b"* /:r\n* /d:w")
+        self.assertEqual(response.content, b"* d:r")
+
+    def test_proppatch_with_windows_client(self):
+        xml = (
+            '<?xml version="1.0" encoding="utf-8" ?>'
+            '<D:propertyupdate xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">'
+            "  <D:set>"
+            "    <D:prop>"
+            "      <Z:Win32CreationTime>Tue, 19 Mar 2019 04:49:34 GMT</Z:Win32CreationTime>"
+            "      <Z:Win32LastAccessTime>Tue, 21 Jul 2026 11:23:28 GMT</Z:Win32LastAccessTime>"
+            "      <Z:Win32LastModifiedTime>Tue, 19 Mar 2019 04:49:34 GMT</Z:Win32LastModifiedTime>"
+            "      <Z:Win32FileAttributes>00000000</Z:Win32FileAttributes>"
+            "    </D:prop>"
+            "  </D:set>"
+            "</D:propertyupdate>"
+        )
+        put_response = self._client.put(
+            "/d/proppatch", headers=AUTH, content="test"
+        )
+        self.assertEqual(put_response.status_code, 201)
+        response = self._client.request(
+            "PROPPATCH",
+            "/d/proppatch",
+            headers=AUTH,
+            content=xml,
+        )
+        self.assertEqual(response.status_code, 207)
+        ref_content = (
+            # fmt: off
+            "<?xml version='1.0' encoding='utf-8'?>\n"
+            '<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">'
+              "<D:response>"
+                "<D:href>/d/proppatch</D:href>"
+                "<D:propstat>"
+                  "<D:prop>"
+                    "<Z:Win32CreationTime>Tue, 19 Mar 2019 04:49:34 GMT</Z:Win32CreationTime>"
+                    "<Z:Win32LastAccessTime>Tue, 21 Jul 2026 11:23:28 GMT</Z:Win32LastAccessTime>"
+                    "<Z:Win32LastModifiedTime>Tue, 19 Mar 2019 04:49:34 GMT</Z:Win32LastModifiedTime>"
+                    "<Z:Win32FileAttributes>00000000</Z:Win32FileAttributes>"
+                  "</D:prop>"
+                  "<D:status>HTTP/1.1 200 OK</D:status>"
+                "</D:propstat>"
+              "</D:response>"
+            "</D:multistatus>"
+            # fmt: on
+        )
+        self.assertEqual(response.content, ref_content.encode())
+        stat = (self._path / "d" / "proppatch").stat()
+        self.assertEqual(stat.st_atime, 1784633008.0)
+        self.assertEqual(stat.st_mtime, 1552970974.0)
+        del_response = self._client.delete("/d/proppatch", headers=AUTH)
+        self.assertEqual(del_response.status_code, 204)
