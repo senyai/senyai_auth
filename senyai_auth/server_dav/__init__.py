@@ -629,7 +629,7 @@ class SenyaiDAV:
                     await f.write(chunk)
             # Total Commander's client sends this `x-last-modified`
             if last_modified_str := request.headers.get("x-last-modified"):
-                if dt := _parse_rfc1123(last_modified_str) is not None:
+                if (dt := _parse_rfc1123(last_modified_str)) is not None:
                     utime(path, (dt, dt))
             return Response(status_code=201)
         except Exception as e:

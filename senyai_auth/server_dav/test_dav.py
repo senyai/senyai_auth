@@ -532,6 +532,27 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"Write permission denied")
 
+    def test_put_from_total_commander(self) -> None:
+        put_response = self._client.put(
+            "/d/total.commander",
+            headers={
+                **AUTH,
+                "x-last-modified": "Tue, 19 Mar 2019 04:49:34 GMT",
+            },
+            content=b"test_put_from_total_commander",
+        )
+        self.assertEqual(put_response.status_code, 201)
+        propfind_response = self._client.request(
+            "PROPFIND", "/d/total.commander", headers=AUTH
+        )
+        self.assertEqual(propfind_response.status_code, 207)
+        self.assertIn(
+            b"<D:getlastmodified>Tue, 19 Mar 2019 04:49:34 GMT</D:getlastmodified>",
+            propfind_response.content,
+        )
+        del_response = self._client.delete("/d/total.commander", headers=AUTH)
+        self.assertEqual(del_response.status_code, 204)
+
     def test_copy_without_destination(self) -> None:
         response = self._client.request("COPY", "/x", headers=AUTH)
         self.assertEqual(response.status_code, 400)
@@ -632,17 +653,17 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, CONTENT)
 
-    def test_get_permissions_txt(self):
+    def test_get_permissions_txt(self) -> None:
         response = self._client.get("/permissions.txt", headers=AUTH)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"* /:r\n* /d:w")
 
-    def test_get_permissions_txt_strict(self):
+    def test_get_permissions_txt_strict(self) -> None:
         response = self._client.get("/permissions.txt", headers=AUTH_RO_D)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"* d:r")
 
-    def test_proppatch_with_windows_client(self):
+    def test_proppatch_with_windows_client(self) -> None:
         xml = (
             '<?xml version="1.0" encoding="utf-8" ?>'
             '<D:propertyupdate xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">'
@@ -687,6 +708,16 @@ class DavAppTest(IsolatedAsyncioTestCase):
             # fmt: on
         )
         self.assertEqual(response.content, ref_content.encode())
+
+        propfind_response = self._client.request(
+            "PROPFIND", "/d/proppatch", headers=AUTH
+        )
+        self.assertEqual(propfind_response.status_code, 207)
+        self.assertIn(
+            b"<D:getlastmodified>Tue, 19 Mar 2019 04:49:34 GMT</D:getlastmodified>",
+            propfind_response.content,
+        )
+
         stat = (self._path / "d" / "proppatch").stat()
         self.assertEqual(stat.st_atime, 1784633008.0)
         self.assertEqual(stat.st_mtime, 1552970974.0)
