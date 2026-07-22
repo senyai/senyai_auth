@@ -5,3 +5,5 @@
 /alembic*
 /settings_*.json
 *.sqlite
+senyai_auth/server_web/static/js/main.js
+*.map
