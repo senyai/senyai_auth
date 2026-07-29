@@ -494,6 +494,7 @@ async def role_update(role_id: int):
     if resp.status_code == 204:
         trigger = HXTrigger()
         trigger.add_success_event("Role updated!")
+        trigger.add_update_project_info()
         trigger.add_close_modal_event()
         return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
