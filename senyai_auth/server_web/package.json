@@ -2,5 +2,8 @@
   "scripts": {
     "build": "esbuild ./src/main.js --bundle --minify --sourcemap --outfile=./static/js/main.js",
     "watch": "esbuild ./src/main.js --watch --bundle --minify --sourcemap --outfile=./static/js/main.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }
