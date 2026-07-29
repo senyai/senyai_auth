@@ -77,6 +77,9 @@ else
   echo "htmx already exists."
 fi
 
+# bundle all .js components as a single file
+npm install --no-audit
+npm run build
 
 echo "----------------------------------------"
 echo "Installation complete."
