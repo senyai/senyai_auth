@@ -8,7 +8,15 @@
         <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
         <script src="{{ url_for('static', filename='js/htmx.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-        <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <script type="module">
+            window.i18n = {
+                "confirmation": "{{ _('Confirmation') }}",
+                "close": "{{ _('Close') }}",
+                "confirm": "{{ _('Confirm') }}",
+            };
+            import {getModal} from "{{ url_for('static', filename='js/main.js') }}?ver={{ version }}";
+            window.getModal = getModal;
+        </script>
     </head>
     <body>
         {% include "includes/navigation.html" %}
@@ -20,73 +28,4 @@
         </div>
         {% include "forms/base_modal.html" %}
     </body>
-
-    <script>
-    document.addEventListener("htmx:confirm", function(e) {
-        if (!e.detail.question) return
-        e.preventDefault()
-
-        const modal = document.getElementById("modalContent");
-        modal.innerHTML = `
-            <div class="modal-header">
-                <h1 class="modal-title fs-5">{{ _("Confirmation") }}</h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">${e.detail.question}</div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _("Close") }}</button>
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">{{ _("Confirm") }}</button>
-            </div>
-        `;
-        const issueRequest = e.detail.issueRequest;
-        modal.querySelector(".btn-danger").addEventListener("click", e => issueRequest(true));
-        getModal().show();
-    })
-        document.addEventListener("show.bs.collapse", e => {
-            const icon = document.querySelector(
-                `[data-bs-target="#${e.target.id}"] .folder-check`
-            );
-            icon?.classList.replace("bi-folder-plus", "bi-folder-minus");
-        });
-
-        document.addEventListener("hide.bs.collapse", e => {
-            const icon = document.querySelector(
-                `[data-bs-target="#${e.target.id}"] .folder-check`
-            );
-            icon?.classList.replace("bi-folder-minus", "bi-folder-plus");
-        });
-
-    document.addEventListener('shown.bs.tab', event => {
-        // when a tab is shown and it is .stale, issue `updateStale` event
-        if (event.target.classList.contains("stale")) {
-            event.target.classList.remove("stale");
-            htmx.trigger(
-                event.target.getAttribute("data-bs-target"),
-                "updateStale",
-                {}
-            );
-        }
-    })
-
-    function update_tab_pane(event) {
-        // after tab data was updated, switch to current tab
-        let target = event.target;
-        if (target.id != "tabs-container" && target.getAttribute("hx-trigger") != "updateProjectInfo from:body") return;
-        target = htmx.find("#tabs-container");
-        let paneId = target.querySelector("ul[role='tablist']>li>button.active")
-            ?.getAttribute("aria-controls") || "members-tab-pane"
-        let currentPane = document.getElementById(paneId);
-        htmx.toggleClass(currentPane, "show");
-        htmx.toggleClass(currentPane, "active");
-        target.querySelectorAll("ul[role='tablist']>li>button").forEach(trigger => {
-            bootstrap.Tab.getInstance(trigger)?.dispose();
-            new bootstrap.Tab(trigger);
-        });
-        if (paneId == "invites-tab-pane") {
-            htmx.trigger(document.body, "updateInvitesTab", {});
-        } else {
-            htmx.find('#invites-tab')?.classList.add('stale');
-        }
-    }
-    </script>
 </html>
