@@ -225,7 +225,7 @@ class SenyaiDAV:
         }
         self._response_options = Response(
             headers={
-                "DAV": "1",
+                "DAV": "1, 2",
                 "Allow": "OPTIONS, " + ", ".join(self._methods),
                 "Content-Length": "0",
             }
