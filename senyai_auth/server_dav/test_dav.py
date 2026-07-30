@@ -78,7 +78,7 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
         self.assertEqual(
             response.headers,
             {
-                "dav": "1",
+                "dav": "1, 2",
                 "allow": "OPTIONS, PROPFIND, GET, HEAD, PUT, DELETE, MKCOL, COPY, MOVE, LOCK, UNLOCK, PROPPATCH",
                 "content-length": "0",
             },
