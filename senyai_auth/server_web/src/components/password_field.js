@@ -1,10 +1,7 @@
-export function initPasswordField() {
-    document.body.addEventListener("click", handleChange);
-}
-
-
-
-function handleChange(event) {
+/*
+Show and hide password in password fields
+*/
+document.body.addEventListener("click", event => {
     const button = event.target.closest("[data-password-show]")
     if (!button) return;
     const root = button.closest("[data-password-root]");
@@ -16,5 +13,4 @@ function handleChange(event) {
         icon.classList.toggle("bi-eye");
         icon.classList.toggle("bi-eye-slash");
     }
-
-}
+});
