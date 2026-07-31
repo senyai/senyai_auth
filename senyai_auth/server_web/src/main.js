@@ -1,6 +1,6 @@
 import { initRoleEditor } from "./components/role_editor.js";
 import { initToasts } from "./components/toasts.js";
-import { initPasswordField } from "./components/password_field.js"
+import "./components/password_field.js"
 import "./components/switch_theme.js"
 import "./components/confirm_dialog.js"
 import "./components/projects_tree.js"
@@ -9,7 +9,6 @@ import "./components/tabs.js"
 
 initRoleEditor();
 initToasts();
-initPasswordField();
 
 const modalEl = document.getElementById("baseModal");
 export function getModal() {
