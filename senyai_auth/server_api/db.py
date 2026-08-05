@@ -464,6 +464,38 @@ def _create_user_can_get_info_about_stmt():
     )
 
 
+def _create_select_addable_users_stmt():
+    id_parent = select(Project.id)
+    base = (
+        id_parent.join(Role, Role.project_id == Project.id)
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(
+            Role.permissions_api >= PermissionsAPI.manager,
+            MemberRole.user_id == bind_user_id,
+        )
+        .cte(name="base", recursive=True)
+    )
+    stmt_projects = select(
+        base.union_all(
+            id_parent.join(base, Project.parent_id == base.c.id),
+        )
+    )
+    current_users = select(Member.id).where(
+        Member.project_id == bind_project_id
+    )
+    return (
+        select(User)
+        .join(Member)
+        .where(
+            Member.project_id.in_(stmt_projects),
+            ~Member.user_id.in_(current_users),
+            ~User.username.startswith("bot-"),
+        )
+        .distinct()
+        .order_by(User.display_name)
+    )
+
+
 bind_project_id = bindparam("project_id", type_=Integer)
 bind_user_id = bindparam("user_id", type_=Integer)
 bind_permission = bindparam("permission", type_=Integer)
@@ -526,3 +558,4 @@ List all roles a user can assign for another user.
 Ordered by name.
 """
 user_can_get_info_about_stmt = _create_user_can_get_info_about_stmt()
+select_addable_users_stmt = _create_select_addable_users_stmt()
