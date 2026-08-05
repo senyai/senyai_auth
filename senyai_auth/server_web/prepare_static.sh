@@ -1,82 +1,82 @@
-echo "-----------------------------------------------------------------"
-echo "NOTE: This script needs to be run from the `server_web` directory"
-echo "-----------------------------------------------------------------"
+echo '-----------------------------------------------------------------'
+echo 'NOTE: This script needs to be run from the `server_web` directory'
+echo '-----------------------------------------------------------------'
 
-JS_DIR="static/js"
-CSS_DIR="static/css"
-FONTS_DIR="static/css/fonts"
+JS_DIR='static/js'
+CSS_DIR='static/css'
+FONTS_DIR='static/css/fonts'
 
 # Create directories if they don't exist
 mkdir -p "$JS_DIR"
 mkdir -p "$CSS_DIR"
-mkdir -p "$FONTS_DIR" # <-- Create fonts directory
+mkdir -p "$FONTS_DIR"
 
 
-echo "Starting download of dependencies..."
+echo 'Starting download of dependencies...'
 
 # Bootstrap JS Bundle (includes Popper.js)
 if [ ! -f "$JS_DIR/bootstrap.bundle.min.js" ]; then
-  echo "Downloading Bootstrap JS..."
-  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js -o "$JS_DIR/bootstrap.bundle.min.js"
+  echo 'Downloading Bootstrap JS...'
+  curl -L 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js' -o "$JS_DIR/bootstrap.bundle.min.js"
 else
-  echo "Bootstrap JS already exists."
+  echo 'Bootstrap JS already exists.'
 fi
 
 # Bootstrap JS Bundle (includes Popper.js)
 if [ ! -f "$JS_DIR/bootstrap.bundle.min.js.map" ]; then
-  echo "Downloading Bootstrap JS MAP..."
-  curl -L https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js.map -o "$JS_DIR/bootstrap.bundle.min.js.map"
+  echo 'Downloading Bootstrap JS MAP...'
+  curl -L 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js.map' -o "$JS_DIR/bootstrap.bundle.min.js.map"
 else
-  echo "Bootstrap JS MAP already exists."
+  echo 'Bootstrap JS MAP already exists.'
 fi
 
 
 # Bootstrap CSS
 if [ ! -f "$CSS_DIR/bootstrap.min.css" ]; then
-  echo "Downloading Bootstrap CSS..."
+  echo 'Downloading Bootstrap CSS...'
   # We will use a pre-compiled dark theme (Bootswatch "lumen")
-  curl -L https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/lumen/bootstrap.min.css -o "$CSS_DIR/bootstrap.min.css"
+  curl -L 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/lumen/bootstrap.min.css' -o "$CSS_DIR/bootstrap.min.css"
 else
-  echo "Bootstrap CSS already exists."
+  echo 'Bootstrap CSS already exists.'
 fi
 
 
 # Download Bootstrap Icons CSS
 if [ ! -f "$CSS_DIR/bootstrap-icons.min.css" ]; then
-  echo "Downloading Bootstrap Icons CSS..."
-  curl -L "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" -o "$CSS_DIR/bootstrap-icons.min.css"
+  echo 'Downloading Bootstrap Icons CSS...'
+  curl -L 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css' -o "$CSS_DIR/bootstrap-icons.min.css"
 else
-  echo "Bootstrap Icons CSS already exists."
+  echo 'Bootstrap Icons CSS already exists.'
 fi
 
 # Download Bootstrap Icons Font File (WOFF2)
 if [ ! -f "$FONTS_DIR/bootstrap-icons.woff2" ]; then
-  echo "Downloading Bootstrap Icons WOFF2 Font..."
-  curl -L "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2" -o "$FONTS_DIR/bootstrap-icons.woff2"
+  echo 'Downloading Bootstrap Icons WOFF2 Font...'
+  curl -L 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2' -o "$FONTS_DIR/bootstrap-icons.woff2"
 else
-  echo "Bootstrap Icons WOFF2 Font already exists."
+  echo 'Bootstrap Icons WOFF2 Font already exists.'
 fi
 
 # Download Bootstrap Icons Font File (WOFF) - for broader compatibility
 if [ ! -f "$FONTS_DIR/bootstrap-icons.woff" ]; then
-  echo "Downloading Bootstrap Icons WOFF Font..."
-  curl -L "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff" -o "$FONTS_DIR/bootstrap-icons.woff"
+  echo 'Downloading Bootstrap Icons WOFF Font...'
+  curl -L 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff' -o "$FONTS_DIR/bootstrap-icons.woff"
 else
-  echo "Bootstrap Icons WOFF Font already exists."
+  echo 'Bootstrap Icons WOFF Font already exists.'
 fi
 
 # Download htmx
 if [ ! -f "$JS_DIR/htmx.min.js" ]; then
-  echo "Downloading htmx..."
-  curl -L "https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" -o "$JS_DIR/htmx.min.js"
+  echo 'Downloading htmx...'
+  curl -L 'https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js' -o "$JS_DIR/htmx.min.js"
 else
-  echo "htmx already exists."
+  echo 'htmx already exists.'
 fi
 
 # bundle all .js components as a single file
 npm install --no-audit
 npm run build
 
-echo "----------------------------------------"
-echo "Installation complete."
-echo "----------------------------------------"
+echo '----------------------------------------'
+echo 'Installation complete.'
+echo '----------------------------------------'
