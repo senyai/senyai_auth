@@ -17,6 +17,7 @@
         "propstat",
         "resourcetype",
         "Senyai",
-        "superadmin"
+        "superadmin",
+        "undefer"
     ]
 }

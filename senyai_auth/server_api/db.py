@@ -273,7 +273,7 @@ class Invitation(Base):
         server_default=func.now(), nullable=False
     )
     who_accepted_id: Mapped[int | None] = mapped_column(
-        ForeignKey(User.id, ondelete="SET NULL"), nullable=True
+        ForeignKey(User.id, ondelete="SET NULL"), nullable=True, index=True
     )
 
     who_accepted: Mapped[User | None] = relationship(
@@ -436,6 +436,34 @@ def _create_get_all_users_for_domain(field: InstrumentedAttribute[str]):
     )
 
 
+def _create_user_can_get_info_about_stmt():
+    bind_user_id_for = bindparam("user_id_for", type_=Integer)
+
+    id_and_parent = select(Project.id, Project.parent_id)
+    base = (
+        id_and_parent.join(Member, Member.project_id == Project.id)
+        .join(Role, Role.project_id == Member.project_id)
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(
+            Member.user_id == bind_user_id,
+            Role.permissions_api >= PermissionsAPI.user,
+        )
+        .cte(name="base", recursive=True)
+    )
+
+    user_projects = base.union_all(
+        id_and_parent.join(base, Project.parent_id == base.c.id),
+    )
+    return select(
+        exists(
+            select(1)
+            .select_from(user_projects)
+            .join(Member, Member.project_id == user_projects.c.id)
+            .where(Member.user_id == bind_user_id_for)
+        )
+    )
+
+
 bind_project_id = bindparam("project_id", type_=Integer)
 bind_user_id = bindparam("user_id", type_=Integer)
 bind_permission = bindparam("permission", type_=Integer)
@@ -497,3 +525,4 @@ list_roles_descriptions_stmt = (
 List all roles a user can assign for another user.
 Ordered by name.
 """
+user_can_get_info_about_stmt = _create_user_can_get_info_about_stmt()

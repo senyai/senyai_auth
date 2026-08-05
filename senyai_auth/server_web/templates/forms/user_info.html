@@ -1,0 +1,35 @@
+{% extends "modal/modal_template.html" %}
+{% block title %}
+{{ _("User Details") }}
+{% endblock title %}
+{% block form %}
+<div class="card">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3 text-nowrap">Display Name</dt>
+      <dd class="col-sm-9">{{ user.display_name }}</dd>
+
+      <dt class="col-sm-3 text-nowrap">Username</dt>
+      <dd class="col-sm-9">{{ user.username }}</dd>
+
+      <dt class="col-sm-3 text-nowrap">Email</dt>
+      <dd class="col-sm-9">
+        <a href="mailto:{{ user.email }}">{{ user.email }}</a>
+      </dd>
+
+      <dt class="col-sm-3 text-nowrap">Contacts</dt>
+      <dd class="col-sm-9">{{ user.contacts }}</dd>
+
+      <dt class="col-sm-3 text-nowrap">Invite By</dt>
+      <dd class="col-sm-9"><ul>
+        {% for inviter in inviters %}
+        <li>{{ inviter.display_name }} ({{ inviter.username }})</li>
+        {% endfor %}
+      </ul></dd>
+    </dl>
+  </div>
+</div>
+{% endblock form %}
+{% block buttons %}
+<button type="submit" form="manage-form" class="btn btn-primary" data-role-submit disabled>{{ _("Save") }}</button>
+{% endblock %}

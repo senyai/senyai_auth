@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 from sqlalchemy import select
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import load_only, undefer
 from fastapi import status, Depends, APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import (
@@ -18,6 +18,7 @@ from ..db import (
     select_roles_stmt,
     select_user_roles_stmt,
     User,
+    user_can_get_info_about_stmt,
 )
 from .auth import get_current_user
 from .user import UserInfo
@@ -317,3 +318,65 @@ async def invite_info_for_update(
         )
     ]
     return InviteInfo(form=form, roles=roles, project_id=invitation.project_id)
+
+
+class Inviter(BaseModel, strict=True):
+    username: str
+    display_name: str
+
+
+class UserInfoEx(BaseModel, strict=True):
+    user: UserInfo
+    inviters: list[Inviter]
+
+
+@router.get(
+    "/user/{for_user}",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_403_FORBIDDEN: response_description(
+            "User not found or not allowed"
+        ),
+    },
+)
+async def ui_user_info(
+    for_user: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> UserInfoEx:
+    """
+    ## For user information request from members table
+
+    * Available for any authorized user
+    * Only allowed for users that are in the same projects
+    """
+
+    user_can_get_info = await session.scalar(
+        user_can_get_info_about_stmt,
+        {"user_id": user.id, "user_id_for": for_user},
+    )
+    if not user_can_get_info:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not found or not allowed",
+        )
+    ret_user = await session.get_one(
+        User,
+        for_user,
+        options=[undefer(User.contacts)],
+        populate_existing=True,
+    )
+
+    inviters = await session.execute(
+        select(User.username, User.display_name)
+        .join(Invitation, Invitation.inviter_id == User.id)
+        .where(Invitation.who_accepted_id == for_user)
+    )
+
+    return UserInfoEx(
+        user=UserInfo.from_user(ret_user),
+        inviters=[
+            Inviter(username=username, display_name=display_name)
+            for username, display_name in inviters
+        ],
+    )
