@@ -702,3 +702,21 @@ async def permissions(domain: str):
         )
 
     return resp.content, resp.status_code, resp.headers
+
+
+@app.get("/details/<int:user_id>")
+async def user(user_id: int):
+    resp = await app.client.get(
+        f"/ui/user/{user_id}",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 200:
+        user_info_ex = resp.json()
+        return await render_template(
+            "forms/user_info.html",
+            user=user_info_ex["user"],
+            inviters=user_info_ex["inviters"],
+            _=_get_underscore(request),
+        )
+
+    return resp.content, resp.status_code, resp.headers

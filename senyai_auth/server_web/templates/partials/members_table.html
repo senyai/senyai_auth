@@ -15,7 +15,7 @@
     <tbody>
         {% for member in context.members %}
         <tr>
-            <td title="{{ member.username }}:{{ member.id }}">{{ member.display_name }}</td>
+            <td hx-get="{{ url_for('user', user_id=member.id) }}" title="{{ member.username }}:{{ member.id }}">{{ member.display_name }}</td>
             {% for role in context.roles %}
             <td class="text-center">
                 {% if member.id in role.users %}
