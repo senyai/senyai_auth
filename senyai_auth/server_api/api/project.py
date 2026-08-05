@@ -10,14 +10,15 @@ from sqlalchemy.exc import IntegrityError
 from .blocklist import not_in_blocklist
 from ..db import (
     auth_for_project_stmt,
+    Invitation,
     Member,
     MemberRole,
     permissions_api_stmt,
     PermissionsAPI,
     Project,
     Role,
+    select_addable_users_stmt,
     User,
-    Invitation,
 )
 from ..app import get_async_session
 from .auth import get_current_user
@@ -301,35 +302,13 @@ async def project_list_possible_users(
     assert permission is not None
     if permission < PermissionsAPI.manager:
         raise not_authorized_exception
-    id_parent = select(Project.id)
-    base = (
-        id_parent.join(Role, Role.project_id == Project.id)
-        .join(MemberRole, MemberRole.role_id == Role.id)
-        .where(
-            Role.permissions_api >= PermissionsAPI.manager,
-            MemberRole.user_id == user.id,
-        )
-        .cte(name="base", recursive=True)
-    )
-    stmt_projects = select(
-        base.union_all(
-            id_parent.join(base, Project.parent_id == base.c.id),
-        )
-    )
-    current_users = select(Member.id).where(Member.project_id == project_id)
-    stmt = (
-        select(User)
-        .join(Member)
-        .where(
-            Member.project_id.in_(stmt_projects),
-            ~Member.user_id.in_(current_users),
-            ~User.username.startswith("bot-"),
-        )
-        .distinct()
-        .order_by(User.display_name)
-    )
+
     return [
-        AddUserInfo.from_user(user) for user in await session.scalars(stmt)
+        AddUserInfo.from_user(user)
+        for user in await session.scalars(
+            select_addable_users_stmt,
+            {"user_id": user.id, "project_id": project_id},
+        )
     ]
 
 
