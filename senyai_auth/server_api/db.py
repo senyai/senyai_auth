@@ -355,29 +355,6 @@ def _create_list_projects_stmt():
     )
 
 
-def _create_get_user_for_session_stmt():
-    """
-    To get user info for the session, ensuring user wasn't disables or
-    didn't change the password
-
-    Disabled users will be returned too, and for disabled user an error
-    'User is not available anymore' will be shown
-    """
-    username = bindparam("username", type_=String)
-    return (
-        select(User)
-        .where(User.username == username)
-        .options(
-            load_only(
-                User.id,
-                User.username,
-                User.salt,
-                User.disabled,
-            )
-        )
-    )
-
-
 def _create_get_user_for_authentication_stmt():
     """
     Fetch `User` using `login`, i.e. username or email.
@@ -499,6 +476,7 @@ def _create_select_addable_users_stmt():
 bind_project_id = bindparam("project_id", type_=Integer)
 bind_user_id = bindparam("user_id", type_=Integer)
 bind_permission = bindparam("permission", type_=Integer)
+bind_username = bindparam("username", type_=String)  # match `User.username`
 
 auth_for_project_stmt = _create_auth_for_project_stmt()
 permissions_api_stmt = _create_permissions_api_stmt()
@@ -513,13 +491,31 @@ all_users_storage_stmt = _create_get_all_users_for_domain(
 all_users_git_stmt = _create_get_all_users_for_domain(Role.permissions_git)
 
 list_projects_stmt = _create_list_projects_stmt()
-get_user_for_session_stmt = _create_get_user_for_session_stmt()
+get_user_for_session_stmt = (
+    select(User)
+    .where(User.username == bind_username)
+    .options(
+        load_only(
+            User.id,
+            User.username,
+            User.salt,
+            User.disabled,
+        )
+    )
+)
+"""
+To get user info for the session, ensuring user wasn't disables or
+didn't change the password
+
+Disabled users will be returned too, and for disabled user an error
+'User is not available anymore' will be shown
+"""
 get_user_for_authentication_stmt = _create_get_user_for_authentication_stmt()
 get_user_by_username_or_email_stmt = (
     _create_get_user_by_username_or_email_stmt()
 )
 select_userid_by_username_stmt = select(User.id).where(
-    User.username == bindparam("username", type_=String)
+    User.username == bind_username
 )
 select_roles_stmt = (
     select(Role).where(Role.project_id == bind_project_id).order_by(Role.name)
