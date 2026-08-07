@@ -457,7 +457,7 @@ def _create_select_addable_users_stmt():
             id_parent.join(base, Project.parent_id == base.c.id),
         )
     )
-    current_users = select(Member.id).where(
+    current_users = select(Member.user_id).where(
         Member.project_id == bind_project_id
     )
     return (
