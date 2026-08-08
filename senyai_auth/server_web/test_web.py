@@ -99,22 +99,22 @@ class WebTest(TestCase):
 <div class="card">
   <div class="card-body">
     <dl class="row mb-0">
-      <dt class="col-sm-3 text-nowrap">Display Name</dt>
-      <dd class="col-sm-9">Test User</dd>
+      <dt class="col-12 text-nowrap">Display Name</dt>
+      <dd class="col-12">Test User</dd>
 
-      <dt class="col-sm-3 text-nowrap">Username</dt>
-      <dd class="col-sm-9">testuser</dd>
+      <dt class="col-12 text-nowrap">Username</dt>
+      <dd class="col-12">testuser</dd>
 
-      <dt class="col-sm-3 text-nowrap">Email</dt>
-      <dd class="col-sm-9">
+      <dt class="col-12 text-nowrap">Email</dt>
+      <dd class="col-12">
         <a href="mailto:testuser@example.com">testuser@example.com</a>
       </dd>
 
-      <dt class="col-sm-3 text-nowrap">Contacts</dt>
-      <dd class="col-sm-9"><a href="tel:+1234561234567"><i class="bi bi-telephone-fill"></i> +123(456)1234567</a></dd>
+      <dt class="col-12 text-nowrap">Contacts</dt>
+      <dd class="col-12"><a href="tel:+1234561234567"><i class="bi bi-telephone-fill"></i> +123(456)1234567</a></dd>
 
-      <dt class="col-sm-3 text-nowrap">Invite By</dt>
-      <dd class="col-sm-9"><ul>
+      <dt class="col-12 text-nowrap">Invite By</dt>
+      <dd class="col-12"><ul>
         <li>Jim (jim)</li>
       </ul></dd>
     </dl>

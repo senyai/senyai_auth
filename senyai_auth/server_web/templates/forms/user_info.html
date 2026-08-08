@@ -4,22 +4,22 @@
 <div class="card">
   <div class="card-body">
     <dl class="row mb-0">
-      <dt class="col-sm-3 text-nowrap">{{ _('Display Name') }}</dt>
-      <dd class="col-sm-9">{{ user.display_name }}</dd>
+      <dt class="col-12 text-nowrap">{{ _('Display Name') }}</dt>
+      <dd class="col-12">{{ user.display_name }}</dd>
 
-      <dt class="col-sm-3 text-nowrap">{{ _('Username') }}</dt>
-      <dd class="col-sm-9">{{ user.username }}</dd>
+      <dt class="col-12 text-nowrap">{{ _('Username') }}</dt>
+      <dd class="col-12">{{ user.username }}</dd>
 
-      <dt class="col-sm-3 text-nowrap">{{ _('Email') }}</dt>
-      <dd class="col-sm-9">
+      <dt class="col-12 text-nowrap">{{ _('Email') }}</dt>
+      <dd class="col-12">
         <a href="mailto:{{ user.email }}">{{ user.email }}</a>
       </dd>
 
-      <dt class="col-sm-3 text-nowrap">{{ _('Contacts') }}</dt>
-      <dd class="col-sm-9">{{ linkify(user.contacts) }}</dd>
+      <dt class="col-12 text-nowrap">{{ _('Contacts') }}</dt>
+      <dd class="col-12">{{ linkify(user.contacts) }}</dd>
 
-      <dt class="col-sm-3 text-nowrap">{{ _('Invite By') }}</dt>
-      <dd class="col-sm-9"><ul>
+      <dt class="col-12 text-nowrap">{{ _('Invite By') }}</dt>
+      <dd class="col-12"><ul>
         {%- for inviter in inviters %}
         <li>{{ inviter.display_name }} ({{ inviter.username }})</li>
         {%- endfor %}
