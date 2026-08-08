@@ -58,6 +58,7 @@ class DavAppUnauthorizedTest(IsolatedAsyncioTestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls._client.__exit__()
+        del cls._client, cls._app
 
     def test_get_root(self) -> None:
         response = self._client.get("/")
@@ -116,7 +117,7 @@ class FakeApi:
         )
 
     @classmethod
-    def fake_api_post(cls, url: Any, data: Any, **kwds: Any) -> httpx.Response:
+    def fake_api_post(cls, url: str, data: Any, **kwds: Any) -> httpx.Response:
         user = cls.USERS.get(data["username"])
         if user is None or user["password"] != data["password"]:
             return httpx.Response(status_code=401)
@@ -130,7 +131,7 @@ class FakeApi:
 
     @classmethod
     def fake_api_get(
-        cls, url: Any, data: Any = None, headers: Any = None, **kwds: Any
+        cls, url: str, data: Any = None, headers: Any = None, **kwds: Any
     ) -> httpx.Response:
         if data is not None:
             user = cls.USERS.get(data["username"])
@@ -185,6 +186,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
         cls._temp_dir.cleanup()
         cls._client.__exit__()
         cls._fake_api.stop()
+        del cls._temp_dir, cls._path, cls._app, cls._client, cls._fake_api
 
     def tearDown(self) -> None:
         self._client.cookies.clear()
