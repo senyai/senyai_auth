@@ -264,6 +264,14 @@ msgstr "Дополнительные парава"
 msgid "unused"
 msgstr "не используются"
 
+#: templates/forms/user_info.html:2
+msgid "User Details"
+msgstr "О пользователе"
+
+#: templates/forms/user_info.html:21
+msgid "Invite By"
+msgstr "Приглашен"
+
 #: templates/includes/add_users.html:2 templates/includes/add_users.html:20
 msgid "Add Users"
 msgstr "Добавить пользователей"
@@ -308,7 +316,11 @@ msgstr "Управление"
 msgid "Profile"
 msgstr "Профиль"
 
-#: templates/includes/user_layout.html:46
+#: templates/includes/user_layout.html:16
+msgid "Permissions"
+msgstr "Разрешения"
+
+#: templates/includes/user_layout.html:51
 msgid "Old password"
 msgstr "Старый пароль"
 
