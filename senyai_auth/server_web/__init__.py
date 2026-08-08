@@ -22,6 +22,7 @@ from .helpers import (
     parse_projects,
     PermissionsAPI,
 )
+from .linkify import linkify
 
 
 class App(Quart):
@@ -717,6 +718,7 @@ async def user(user_id: int):
             user=user_info_ex["user"],
             inviters=user_info_ex["inviters"],
             _=_get_underscore(request),
+            linkify=linkify,
         )
 
     return resp.content, resp.status_code, resp.headers
