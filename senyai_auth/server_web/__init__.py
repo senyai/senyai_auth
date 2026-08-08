@@ -110,7 +110,7 @@ async def index():
     resp = await make_response(
         await render_template("login.html", _=_get_underscore(request))
     )
-    resp.set_cookie("Authorization", "")
+    resp.delete_cookie("Authorization")
     return resp
 
 
