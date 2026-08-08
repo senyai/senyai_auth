@@ -37,6 +37,10 @@ class TestLinkify(TestCase):
         )
 
 
+def JSON(json: Any):
+    return Response(status_code=200, json=json)
+
+
 class FakeWebApi:
     def __new__(cls):
         return patch.multiple(
@@ -51,9 +55,8 @@ class FakeWebApi:
         if url == "/ui/main":
             raise NetworkError("testing network error")
         if url == "/ui/user/1":
-            return Response(
-                status_code=200,
-                json={
+            return JSON(
+                {
                     "user": {
                         "id": 1,
                         "username": "testuser",
@@ -64,10 +67,25 @@ class FakeWebApi:
                     "inviters": [{"username": "jim", "display_name": "Jim"}],
                 },
             )
+        if url == "/project/1/add_users":
+            return JSON(
+                [
+                    {
+                        "id": i,
+                        "username": f"testuser_{i}",
+                        "email": f"test{i}@email.com",
+                        "display_name": f"Display Name {i}",
+                    }
+                    for i in range(4, 6)
+                ]
+            )
+
         raise ValueError(url)
 
 
 class WebTest(TestCase):
+    maxDiff = 65535
+
     @classmethod
     def setUpClass(cls) -> None:
         cls._client = TestClient(app).__enter__()
@@ -90,7 +108,7 @@ class WebTest(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.text, "")
 
-    def test_user_info_is_correct(self):
+    def test_user_info_template(self):
         ref_user_info = """<div class="modal-header">
     <h1 class="modal-title fs-5" id="baseModalLabel">User Details</h1>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -124,9 +142,41 @@ class WebTest(TestCase):
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 </div>"""
-        self.maxDiff = 65634
         response = self._client.get(
             "/details/1", cookies={"Authorization": "xxx"}
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, ref_user_info)
+
+    def test_add_user_form_template(self):
+        ref_add_user_html = """<div class="modal-header">
+    <h1 class="modal-title fs-5" id="baseModalLabel">Add Users</h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<form role="form" class="form-control" id="role-form" hx-post="/project/1/users">
+<label class="mb-2">Users</label>
+<div class="form-check">
+  <label class="form-check-label" title="testuser_4" data-bs-html="true">
+    <input type="checkbox" class="form-check-input" name="user" value="4" data-role-checkbox>
+    Display Name 4
+  </label>
+</div>
+
+<div class="form-check">
+  <label class="form-check-label" title="testuser_5" data-bs-html="true">
+    <input type="checkbox" class="form-check-input" name="user" value="5" data-role-checkbox>
+    Display Name 5
+  </label>
+</div>
+</form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+<button type="submit" form="role-form" class="btn btn-primary">Add Users</button>
+</div>"""
+        response = self._client.get(
+            "/project/1/users", cookies={"Authorization": "xxx"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, ref_add_user_html)

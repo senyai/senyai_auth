@@ -3,19 +3,19 @@
 {% block form %}
 <form role="form" class="form-control" id="role-form" hx-post="{{ url_for('add_users_post', project_id=project_id) }}">
 <label class="mb-2">{{ _("Users") }}</label>
-{% if not users %}
+{%- if not users %}
   <div>{{ _("No users to add. Either all users are already added, or you don't have permissions to list more users.") }}</div>
-{% endif %}
+{% endif -%}
 {% for user in users %}
 <div class="form-check">
-  <label class="form-check-label" title="{{ username }}" data-bs-html="true">
+  <label class="form-check-label" title="{{ user.username }}" data-bs-html="true">
     <input type="checkbox" class="form-check-input" name="user" value="{{ user.id }}" data-role-checkbox>
     {{ user.display_name }}
   </label>
 </div>
-{% endfor %}
+{% endfor -%}
 </form>
 {% endblock form %}
 {% block buttons %}
 <button type="submit" form="role-form" class="btn btn-primary">{{ _("Add Users") }}</button>
-{% endblock buttons %}
+{%- endblock buttons %}
