@@ -322,12 +322,17 @@ async def update_user(
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    is_superadmin: bool = permissions & PermissionsAPI.superadmin
-    if not is_superadmin and auth_user.id != user_id:
-        raise not_authorized_exception
-    await session.refresh(auth_user, ("password_hash",))
-    user.update(auth_user, is_superadmin)
-    session.add(auth_user)
+    assert permissions is not None
+    is_superadmin: bool = permissions >= PermissionsAPI.superadmin
+    if auth_user.id != user_id:
+        if not is_superadmin:
+            raise not_authorized_exception
+        user_db = await session.get_one(User, user_id)
+    else:
+        user_db = auth_user
+        await session.refresh(auth_user, ("password_hash",))
+    user.update(user_db, is_superadmin)
+    session.add(user_db)
     await session.commit()
 
 
