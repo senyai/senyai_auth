@@ -791,10 +791,12 @@ async def handle_client(
     await p.run()
 
 
-async def _authorize(client: AsyncClient, password: str) -> None:
+async def _authorize(
+    client: AsyncClient, username: str, password: str
+) -> None:
     response = await client.post(
         "/token",
-        data={"username": "ldap", "password": password},
+        data={"username": username, "password": password},
     )
     if response.status_code != 200:
         raise ValueError(f"authorization failed: {response.content.decode()}")
@@ -806,7 +808,7 @@ async def _authorize(client: AsyncClient, password: str) -> None:
 
 
 async def _server_main(
-    host: str, port: int, api_url: str, password: str
+    host: str, port: int, api_url: str, username: str, password: str
 ) -> None:
     server = await asyncio.start_server(handle_client, host, port)
     addr = server.sockets[0].getsockname()
@@ -815,7 +817,7 @@ async def _server_main(
     print(f"with api at {base_url}")
     global api_client
     async with AsyncClient(base_url=base_url) as api_client:
-        await _authorize(api_client, password)
+        await _authorize(api_client, username, password)
         print("API authenticated")
         async with server:
             await server.serve_forever()
@@ -845,6 +847,7 @@ def main():
 
     global DOMAIN
     DOMAIN = Domain.make(args.pop("domain"))
+    args["username"] = default_settings.pop("username", "bot-ldap")
     args["password"] = default_settings.pop("password", "")
     assert not default_settings, f"Extra settings {default_settings}"
 
