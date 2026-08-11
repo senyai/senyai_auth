@@ -120,12 +120,11 @@ async def login():
     api_resp = await app.client.post("/token", data=dict(form))
     if api_resp.status_code == 200:
         token = api_resp.json()
-        resp = await make_response("", 200)
+        resp = await make_response("", 200, {"HX-Redirect": url_for("index")})
         resp.set_cookie(
             "Authorization",
             get_authorization_str(token["token_type"], token["access_token"]),
         )
-        resp.headers["HX-Redirect"] = url_for("index")
         return resp
     return api_resp.content, api_resp.status_code, api_resp.headers
 
@@ -683,9 +682,7 @@ async def update_user_password(user_id: int):
     )
 
     if resp.status_code == 204:
-        resp = await make_response("", 201)
-        resp.headers["HX-Redirect"] = url_for("logout")
-        return resp
+        return await make_response("", 204, {"HX-Redirect": url_for("logout")})
 
     return resp.content, resp.status_code, resp.headers
 
@@ -738,7 +735,6 @@ async def delete_current_user(user_id: int):
         headers={"Authorization": request.cookies.get("Authorization", "")},
     )
     if resp.status_code == 204:
-        trigger = HXTrigger().add_success_event("User deleted!")
-        return "", resp.status_code, trigger.build()
+        return await make_response("", 204, {"HX-Redirect": url_for("logout")})
 
     return resp.content, resp.status_code, resp.headers
