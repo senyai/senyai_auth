@@ -19,7 +19,7 @@
     <div class="tab-content" id="profileTabContent">
         <div class="tab-pane fade" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
             <form role="form" class="form-control my-3 py-3"
-                hx-patch="{{ url_for('update_user_info') }}">
+                hx-patch="{{ url_for('update_user_info', user_id=user.id) }}">
                 <div class="form-floating mb-3">
                     <input type="text" class="form-control" id="display_name" name="display_name"
                         aria-describedby="displayNameHelp" value="{{ user.display_name }}" required>
@@ -43,7 +43,7 @@
                 </div>
             </form>
             <form role="form" class="form-control my-3 py-3 pt-2 pb-4 mt-5"
-                hx-delete="{{ url_for('delete_current_user') }}" hx-confirm="{{ _('Deleting your account can’t be undone. Make sure you want to continue.') }}">
+                hx-delete="{{ url_for('delete_current_user', user_id=user.id) }}" hx-confirm="{{ _('Deleting your account can’t be undone. Make sure you want to continue.') }}">
                 <label for="contacts">{{ _("Delete your account") }}:</label>
                 <div class="pt-3 text-center">
                     <button type="submit" class="btn btn-danger w-auto"><i class="bi bi-person-dash"></i> {{ _("Delete") }}</button>
@@ -52,7 +52,7 @@
         </div>
         <div class="tab-pane fade" id="password-tab-pane" role="tabpanel" aria-labelledby="password-tab" tabindex="0">
             <form role="form" class="form-control my-3 py-3"
-                hx-patch="{{ url_for('update_user_password') }}">
+                hx-patch="{{ url_for('update_user_password', user_id=user.id) }}">
                 <div class="input-group mb-3" data-password-root>
                     <div class="form-floating">
                         <input class="form-control" type="password" id="old" name="password_old" required data-password-old>
