@@ -647,14 +647,16 @@ async def get_profile_page():
     return resp.content, resp.status_code, resp.headers
 
 
-@app.patch("/patch_user_info")
-async def update_user_info():
-    # user_id = request.args.get("user_id", type=int)
+@app.patch("/patch_user_info/<int:user_id>")
+async def update_user_info(user_id: int):
+    """
+    `user_id` acts as a protection against re-login
+    """
     form = await request.form
     data = dict(form)
 
     resp = await app.client.patch(
-        f"/user",
+        f"/user/{user_id}",
         headers={"Authorization": request.cookies.get("Authorization", "")},
         json=data,
     )
@@ -666,13 +668,16 @@ async def update_user_info():
     return resp.content, resp.status_code, resp.headers
 
 
-@app.patch("/patch_user_password")
-async def update_user_password():
+@app.patch("/patch_user_password/<int:user_id>")
+async def update_user_password(user_id: int):
+    """
+    `user_id` acts as a protection against re-login
+    """
     form = await request.form
     data = dict(form)
 
     resp = await app.client.patch(
-        f"/user",
+        f"/user/{user_id}",
         headers={"Authorization": request.cookies.get("Authorization", "")},
         json=data,
     )
@@ -723,10 +728,13 @@ async def user(user_id: int):
     return resp.content, resp.status_code, resp.headers
 
 
-@app.delete("/user")
-async def delete_current_user():
+@app.delete("/user/<int:user_id>")
+async def delete_current_user(user_id: int):
+    """
+    `user_id` acts as a protection against re-login
+    """
     resp = await app.client.delete(
-        "/user",
+        f"/user/{user_id}",
         headers={"Authorization": request.cookies.get("Authorization", "")},
     )
     if resp.status_code == 204:
