@@ -405,8 +405,11 @@ async def delete_user(
 
     It makes sense to remove incidentally created users or demo users
 
-    * superadmin only
+    * superadmin only, except
+    * when user tries to delete itself
     """
+    if user_id == auth_user.id:
+        return await delete_authenticated_user(auth_user, session)
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
