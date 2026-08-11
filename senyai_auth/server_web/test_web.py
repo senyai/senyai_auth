@@ -99,12 +99,14 @@ class WebTest(TestCase):
         del cls._fake_api, cls._client
 
     def test_sign_in(self):
+        self._client.cookies.clear()
         response = self._client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(">Sign in<", response.text)
 
     def test_backend_offline(self):
-        response = self._client.get("/", cookies={"Authorization": "xxx"})
+        self._client.cookies["Authorization"] = "xxx"
+        response = self._client.get("/")
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.text, "")
 
@@ -142,9 +144,8 @@ class WebTest(TestCase):
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 </div>"""
-        response = self._client.get(
-            "/details/1", cookies={"Authorization": "xxx"}
-        )
+        self._client.cookies.set("Authorization", "xxx")
+        response = self._client.get("/details/1")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, ref_user_info)
 
@@ -175,8 +176,7 @@ class WebTest(TestCase):
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 <button type="submit" form="role-form" class="btn btn-primary">Add Users</button>
 </div>"""
-        response = self._client.get(
-            "/project/1/users", cookies={"Authorization": "xxx"}
-        )
+        self._client.cookies.set("Authorization", "xxx")
+        response = self._client.get("/project/1/users")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, ref_add_user_html)
