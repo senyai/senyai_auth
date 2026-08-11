@@ -386,6 +386,7 @@ async def delete_authenticated_user(
     * any user can do it
     """
     await session.execute(delete(User).where(User.id == auth_user.id))
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -417,6 +418,7 @@ async def delete_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
