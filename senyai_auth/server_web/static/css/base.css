@@ -389,6 +389,6 @@ legend {
     margin-right: 4px;
 }
 
-#members-tab-pane tr > td:first-child {
+#members-tab-pane tr > td:first-child, #invites-tab-pane tr > td:first-child[hx-get] {
   cursor: pointer;
 }
