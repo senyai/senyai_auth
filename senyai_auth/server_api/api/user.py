@@ -296,6 +296,40 @@ async def get_user(
 
 
 @router.patch(
+    "/user",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_400_BAD_REQUEST: response_description(
+            "Current password does not match"
+        ),
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+    },
+)
+async def update_auth_user(
+    user: UpdateUserModel,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    ## Update authenticated user attributes
+
+    * Any user can update their attributes
+    * Only superadmin can update their username
+    """
+    permissions = await session.scalar(
+        permissions_api_stmt, {"user_id": auth_user.id}
+    )
+    assert permissions is not None
+    # yes, any authenticatable user should be able to update their password
+    # if permissions < PermissionsAPI.user:
+    #     raise not_authorized_exception
+    await session.refresh(auth_user, ("password_hash",))
+    user.update(auth_user, permissions >= PermissionsAPI.superadmin)
+    session.add(auth_user)
+    await session.commit()
+
+
+@router.patch(
     "/user/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
@@ -315,25 +349,44 @@ async def update_user(
     session: AsyncSession = Depends(get_async_session),
 ) -> None:
     """
-    ## Update user attributes
+    ## Update any user attributes
 
-    *username* can only be changed by superadmin
+    * superadmin only, except
+    * when user tries to update itself
     """
+    if user_id == auth_user.id:
+        return await update_auth_user(user, auth_user, session)
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
     assert permissions is not None
-    is_superadmin: bool = permissions >= PermissionsAPI.superadmin
+    if permissions < PermissionsAPI.superadmin:
+        raise not_authorized_exception
+
     if auth_user.id != user_id:
-        if not is_superadmin:
-            raise not_authorized_exception
         user_db = await session.get_one(User, user_id)
     else:
         user_db = auth_user
         await session.refresh(auth_user, ("password_hash",))
-    user.update(user_db, is_superadmin)
+    user.update(user_db, True)
     session.add(user_db)
     await session.commit()
+
+
+@router.delete("/user", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_authenticated_user(
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> Response:
+    """
+    ## Delete current user
+
+    Most country laws require an option for a user to remove itself.
+
+    * any user can do it
+    """
+    await session.execute(delete(User).where(User.id == auth_user.id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete(
@@ -347,14 +400,17 @@ async def delete_user(
     session: AsyncSession = Depends(get_async_session),
 ) -> Response:
     """
-    ## Delete user
+    ## Delete any user
 
-    Should only be possible by superadmin
+    It makes sense to remove incidentally created users or demo users
+
+    * superadmin only
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if not permissions & PermissionsAPI.superadmin:
+    assert permissions is not None
+    if not permissions < PermissionsAPI.superadmin:
         raise not_authorized_exception
     affected = await session.execute(delete(User).where(User.id == user_id))
     if affected.rowcount == 0:
