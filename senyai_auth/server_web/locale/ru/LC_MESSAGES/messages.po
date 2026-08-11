@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  0.0.4\n"
 "Report-Msgid-Bugs-To: senyai@gmail.com\n"
-"POT-Creation-Date: 2026-05-19 18:09+0300\n"
+"POT-Creation-Date: 2026-08-11 13:12+0300\n"
 "PO-Revision-Date: 2026-03-03 14:47+0300\n"
 "Last-Translator: Arseniy Terekhin <senyai@gmail.com>\n"
 "Language: ru\n"
@@ -19,15 +19,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: templates/base.html:33
+#: templates/base.html:13
 msgid "Confirmation"
 msgstr "Подтверждение"
 
-#: templates/base.html:38 templates/modal/modal_template.html:13
+#: templates/base.html:14 templates/modal/modal_template.html:13
 msgid "Close"
 msgstr "Закрыть"
 
-#: templates/base.html:39
+#: templates/base.html:15
 msgid "Confirm"
 msgstr "Подтвердить"
 
@@ -43,8 +43,8 @@ msgstr ""
 msgid "Login"
 msgstr "Логин"
 
-#: templates/includes/user_layout.html:10 templates/login.html:30
-#: templates/register.html:32
+#: templates/includes/user_layout.html:11 templates/login.html:30
+#: templates/register.html:33
 msgid "Password"
 msgstr "Пароль"
 
@@ -52,11 +52,12 @@ msgstr "Пароль"
 msgid "Sign in"
 msgstr "Войти"
 
-#: templates/forms/invite_form.html:18 templates/register.html:11
+#: templates/forms/invite_form.html:28 templates/forms/user_info.html:10
+#: templates/register.html:12
 msgid "Username"
 msgstr "Имя пользователя"
 
-#: templates/register.html:12
+#: templates/register.html:13
 msgid ""
 "Can be used as login and all users will be able to see it. Example: "
 "\"daivanov\""
@@ -65,51 +66,52 @@ msgstr ""
 "видеть. Пример: \"daivanov\""
 
 #: templates/forms/invite_form.html:14
-#: templates/forms/upsert_project_form.html:22
-#: templates/includes/user_layout.html:20 templates/register.html:17
+#: templates/forms/upsert_project_form.html:22 templates/forms/user_info.html:7
+#: templates/includes/user_layout.html:26 templates/register.html:18
 msgid "Display Name"
 msgstr "Отображаемое имя"
 
-#: templates/includes/user_layout.html:21 templates/register.html:18
+#: templates/includes/user_layout.html:27 templates/register.html:19
 msgid ""
 "This is the name everyone will be able to see you. Example: \"Dmitry "
 "Ivanov\""
 msgstr "Это имя, которое все смогут увидеть. Пример: \"Дмитрий Иванов\""
 
-#: templates/forms/invite_form.html:22 templates/includes/user_layout.html:26
-#: templates/register.html:23
+#: templates/forms/invite_form.html:32 templates/forms/user_info.html:13
+#: templates/includes/user_layout.html:32 templates/register.html:24
 msgid "Email"
 msgstr "Электронная почта"
 
-#: templates/includes/user_layout.html:27 templates/register.html:24
+#: templates/includes/user_layout.html:33 templates/register.html:25
 msgid "Email can be used as login and will be visible to all users"
 msgstr ""
 "Адрес электронной почты можно использовать для входа в систему, и он "
 "будет виден всем пользователям"
 
-#: templates/register.html:38
+#: templates/register.html:39
 msgid "Password will be safely stored as a hash produced by modern algorithm"
 msgstr ""
 "Пароль будет надежно сохранен в виде хеша, полученного с помощью "
 "современного алгоритма."
 
-#: templates/register.html:47
+#: templates/register.html:48
 msgid "Confirm Password"
 msgstr "Подтверждение пароля"
 
-#: templates/register.html:54
+#: templates/register.html:55
 msgid "Please re-enter your password to confirm"
 msgstr "Пожалуйста, повторно введите свой пароль для подтверждения."
 
-#: templates/includes/user_layout.html:32 templates/register.html:60
+#: templates/forms/user_info.html:18 templates/includes/user_layout.html:38
+#: templates/register.html:61
 msgid "Contacts"
 msgstr "Контакты"
 
-#: templates/includes/user_layout.html:33 templates/register.html:61
+#: templates/includes/user_layout.html:39 templates/register.html:62
 msgid "Contacts will be visible to all users. Can be empty."
 msgstr "Контакты будут видны всем пользователям. Можно оставить пустым."
 
-#: templates/register.html:65
+#: templates/register.html:66
 msgid "Sign Up"
 msgstr "Зарегистрироваться"
 
@@ -122,7 +124,7 @@ msgid "Create Invite to this project"
 msgstr "Создать приглашение в проект"
 
 #: templates/forms/invite_form.html:3
-#: templates/partials/project_management.html:3
+#: templates/partials/project_management.html:7
 msgid "Project ID"
 msgstr "ID проекта"
 
@@ -146,11 +148,11 @@ msgstr "Существующий пользователь"
 msgid "Auto add roles"
 msgstr "Автоматически добавить роли"
 
-#: templates/forms/invite_form.html:46
+#: templates/forms/invite_form.html:61
 msgid "Update Invite"
 msgstr "Обновить приглашение"
 
-#: templates/forms/invite_form.html:48
+#: templates/forms/invite_form.html:63
 msgid "Create Invite"
 msgstr "Создать приглашение"
 
@@ -159,7 +161,7 @@ msgid "Manage Roles"
 msgstr "Управление ролями"
 
 #: templates/forms/manage_user_roles_form.html:25
-#: templates/includes/user_layout.html:36
+#: templates/includes/user_layout.html:42
 msgid "Save"
 msgstr "Сохранить"
 
@@ -179,7 +181,7 @@ msgstr "Имя"
 
 #: templates/forms/upsert_project_form.html:27
 #: templates/forms/upsert_role_form.html:19
-#: templates/partials/project_management.html:6
+#: templates/partials/project_management.html:10
 #: templates/partials/role_table.html:5
 msgid "Description"
 msgstr "Описание"
@@ -312,7 +314,7 @@ msgstr "Приглашения"
 msgid "Manage"
 msgstr "Управление"
 
-#: templates/includes/user_layout.html:5
+#: templates/includes/user_layout.html:6
 msgid "Profile"
 msgstr "Профиль"
 
@@ -320,28 +322,40 @@ msgstr "Профиль"
 msgid "Permissions"
 msgstr "Разрешения"
 
-#: templates/includes/user_layout.html:51
+#: templates/includes/user_layout.html:46
+msgid "Deleting your account can’t be undone. Make sure you want to continue."
+msgstr "Удаление учетной записи необратимо. Убедитесь, что вы хотите продолжить"
+
+#: templates/includes/user_layout.html:47
+msgid "Delete your account"
+msgstr "Удаление пользователя"
+
+#: templates/includes/user_layout.html:49
+msgid "Delete"
+msgstr "Удалить"
+
+#: templates/includes/user_layout.html:59
 msgid "Old password"
 msgstr "Старый пароль"
 
-#: templates/includes/user_layout.html:55
+#: templates/includes/user_layout.html:68
 msgid "New password"
 msgstr "Новый пароль"
 
-#: templates/includes/user_layout.html:65
+#: templates/includes/user_layout.html:78
 msgid "Confirm password"
 msgstr "Подтверждение пароля"
 
-#: templates/includes/user_layout.html:72
+#: templates/includes/user_layout.html:85
 msgid "Update password"
 msgstr "Обновить пароль"
 
-#: templates/includes/user_layout.html:102
+#: templates/includes/user_layout.html:109
 msgid "Storage"
 msgstr "Хранилище"
 
 #: templates/partials/invites_table.html:4
-#: templates/partials/project_management.html:5
+#: templates/partials/project_management.html:9
 msgid "Display name"
 msgstr "Отображаемое имя"
 
@@ -353,11 +367,11 @@ msgstr "Удалить приглашение для"
 msgid "Add user from other projects"
 msgstr "Добавить пользователя из другого проекта"
 
-#: templates/partials/members_table.html:30
+#: templates/partials/members_table.html:32
 msgid "Delete user"
 msgstr "Удалить пользователя"
 
-#: templates/partials/project_management.html:4
+#: templates/partials/project_management.html:8
 msgid "Project name"
 msgstr "Имя проекта"
 
@@ -365,11 +379,11 @@ msgstr "Имя проекта"
 msgid "User API Permission"
 msgstr "Права пользователя на API"
 
-#: templates/partials/project_management.html:12
+#: templates/partials/project_management.html:18
 msgid "Edit"
 msgstr "Редактировать"
 
-#: templates/partials/project_management.html:17
+#: templates/partials/project_management.html:23
 msgid "Create subproject"
 msgstr "Создать подпроект"
 

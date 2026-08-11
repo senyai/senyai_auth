@@ -433,8 +433,7 @@ async def delete_project(project_id: str):
         headers={"Authorization": request.cookies.get("Authorization", "")},
     )
     if resp.status_code == 204:
-        trigger = HXTrigger()
-        trigger.add_success_event("Project deleted!")
+        trigger = HXTrigger().add_success_event("Project deleted!")
         return "", resp.status_code, trigger.build()
     return resp.content, resp.status_code, resp.headers
 
@@ -648,14 +647,14 @@ async def get_profile_page():
     return resp.content, resp.status_code, resp.headers
 
 
-@app.patch("/patch_user_info/<user_id>")
-async def update_user_info(user_id: int):
+@app.patch("/patch_user_info")
+async def update_user_info():
     # user_id = request.args.get("user_id", type=int)
     form = await request.form
     data = dict(form)
 
     resp = await app.client.patch(
-        f"/user/{user_id}",
+        f"/user",
         headers={"Authorization": request.cookies.get("Authorization", "")},
         json=data,
     )
@@ -667,13 +666,13 @@ async def update_user_info(user_id: int):
     return resp.content, resp.status_code, resp.headers
 
 
-@app.patch("/patch_user_password/<user_id>")
-async def update_user_password(user_id: int):
+@app.patch("/patch_user_password")
+async def update_user_password():
     form = await request.form
     data = dict(form)
 
     resp = await app.client.patch(
-        f"/user/{user_id}",
+        f"/user",
         headers={"Authorization": request.cookies.get("Authorization", "")},
         json=data,
     )
@@ -720,5 +719,18 @@ async def user(user_id: int):
             _=_get_underscore(request),
             linkify=linkify,
         )
+
+    return resp.content, resp.status_code, resp.headers
+
+
+@app.delete("/user")
+async def delete_current_user():
+    resp = await app.client.delete(
+        "/user",
+        headers={"Authorization": request.cookies.get("Authorization", "")},
+    )
+    if resp.status_code == 204:
+        trigger = HXTrigger().add_success_event("User deleted!")
+        return "", resp.status_code, trigger.build()
 
     return resp.content, resp.status_code, resp.headers

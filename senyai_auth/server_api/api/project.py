@@ -261,6 +261,10 @@ async def get_project(
 
 
 class AddUserInfo(BaseModel, strict=True, frozen=True):
+    """
+    An item that represents a user that can be added to a project
+    """
+
     id: int
     username: str
     email: str
