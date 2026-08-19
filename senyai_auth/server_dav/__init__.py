@@ -817,8 +817,13 @@ class SenyaiDAV:
                 elif elem.tag.endswith("lock type"):
                     lock_type = elem.text
 
-        lock_discovery = ET.Element("{DAV:}lockdiscovery")
+        prop = ET.Element("{DAV:}prop")
+        lock_discovery = ET.SubElement(prop, "{DAV:}lockdiscovery")
         active_lock = ET.SubElement(lock_discovery, "{DAV:}activelock")
+
+        lock_type_elem = ET.SubElement(active_lock, "{DAV:}locktype")
+        if lock_type == "write":
+            ET.SubElement(lock_type_elem, "{DAV:}write")
 
         lock_scope_elem = ET.SubElement(active_lock, "{DAV:}lockscope")
         if lock_scope == "exclusive":
@@ -826,9 +831,8 @@ class SenyaiDAV:
         else:
             ET.SubElement(lock_scope_elem, "{DAV:}shared")
 
-        lock_type_elem = ET.SubElement(active_lock, "{DAV:}locktype")
-        if lock_type == "write":
-            ET.SubElement(lock_type_elem, "{DAV:}write")
+        depth = request.headers.get("Depth", "0")
+        ET.SubElement(active_lock, "{DAV:}depth").text = depth
 
         owner = ET.SubElement(active_lock, "{DAV:}owner")
         owner_href = ET.SubElement(owner, "{DAV:}href")
@@ -853,12 +857,9 @@ class SenyaiDAV:
             f"Second-{timeout_seconds}"
         )
 
-        depth = request.headers.get("Depth", "0")
-        ET.SubElement(active_lock, "{DAV:}depth").text = depth
-
         return Response(
             content=ET.tostring(
-                lock_discovery, encoding="unicode", xml_declaration=True
+                prop, encoding="unicode", xml_declaration=True
             ),
             media_type='application/xml; charset="utf-8"',
             status_code=200,

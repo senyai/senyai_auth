@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "activelock",
         "bindparam",
         "blocklist",
         "creationdate",
@@ -10,6 +11,10 @@
         "getcontenttype",
         "getlastmodified",
         "gvfs",
+        "lockdiscovery",
+        "lockscope",
+        "locktoken",
+        "locktype",
         "mkcol",
         "multistatus",
         "PROPFIND",
