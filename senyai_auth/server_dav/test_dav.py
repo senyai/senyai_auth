@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any
 from unittest import TestCase, IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
+import re
 from starlette.testclient import TestClient
 from . import Permissions, DAVPath, SenyaiDAV, DavSettings, PERMISSIONS_NAME
 from senyai_auth import server_dav, __version__ as version
@@ -753,3 +754,45 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(stat.st_mtime, 1552970974.0)
         del_response = self._client.delete("/d/proppatch", headers=AUTH)
         self.assertEqual(del_response.status_code, 204)
+
+    def test_lock(self):
+        new_lock = """<?xml version="1.0" encoding="utf-8" ?>
+        <D:lockinfo xmlns:D='DAV:'>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:locktype><D:write/></D:locktype>
+            <D:owner>
+              <D:href>http://example.org/d/lock_test</D:href>
+            </D:owner>
+        </D:lockinfo>"""
+        lock_response = self._client.request(
+            "LOCK", "/d/lock_test", headers=AUTH, content=new_lock
+        )
+        self.assertEqual(lock_response.status_code, 200)
+        ref_lock = (
+            # fmt: off
+            re.escape("<?xml version='1.0' encoding='utf-8'?>\n"
+            '<D:prop xmlns:D="DAV:">'
+              '<D:lockdiscovery>'
+                '<D:activelock>'
+                  '<D:locktype><D:write /></D:locktype>'
+                  '<D:lockscope><D:exclusive /></D:lockscope>'
+                  '<D:depth>0</D:depth>'
+                  '<D:owner><D:href>dXNlcm5hbWU6cGFzc3dvcmQ=</D:href></D:owner>'
+                  '<D:locktoken>'
+                    '<D:href>opaquelocktoken:') +'[0-9a-f-]{36}'+ re.escape('</D:href>'
+                  '</D:locktoken>'
+                  '<D:timeout>Second-180</D:timeout>'
+                '</D:activelock>'
+              '</D:lockdiscovery>'
+            '</D:prop>'
+            # fmt: on
+            )
+        )
+        self.assertRegex(lock_response.text, ref_lock)
+
+    def test_unlock(self):
+        unlock_response = self._client.request(
+            "UNLOCK", "/d/lock_test", headers=AUTH
+        )
+        self.assertEqual(unlock_response.status_code, 204)
+        self.assertEqual(unlock_response.text, "")
