@@ -27,7 +27,7 @@ class Token(BaseModel, strict=True, frozen=True):
 
 class TokenData(TypedDict):
     username: str
-    salt: str  # defense against user password change
+    salt: str  # defence against user password change
     exp: datetime
 
 
@@ -48,9 +48,11 @@ def _create_access_token(
 async def _authenticate_user(
     login: str, password: str, session: AsyncSession
 ) -> User | None:
+    # find user
     user = await session.scalar(
         get_user_for_authentication_stmt, params={"login": login}
     )
+    # check that user password is valid
     if user is not None and user.validate_password(password):
         await session.execute(update_last_login_at_stmt, {"user_id": user.id})
         await session.commit()
