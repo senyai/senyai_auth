@@ -127,6 +127,7 @@ class Permissions:
             not path
             or self.closest_node(path) is not self._root
             or self._root.is_leaf
+            or path == PERMISSIONS_NAME
         )
 
     def list_children(self, path: DAVPath) -> tuple[Node, list[str] | None]:
@@ -430,12 +431,12 @@ class SenyaiDAV:
         try:
             stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
-            if not permissions.has_read_access(dav_path):
-                return self._response_no_permissions_read
-            if dav_path != PERMISSIONS_NAME:
-                return self._response_not_found
-            else:
+            if dav_path == PERMISSIONS_NAME:
                 stat = permissions.stat()
+            elif not permissions.has_read_access(dav_path):
+                return self._response_no_permissions_read
+            else:
+                return self._response_not_found
 
         depth = request.headers.get("Depth", "0")
         root = ET.Element("{DAV:}multistatus")
