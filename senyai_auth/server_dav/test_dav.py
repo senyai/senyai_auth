@@ -408,6 +408,34 @@ class DavAppTest(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.content, b"404 Not Found")
 
+    def test_propfind_on_permissions_txt(self):
+        response = self._client.request(
+            "PROPFIND", "/permissions.txt", headers=AUTH_RO_D
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertEqual(
+            response.text,
+            # fmt: off
+            ("<?xml version='1.0' encoding='utf-8'?>\n"
+            '<D:multistatus xmlns:D="DAV:">'
+            "<D:response>"
+              "<D:href>/permissions.txt</D:href>"
+              "<D:propstat>"
+                "<D:prop>"
+                  "<D:displayname>permissions.txt</D:displayname>"
+                  "<D:resourcetype />"
+                  "<D:getcontentlength>5</D:getcontentlength>"
+                  "<D:getcontenttype>text/plain</D:getcontenttype>"
+                  "<D:creationdate>1970-01-01T00:00:00Z</D:creationdate>"
+                  "<D:getlastmodified>Thu, 01 Jan 1970 00:00:00 GMT</D:getlastmodified>"
+                "</D:prop>"
+                "<D:status>HTTP/1.1 200 OK</D:status>"
+              "</D:propstat>"
+            "</D:response>"
+            "</D:multistatus>")
+            # fmt: on
+        )
+
     def test_delete_on_non_existing_file(self) -> None:
         response = self._client.delete("/d/non_existing_file", headers=AUTH)
         self.assertEqual(response.status_code, 404)
