@@ -169,7 +169,7 @@ def _drop_privileges(username: str) -> None:
     os.setuid(target_uid)
 
 
-async def _bearer_for(
+async def _api_bearer_for(
     api_client: AsyncClient,
     username: str,
     password: str,
@@ -187,7 +187,7 @@ async def _bearer_for(
     )
 
 
-async def _permissions_for(
+async def _api_permissions_for(
     api_client: AsyncClient, bearer: Bearer
 ) -> Permissions | None:
     """
@@ -262,7 +262,7 @@ class SenyaiDAV:
         self._response_api_failure = Response(
             content="Authentication backend is down", status_code=503
         )
-        self._auth_cache: dict[
+        self._bearer_cache: dict[
             tuple[str, str], tuple[float, Future[Bearer | None]]
         ] = {}
         self._permissions_cache: dict[
@@ -290,7 +290,7 @@ class SenyaiDAV:
         # update permissions every 20 seconds
         cache[bearer] = now + 20.0, future
         try:
-            permissions = await _permissions_for(self._api_client, bearer)
+            permissions = await _api_permissions_for(self._api_client, bearer)
         except BaseException as e:  # just in case
             future.set_exception(e)
             raise
@@ -301,24 +301,24 @@ class SenyaiDAV:
     async def _bearer_for(
         self, username_password: tuple[str, str], now: float
     ) -> Bearer | None:
-        cache = self._auth_cache
+        cache = self._bearer_cache
         if username_password in cache:
-            expiration, authorization = cache[username_password]
+            expiration, bearer = cache[username_password]
             if expiration > now:  # not expired
-                return await authorization
+                return await bearer
             del cache[username_password]
         future: Future[Bearer | None] = get_running_loop().create_future()
         cache[username_password] = now + 60.0, future
         try:
-            authorization = await _bearer_for(
+            bearer = await _api_bearer_for(
                 self._api_client, *username_password
             )
         except BaseException as e:  # just in case
             future.set_exception(e)
             raise
         else:
-            future.set_result(authorization)
-        return authorization
+            future.set_result(bearer)
+        return bearer
 
     async def _check_auth(
         self, request: Request
@@ -936,7 +936,7 @@ class SenyaiDAV:
         while True:
             await sleep(60.0)
             now = monotonic()
-            for cache in self._auth_cache, self._permissions_cache:
+            for cache in self._bearer_cache, self._permissions_cache:
                 keys = [
                     key
                     for key, (expiration, _) in cache.items()
