@@ -298,21 +298,8 @@ def _create_auth_for_project_stmt():
     return (
         select(func.max(Role.permissions_api))
         .join(user_projects, user_projects.c.id == Role.project_id)
-        .join(
-            MemberRole,
-            (MemberRole.role_id == Role.id)
-            & (MemberRole.user_id == bind_user_id),
-        )
-    )
-
-
-def _create_permissions_api_stmt():
-    """
-    For `user_id` aggregate sum(Role.permissions_api)
-    """
-    return select(func.max(Role.permissions_api)).join(
-        MemberRole,
-        (MemberRole.role_id == Role.id) & (MemberRole.user_id == bind_user_id),
+        .join(MemberRole, MemberRole.role_id == Role.id)
+        .where(MemberRole.user_id == bind_user_id)
     )
 
 
@@ -479,7 +466,16 @@ bind_permission = bindparam("permission", type_=Integer)
 bind_username = bindparam("username", type_=String)  # match `User.username`
 
 auth_for_project_stmt = _create_auth_for_project_stmt()
-permissions_api_stmt = _create_permissions_api_stmt()
+permissions_api_stmt = (
+    select(func.max(Role.permissions_api))
+    .join(MemberRole)
+    .where(MemberRole.user_id == bind_user_id)
+)
+"""
+For `user_id` aggregate max(Role.permissions_api)
+Useful when user tries to change password, or we check whether
+user is superadmin
+"""
 
 permissions_extra_stmt = _create_permissions_stmt(Role.permissions_extra)
 permissions_storage_stmt = _create_permissions_stmt(Role.permissions_storage)
