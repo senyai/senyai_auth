@@ -282,9 +282,11 @@ class SenyaiDAV:
     ) -> Permissions | None:
         cache = self._permissions_cache
         if bearer in cache:
-            expiration, permissions = cache[bearer]
-            if expiration > now:  # not expired
-                return await permissions
+            expiration, permissions_promise = cache[bearer]
+            if (
+                expiration > now or not permissions_promise.done()
+            ):  # not expired
+                return await permissions_promise
             del cache[bearer]
         future: Future[Permissions | None] = get_running_loop().create_future()
         # update permissions every 20 seconds
@@ -303,9 +305,9 @@ class SenyaiDAV:
     ) -> Bearer | None:
         cache = self._bearer_cache
         if username_password in cache:
-            expiration, bearer = cache[username_password]
-            if expiration > now:  # not expired
-                return await bearer
+            expiration, bearer_promise = cache[username_password]
+            if expiration > now or not bearer_promise.done():  # not expired
+                return await bearer_promise
             del cache[username_password]
         future: Future[Bearer | None] = get_running_loop().create_future()
         cache[username_password] = now + 60.0, future
@@ -939,8 +941,9 @@ class SenyaiDAV:
             for cache in self._bearer_cache, self._permissions_cache:
                 keys = [
                     key
-                    for key, (expiration, _) in cache.items()
+                    for key, (expiration, promise) in cache.items()
                     if expiration < now  # expired
+                    and promise.done()  # and ready
                 ]
                 for key in keys:
                     del cache[key]
