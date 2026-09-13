@@ -1,6 +1,6 @@
 # import os
 from __future__ import annotations
-from typing import NamedTuple, NewType
+from typing import NamedTuple, NewType, TypedDict, NotRequired
 from os import stat_result, getenv, utime, scandir
 from os.path import splitext
 from stat import S_ISDIR, S_ISREG, S_IFCHR
@@ -88,6 +88,13 @@ def _parse_rfc1123(text: str) -> float | None:
         )
     except Exception:
         pass
+
+
+class ResponseKwargs(TypedDict):
+    content: NotRequired[str]
+    status_code: int
+    headers: NotRequired[dict[str, str]]
+    media_type: NotRequired[str]
 
 
 class Permissions:
@@ -238,27 +245,29 @@ class SenyaiDAV:
             #       it is the one that shows username/password dialog
             headers={"WWW-Authenticate": f'Basic realm="{settings.realm}"'},
         )
-        self._response_no_permissions_write = Response(
-            content="Write permission denied",
-            status_code=403,
-            headers={"Content-Type": "text/plain", "DAV": "1"},
-        )
+        self._kwargs_no_permissions_write: ResponseKwargs = {
+            "content": "Write permission denied",
+            "status_code": 403,
+            "headers": {"Content-Type": "text/plain", "DAV": "1"},
+        }
         error = ET.Element("{DAV:}error")
         ET.SubElement(error, "{DAV:}privilege")
         ET.SubElement(error, "{DAV:}read")
-        self._response_no_permissions_propfind = Response(
-            content=ET.tostring(
+        self._kwargs_no_permissions_propfind: ResponseKwargs = {
+            "content": ET.tostring(
                 error, encoding="unicode", xml_declaration=True
             ),
-            media_type='application/xml; charset="utf-8"',
-            status_code=403,
-        )
-        self._response_no_permissions_read = Response(
-            content="403 Read permission denied", status_code=403
-        )
-        self._response_not_found = Response(
-            content="404 Not Found", status_code=404
-        )
+            "media_type": 'application/xml; charset="utf-8"',
+            "status_code": 403,
+        }
+        self._kwargs_no_permissions_read: ResponseKwargs = {
+            "content": "403 Read permission denied",
+            "status_code": 403,
+        }
+        self._kwargs_not_found: ResponseKwargs = {
+            "content": "404 Not Found",
+            "status_code": 404,
+        }
         self._response_api_failure = Response(
             content="Authentication backend is down", status_code=503
         )
@@ -436,9 +445,9 @@ class SenyaiDAV:
             if dav_path == PERMISSIONS_NAME:
                 stat = permissions.stat()
             elif not permissions.has_read_access(dav_path):
-                return self._response_no_permissions_read
+                return Response(**self._kwargs_no_permissions_read)
             else:
-                return self._response_not_found
+                return Response(**self._kwargs_not_found)
 
         depth = request.headers.get("Depth", "0")
         root = ET.Element("{DAV:}multistatus")
@@ -457,7 +466,7 @@ class SenyaiDAV:
             try:
                 items = await self.paths_for(path, dav_path, permissions)
                 if items is None:
-                    return self._response_no_permissions_read
+                    return Response(**self._kwargs_no_permissions_read)
                 self._add_response(
                     root,
                     stat,
@@ -471,7 +480,7 @@ class SenyaiDAV:
                         item_url += "/"
                     self._add_response(root, stat, item_url, name)
             except Exception:
-                return self._response_no_permissions_propfind
+                return Response(**self._kwargs_no_permissions_propfind)
         elif depth in ("0", "1") and permissions.can_traverse(dav_path):
             # Without "1" gvfs refuses to delete file
             self._add_response(
@@ -481,7 +490,7 @@ class SenyaiDAV:
                 self._settings.realm if path == self._path else path.name,
             )
         else:
-            return self._response_no_permissions_propfind
+            return Response(**self._kwargs_no_permissions_propfind)
 
         return Response(
             content=ET.tostring(
@@ -551,13 +560,13 @@ class SenyaiDAV:
             if dav_path == PERMISSIONS_NAME:
                 return Response(permissions.txt(), media_type="text/plain")
             if not permissions.has_read_access(dav_path):
-                return self._response_no_permissions_read
-            return self._response_not_found
+                return Response(**self._kwargs_no_permissions_read)
+            return Response(**self._kwargs_not_found)
 
         if S_ISDIR(stat.st_mode):
             item_path = await self.paths_for(path, dav_path, permissions)
             if item_path is None:
-                return self._response_no_permissions_read
+                return Response(**self._kwargs_no_permissions_read)
             # Simple directory listing
             items: list[str] = []
             if dav_path:
@@ -587,7 +596,7 @@ class SenyaiDAV:
         elif permissions.has_read_access(dav_path):
             return FileResponse(path)
         else:
-            return self._response_no_permissions_read
+            return Response(**self._kwargs_no_permissions_read)
 
     async def head(
         self,
@@ -597,7 +606,7 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_read_access(dav_path):
-            return self._response_no_permissions_read
+            return Response(**self._kwargs_no_permissions_read)
         try:
             stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
@@ -623,7 +632,7 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         await aiofiles.os.makedirs(path.parent, exist_ok=True)
 
         try:
@@ -646,9 +655,9 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         if not path.exists():
-            return self._response_not_found
+            return Response(**self._kwargs_not_found)
 
         try:
             await delete(path)
@@ -664,7 +673,7 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         content_length = request.headers.get("content-length", "0")
         if content_length != "0":
             if await request.body():
@@ -723,14 +732,14 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_read_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         destination, location = self.destination(request)
         if not destination:
             return Response(
                 status_code=400, content="Destination not specified"
             )
         if not permissions.has_write_access(destination):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         destination_path = self._path / destination
 
         if destination_path.exists():
@@ -763,14 +772,14 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         destination, location = self.destination(request)
         if not destination:
             return Response(
                 status_code=400, content="Destination not specified"
             )
         if not permissions.has_write_access(destination):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         overwrite = request.headers.get("Overwrite", "T").upper() == "T"
         destination_path = self._path / destination
         if destination_path.exists():
@@ -802,7 +811,7 @@ class SenyaiDAV:
     ) -> Response:
         """Fake LOCK for Microsoft client"""
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
 
         lock_scope = "exclusive"  # default
         lock_type = "write"  # default
@@ -877,7 +886,7 @@ class SenyaiDAV:
     ) -> Response:
         """Fake UNLOCK for Microsoft client"""
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         lock_token = request.headers.get("Lock-Token", "")
         return Response(status_code=204)
 
@@ -890,7 +899,7 @@ class SenyaiDAV:
     ) -> Response:
         """Fake PROPPATCH for Microsoft client"""
         if not permissions.has_write_access(dav_path):
-            return self._response_no_permissions_write
+            return Response(**self._kwargs_no_permissions_write)
         resource_exists = path.exists()
 
         root = ET.Element("{DAV:}multistatus")
