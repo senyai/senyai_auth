@@ -236,7 +236,8 @@ class SenyaiDAV:
                 "DAV": "1, 2",
                 "Allow": "OPTIONS, " + ", ".join(self._methods),
                 "Content-Length": "0",
-            }
+            },
+            status_code=200,  # WebDAV likes 200
         )
         self._response_authentication_required = Response(
             content="Authentication required",
