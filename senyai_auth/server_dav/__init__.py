@@ -20,7 +20,7 @@ import aiofiles
 import aiofiles.base
 import aiofiles.os
 from pathlib import Path
-from mimetypes import types_map as mimetypes
+from mimetypes import types_map
 from httpx2 import AsyncClient, NetworkError
 from contextlib import asynccontextmanager
 from time import monotonic
@@ -32,6 +32,14 @@ from .. import __version__
 
 ET.register_namespace("D", "DAV:")
 ET.register_namespace("Z", "urn:schemas-microsoft-com:")
+
+
+def _mimetype(
+    display_name: str,
+    mimetypes: dict[str, str] = {**types_map, "log": types_map[".txt"]},
+) -> str:
+    ext = splitext(display_name)[1].lower()
+    return mimetypes.get(ext, "application/octet-stream")
 
 
 class DavSettings(NamedTuple):
@@ -529,8 +537,7 @@ class SenyaiDAV:
             ET.SubElement(prop, "{DAV:}getcontentlength").text = str(
                 stat.st_size
             )
-            ext = splitext(display_name)[1].lower()
-            content_type = mimetypes.get(ext, "application/octet-stream")
+            content_type = _mimetype(display_name)
             ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
 
         # Creation date
@@ -595,7 +602,7 @@ class SenyaiDAV:
 </html>"""
             return Response(html, media_type="text/html")
         elif permissions.has_read_access(dav_path):
-            return FileResponse(path)
+            return FileResponse(path, media_type=_mimetype(path.name))
         else:
             return Response(**self._kwargs_no_permissions_read)
 
