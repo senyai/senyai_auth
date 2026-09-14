@@ -418,8 +418,9 @@ async def delete_user(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
     assert permissions is not None
-    if not permissions < PermissionsAPI.superadmin:
+    if permissions < PermissionsAPI.superadmin:
         raise not_authorized_exception
+    # ToDo: ensure that superadmin shares project with the user
     affected = await session.execute(delete(User).where(User.id == user_id))
     if affected.rowcount == 0:
         raise HTTPException(
