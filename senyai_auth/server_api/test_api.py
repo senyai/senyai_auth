@@ -425,7 +425,7 @@ class WorkflowTest(IsolatedAsyncioTestCase):
                 "detail": [
                     {
                         "loc": ["body", "username"],
-                        "msg": "User 'john' already exists",
+                        "msg": "Username 'john' already exists",
                         "type": "Conflict",
                     }
                 ]

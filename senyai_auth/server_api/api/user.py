@@ -439,7 +439,7 @@ async def delete_user(
             "Invitation not found or already accepted"
         ),
         status.HTTP_409_CONFLICT: conflict_description(
-            "User daivanov already exists", "username"
+            "Username 'daivanov' already exists", "username"
         ),
     },
 )
@@ -477,9 +477,11 @@ async def create_user_by_invitation(
         session.add(user_db)
         try:
             await session.flush((user_db,))
-        except IntegrityError:
+        except IntegrityError as e:
+            field = "email" if "email" in str(e.orig) else "username"
             raise conflict_exception(
-                f"User '{user.username}' already exists", "username"
+                f"{field.capitalize()} '{getattr(user, field)}' already exists",
+                field,
             )
     else:
         assert isinstance(user, Empty)
