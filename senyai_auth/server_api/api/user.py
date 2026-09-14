@@ -113,7 +113,11 @@ class CreateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
     @field_validator("password", mode="after")
     @staticmethod
     def check_strong_password(password: SecretStr, info: ValidationInfo):
-        if "username" not in info.data:  # username in blocked, ignore
+        if (
+            "username" not in info.data  # username in blocked, ignore
+            or "email" not in info.data  # email already used, ignore
+            or "display_name" not in info.data  # bad display_name, ignore
+        ):
             return password
         check_password(password.get_secret_value(), **info.data)
         return password
