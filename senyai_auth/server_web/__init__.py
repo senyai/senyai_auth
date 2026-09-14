@@ -731,7 +731,7 @@ async def delete_current_user(user_id: int):
     `user_id` acts as a protection against re-login
     """
     resp = await app.client.delete(
-        f"/user/{user_id}",
+        f"/user",
         headers={"Authorization": request.cookies.get("Authorization", "")},
     )
     if resp.status_code == 204:

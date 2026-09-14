@@ -130,6 +130,16 @@ class User(Base):
         self.salt = new_salt
         self.password_hash = new_password_hash
 
+    def mark_deleted(self):
+        self.username = f"deleted-user-{self.id}"
+        self.display_name = f"Deleted User {self.id}"
+        self.password_hash = ""
+        self.salt = ""
+        self.email = f"deleted-user@localhost"
+        self.contacts = ""
+        self.disabled = True
+        # do not touch `created_at` and `last_login_at`
+
     def __repr__(self) -> str:
         return f"{super().__repr__()[:-1]} username={self.username!r}>"
 

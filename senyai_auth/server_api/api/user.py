@@ -17,7 +17,7 @@ from .blocklist import not_in_blocklist
 from fastapi import APIRouter, status, Depends, Response, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, delete, literal
+from sqlalchemy import select, insert, delete, update, literal
 from zxcvbn import zxcvbn
 
 from ..db import (
@@ -388,8 +388,26 @@ async def delete_authenticated_user(
     Most country laws require an option for a user to remove itself.
 
     * any user can do it
+    * does not actually remove user entry, but marks all fields as deleted
+    * removes user from all projects
     """
-    await session.execute(delete(User).where(User.id == auth_user.id))
+    user = await session.get_one(User, auth_user.id)
+    user.mark_deleted()
+    await session.execute(
+        update(Invitation)
+        .where(Invitation.who_accepted_id == auth_user.id)
+        .values(
+            prompt="deleted",
+            default_username=user.username,
+            default_display_name=user.display_name,
+            default_email="deleted",
+        )
+    )
+    session.add(user)
+    await session.execute(delete(Member).where(Member.user_id == auth_user.id))
+    await session.execute(
+        delete(MemberRole).where(MemberRole.user_id == auth_user.id)
+    )
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -409,11 +427,10 @@ async def delete_user(
 
     It makes sense to remove incidentally created users or demo users
 
-    * superadmin only, except
-    * when user tries to delete itself
+    * superadmin only
+    * actually deletes db row. be aware, that invitations will be
+      available again. Maybe should delete them automatically too.
     """
-    if user_id == auth_user.id:
-        return await delete_authenticated_user(auth_user, session)
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
