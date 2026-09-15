@@ -29,6 +29,14 @@
           <li>
             <a class="dropdown-item" href="#" hx-target="#tabs-container" hx-get="{{ url_for('get_profile_page', user_id=user.id) }}"><i class="bi bi-person me-1"></i>{{ user.display_name }}</a>
           </li>
+          <li class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item" href="https://github.com/senyai/senyai_auth/wiki/WebDAV-configurations"><i class="bi bi-book me-1"></i>{{ _("WebDAV Configurations") }}</a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="https://github.com/senyai/senyai_auth/issues"><i class="bi bi-question-circle-fill me-1"></i>{{ _("Report an Issue") }}</a>
+          </li>
+          <li class="dropdown-divider"></li>
           <li>
             <a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-door-open-fill me-1"></i>{{ _("Logout") }}</a>
           </li>
