@@ -124,6 +124,7 @@ async def login():
         resp.set_cookie(
             "Authorization",
             get_authorization_str(token["token_type"], token["access_token"]),
+            httponly=True,
         )
         return resp
     return api_resp.content, api_resp.status_code, api_resp.headers
