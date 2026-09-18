@@ -413,7 +413,9 @@ class SenyaiDAV:
         if call is not None:
             response = await call(full_path, dav_path, request, permissions)
             if bearer:
-                response.set_cookie("Authorization", bearer, max_age=ONE_MONTH)
+                response.set_cookie(
+                    "Authorization", bearer, max_age=ONE_MONTH, httponly=True
+                )
             return response
         return Response(
             status_code=405, content=f"Method {method} not allowed"

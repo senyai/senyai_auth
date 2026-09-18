@@ -504,7 +504,7 @@ class DavAppTest(IsolatedAsyncioTestCase):
                 (b"content-type", b"application/octet-stream"),
                 (
                     b"set-cookie",
-                    b'Authorization="My_type my_access"; '
+                    b'Authorization="My_type my_access"; HttpOnly; '
                     b"Max-Age=2592000; Path=/; SameSite=lax",
                 ),
             ],
@@ -518,7 +518,8 @@ class DavAppTest(IsolatedAsyncioTestCase):
             response.headers,
             {
                 "content-length": "0",
-                "set-cookie": 'Authorization="My_type my_access"; Max-Age=2592000; Path=/; '
+                "set-cookie": 'Authorization="My_type my_access"; '
+                "HttpOnly; Max-Age=2592000; Path=/; "
                 "SameSite=lax",
             },
         )
