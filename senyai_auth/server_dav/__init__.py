@@ -405,7 +405,9 @@ class SenyaiDAV:
             return self._response_authentication_required
 
         dav_path = DAVPath(request.path_params.get("path", "").rstrip("/"))
-        assert not dav_path.startswith("/")
+        if dav_path.startswith("/"):
+            # Ideally, frontend should've replaced all '//' with '/'
+            return Response("Invalid path", status_code=400)
         full_path = self._path / dav_path
         call = self._methods.get(method)
         if call is not None:
