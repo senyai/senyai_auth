@@ -42,6 +42,17 @@ def _mimetype(
     return mimetypes.get(ext, "application/octet-stream")
 
 
+def _human_readable_size(size: int | float) -> str:
+    if size < 1024:
+        return f"{size} B"
+    size /= 1024.0
+    for unit in ["KiB", "MiB", "GiB", "TiB", "PiB"]:
+        if size < 1024.0 or unit == "PiB":
+            break
+        size /= 1024.0
+    return f"{size:.2f} {unit}"
+
+
 class DavSettings(NamedTuple):
     path: str = "."
     realm: str = "Storage"
@@ -53,6 +64,7 @@ class DavSettings(NamedTuple):
 DAVPath = NewType("DAVPath", str)
 # must start with `Bearer `. goes as Authorization header to api backend
 Bearer = NewType("Bearer", str)
+type Stats = list[tuple[str, stat_result]]
 
 ONE_MONTH = 30 * 24 * 60 * 60
 PERMISSIONS_NAME = "permissions.txt"
@@ -220,6 +232,12 @@ class SenyaiDAV:
     def __init__(self, settings: DavSettings) -> None:
         self._settings = settings
         self._path = Path(settings.path)
+        self._css = (
+            Path(__file__)
+            .with_name("webdav.css")
+            .read_text()
+            .replace("$VERSION", __version__)
+        )
 
         self._methods: dict[
             str,
@@ -439,7 +457,8 @@ class SenyaiDAV:
                 items[name] = stat
         if not dav_path:
             items[PERMISSIONS_NAME] = permissions.stat()
-        return sorted(items.items())
+
+        return list(items.items())
 
     async def propfind(
         self,
@@ -482,7 +501,7 @@ class SenyaiDAV:
                     f"{base_url}/",
                     self._settings.realm if path == self._path else path.name,
                 )
-
+                items.sort()
                 for name, stat in items:
                     item_url = f"{base_url}/{quote(name)}"
                     if S_ISDIR(stat.st_mode):
@@ -563,6 +582,13 @@ class SenyaiDAV:
         permissions: Permissions,
     ) -> Response:
         try:
+            if dav_path == "" and "css" in request.query_params:
+                return Response(
+                    content=self._css,
+                    headers={
+                        "Cache-Control": "public, max-age=2592000, immutable",
+                    },
+                )
             stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
             if dav_path == PERMISSIONS_NAME:
@@ -575,31 +601,43 @@ class SenyaiDAV:
             item_path = await self.paths_for(path, dav_path, permissions)
             if item_path is None:
                 return Response(**self._kwargs_no_permissions_read)
-            # Simple directory listing
             items: list[str] = []
             if dav_path:
-                items.append('<li><a href="../">../</a></li>')
+                items.append(
+                    '<tr><td><a href="../">../</a></td><td>-</td><td>-</td></tr>'
+                )
 
-            for name, stat in item_path:
+            ts, utc = datetime.fromtimestamp, timezone.utc
+            dirs: Stats = []
+            files: Stats = []
+            for name_stat in item_path:
+                (dirs if S_ISDIR(name_stat[1].st_mode) else files).append(
+                    name_stat
+                )
+            dirs.sort()
+            for name, stat in dirs:
+                m_time = ts(stat.st_mtime, utc).strftime("%Y-%m-%d %H:%M")
+                items.append(
+                    f'<tr><td><a href="{quote(name)}/">{name}/</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
+                )
+            files.sort()
+            for name, stat in files:
                 href = quote(name)
+                m_time = ts(stat.st_mtime, utc).strftime("%Y-%m-%d %H:%M")
                 if S_ISREG(stat.st_mode):
-                    item = f'<li><a href="{href}">{name}</a></li>'
-                elif S_ISDIR(stat.st_mode):
-                    item = f'<li><a href="{href}/">{name}/</a></li>'
+                    item = f'<tr><td><a href="{href}">{name}</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
                 else:
-                    item = f'<li><a style="color:red" href="{href}">{name}</a></li>'
+                    item = f'<tr><td><a style="color:red" href="{href}">{name}</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
                 items.append(item)
-
-            html = f"""<html>
-<head><title>Index of {request.url.path}</title></head>
-<body>
-<h1>Index of {request.url.path}</h1>
-<ul>
-{'\n'.join(items)}
-</ul>
-<hr><small>Powered by senyai_auth {__version__}</small>
-</body>
-</html>"""
+            root_url = request.url_for("SenyaiDAV", path="")
+            title = f"Index of {request.url.path}"
+            html = f"""<!DOCTYPE html><html>
+<head><title>{title}</title>
+<link rel="stylesheet" href="{root_url}?css&{__version__}" type="text/css"></head>
+<body><h1>{title}</h1><table>
+<thead><tr><th>Name</th><th>Modified</th><th>Size</th></tr></thead>
+<tbody>{'\n'.join(items)}</tbody>
+</table></body></html>"""
             return Response(html, media_type="text/html")
         elif permissions.has_read_access(dav_path):
             return FileResponse(path, media_type=_mimetype(path.name))

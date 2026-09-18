@@ -1,0 +1,116 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+}
+h1 {
+  background-color: rgb(21, 140, 186);
+  color: white;
+  padding: 16px;
+  font-size: 24px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+th {
+  text-align: left;
+  padding: 6px 20px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+td {
+  padding: 4px 20px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 14px;
+}
+tbody tr:hover {
+  background-color: #f8f9fa;
+}
+a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+a:hover {
+  text-decoration: underline;
+}
+/* modified */
+td:nth-child(2) {
+  color: #6c757d;
+  font-size: 13px;
+}
+th:nth-child(2) {
+  width: 150px;
+}
+/* size */
+td:nth-child(3) {
+  text-align: right;
+  color: #6c757d;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+}
+th:nth-child(3) {
+  width: 120px;
+}
+a::before {
+  content: "📄";
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+a[href$="/"]::before {
+  content: "📁";
+}
+a:is([href$=".jpeg" i], [href$=".jpg" i], [href$=".bmp" i], [href$=".png" i])::before {
+  content: "🖼️";
+}
+
+a:is([href$=".7z" i], [href$=".rar" i], [href$=".zip" i], [href$=".gz" i])::before {
+  content: "📦";
+}
+a[href$=".pdf"]::before {
+  content: "📙";
+}
+a[href$=".csv"]::before {
+  content: "📊";
+}
+a:is([href$=".doc" i], [href$=".docx" i], [href$=".odt" i])::before {
+  content: "📘";
+}
+a:is([href$=".xls" i], [href$=".xlsx" i], [href$=".ots" i])::before {
+  content: "📊";
+}
+a:is([href$=".json" i], [href$=".yaml" i], [href$=".yml" i])::before {
+  content: "🔗";
+}
+a:is([href$=".mkv" i], [href$=".mp4" i], [href$=".avi" i], [href$=".mpeg" i])::before {
+  content: "📹";
+}
+a:is([href$=".md" i], [href$=".txt" i], [href$=".log" i], [href$=".py" i], [href$=".c" i], [href$=".cpp" i], [href$=".h" i], [href$=".hpp" i])::before {
+  content: "📝";
+}
+a:is([href$=".exe" i], [href$=".bin" i], [href$=".so" i], [href$=".dll" i], [href$=".raw" i])::before {
+  content: "🔢";
+}
+body::after {
+  content: "Powered by senyai_auth $VERSION";
+  display: block;
+  padding: 20px 15px;
+  color: #6c757d;
+  text-align: right;
+}
