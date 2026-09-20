@@ -27,6 +27,7 @@ from time import monotonic
 from asyncio import Future, create_task, sleep, get_running_loop
 import httpcore  # needed for _drop_privileges
 import anyio._backends._asyncio  # needed for _drop_privileges
+import anyio._core._fileio  # needed for _drop_privileges
 from .afs import copy, delete
 from .. import __version__
 
