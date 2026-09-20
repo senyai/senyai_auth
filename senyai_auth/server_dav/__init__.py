@@ -33,11 +33,23 @@ from .. import __version__
 ET.register_namespace("D", "DAV:")
 ET.register_namespace("Z", "urn:schemas-microsoft-com:")
 
+# viewing html in web browser could execute 'delete' dav request for example
+mimetypes_web = {
+    **types_map,
+    ".htm": types_map[".txt"],
+    ".html": types_map[".txt"],
+    ".js": types_map[".txt"],
+    ".log": types_map[".txt"],
+    ".mjs": types_map[".txt"],
+    ".svg": types_map[".txt"],
+}
+mimetypes_dav = {
+    **types_map,
+    ".log": types_map[".txt"],
+}
 
-def _mimetype(
-    display_name: str,
-    mimetypes: dict[str, str] = {**types_map, "log": types_map[".txt"]},
-) -> str:
+
+def _mimetype(display_name: str, mimetypes: dict[str, str]) -> str:
     ext = splitext(display_name)[1].lower()
     return mimetypes.get(ext, "application/octet-stream")
 
@@ -560,7 +572,7 @@ class SenyaiDAV:
             ET.SubElement(prop, "{DAV:}getcontentlength").text = str(
                 stat.st_size
             )
-            content_type = _mimetype(display_name)
+            content_type = _mimetype(display_name, mimetypes_dav)
             ET.SubElement(prop, "{DAV:}getcontenttype").text = content_type
 
         # Creation date
@@ -644,7 +656,9 @@ class SenyaiDAV:
 </table></body></html>"""
             return Response(html, media_type="text/html")
         elif permissions.has_read_access(dav_path):
-            return FileResponse(path, media_type=_mimetype(path.name))
+            return FileResponse(
+                path, media_type=_mimetype(path.name, mimetypes_web)
+            )
         else:
             return Response(**self._kwargs_no_permissions_read)
 
