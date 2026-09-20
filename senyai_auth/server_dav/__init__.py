@@ -604,6 +604,7 @@ class SenyaiDAV:
                     headers={
                         "Cache-Control": "public, max-age=2592000, immutable",
                     },
+                    media_type="text/css",
                 )
             stat = await aiofiles.os.stat(path)
         except FileNotFoundError:
