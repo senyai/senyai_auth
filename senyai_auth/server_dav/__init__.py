@@ -55,7 +55,7 @@ def _mimetype(display_name: str, mimetypes: dict[str, str]) -> str:
     return mimetypes.get(ext, "application/octet-stream")
 
 
-def _human_readable_size(size: int | float) -> str:
+def human_readable_size(size: int | float) -> str:
     if size < 1024:
         return f"{size} B"
     size /= 1024.0
@@ -636,22 +636,21 @@ class SenyaiDAV:
             for name, stat in dirs:
                 m_time = ts(stat.st_mtime, utc).strftime("%Y-%m-%d %H:%M")
                 items.append(
-                    f'<tr><td><a href="{quote(name)}/">{name}/</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
+                    f'<tr><td><a href="{quote(name)}/">{name}/</a></td><td>{m_time}</td><td>{human_readable_size(stat.st_size)}</td></tr>'
                 )
             files.sort()
             for name, stat in files:
                 href = quote(name)
                 m_time = ts(stat.st_mtime, utc).strftime("%Y-%m-%d %H:%M")
                 if S_ISREG(stat.st_mode):
-                    item = f'<tr><td><a href="{href}">{name}</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
+                    item = f'<tr><td><a href="{href}">{name}</a></td><td>{m_time}</td><td>{human_readable_size(stat.st_size)}</td></tr>'
                 else:
-                    item = f'<tr><td><a style="color:red" href="{href}">{name}</a></td><td>{m_time}</td><td>{_human_readable_size(stat.st_size)}</td></tr>'
+                    item = f'<tr><td><a style="color:red" href="{href}">{name}</a></td><td>{m_time}</td><td>{human_readable_size(stat.st_size)}</td></tr>'
                 items.append(item)
-            root_url = request.url_for("SenyaiDAV", path="")
             title = f"Index of {request.url.path}"
             html = f"""<!DOCTYPE html><html>
 <head><title>{title}</title>
-<link rel="stylesheet" href="{root_url}?css&{__version__}" type="text/css"></head>
+<link rel="stylesheet" href="{request.base_url.path}?css&{__version__}" type="text/css"></head>
 <body><h1>{title}</h1><table>
 <thead><tr><th>Name</th><th>Modified</th><th>Size</th></tr></thead>
 <tbody>{'\n'.join(items)}</tbody>
