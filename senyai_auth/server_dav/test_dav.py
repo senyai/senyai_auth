@@ -803,3 +803,21 @@ class DavAppTest(IsolatedAsyncioTestCase):
         )
         self.assertEqual(unlock_response.status_code, 204)
         self.assertEqual(unlock_response.text, "")
+
+    def test_css_behind_auth(self):
+        css_response = self._client.get(f"?css&{version}")
+        self.assertEqual(css_response.status_code, 401)
+
+    def test_css(self):
+        css_response = self._client.get(f"?css&{version}", headers=AUTH)
+        self.assertEqual(css_response.status_code, 200)
+        self.assertEqual(
+            {
+                key: css_response.headers[key]
+                for key in ("cache-control", "content-type")
+            },
+            {
+                "cache-control": "public, max-age=2592000, immutable",
+                "content-type": "text/css; charset=utf-8",
+            },
+        )
