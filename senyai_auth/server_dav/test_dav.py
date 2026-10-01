@@ -821,3 +821,43 @@ class DavAppTest(IsolatedAsyncioTestCase):
                 "content-type": "text/css; charset=utf-8",
             },
         )
+
+
+class HumanReadableSizeTest(TestCase):
+    def test_bytes(self):
+        for size in 0, 100, 1023:
+            self.assertEqual(server_dav.human_readable_size(size), f"{size} B")
+
+    def test_kib(self):
+        for kib in 1, 1.5, 1023.999:
+            self.assertEqual(
+                server_dav.human_readable_size(1024 * kib), f"{kib:0.2f} KiB"
+            )
+
+    def test_mib(self):
+        for mib in 1, 1.5, 1023.999:
+            self.assertEqual(
+                server_dav.human_readable_size(1024**2 * mib),
+                f"{mib:0.2f} MiB",
+            )
+
+    def test_gib(self):
+        for gib in 1, 1.5, 1023.999:
+            self.assertEqual(
+                server_dav.human_readable_size(1024**3 * gib),
+                f"{gib:0.2f} GiB",
+            )
+
+    def test_tib(self):
+        for tib in 1, 1.5, 1023.999:
+            self.assertEqual(
+                server_dav.human_readable_size(1024**4 * tib),
+                f"{tib:0.2f} TiB",
+            )
+
+    def test_pib(self):
+        for pib in 1, 1.5, 1023.999, 20000:
+            self.assertEqual(
+                server_dav.human_readable_size(1024**5 * pib),
+                f"{pib:0.2f} PiB",
+            )
