@@ -11,6 +11,7 @@ from httpx2 import AsyncClient
 from pathlib import Path
 import tempfile
 from datetime import datetime, timezone
+from os import stat_result
 
 
 class PermissionsTest(TestCase):
@@ -202,25 +203,32 @@ class DavAppTest(IsolatedAsyncioTestCase):
     def test_get_root_directory(self) -> None:
         response = self._client.get("/", headers=AUTH)
         self.assertEqual(response.status_code, 200)
-        mtime = {
-            name: datetime.fromtimestamp(
-                (self._path / name).stat().st_mtime, timezone.utc
-            ).strftime("%Y-%m-%d %H:%M")
+        stats = {
+            name: (self._path / name).stat()
             for name in (*"abcd", "ёлки иголки.png")
         }
+
+        def mt(stat: stat_result):
+            return datetime.fromtimestamp(
+                stat.st_mtime, timezone.utc
+            ).strftime("%Y-%m-%d %H:%M")
+
+        def hrs(stat: stat_result):
+            return server_dav.human_readable_size(stat.st_size)
+
         self.assertEqual(
             response.text,
             f"""<!DOCTYPE html><html>
 <head><title>Index of /</title>
-<link rel="stylesheet" href="http://testserver/?css&{version}" type="text/css"></head>
+<link rel="stylesheet" href="/?css&{version}" type="text/css"></head>
 <body><h1>Index of /</h1><table>
 <thead><tr><th>Name</th><th>Modified</th><th>Size</th></tr></thead>
-<tbody><tr><td><a href="d/">d/</a></td><td>{mtime['d']}</td><td>4.00 KiB</td></tr>
-<tr><td><a href="a">a</a></td><td>{mtime['a']}</td><td>0 B</td></tr>
-<tr><td><a href="b">b</a></td><td>{mtime['b']}</td><td>3 B</td></tr>
-<tr><td><a href="c">c</a></td><td>{mtime['c']}</td><td>6 B</td></tr>
+<tbody><tr><td><a href="d/">d/</a></td><td>{mt(stats['d'])}</td><td>{hrs(stats['d'])}</td></tr>
+<tr><td><a href="a">a</a></td><td>{mt(stats['a'])}</td><td>{hrs(stats['a'])}</td></tr>
+<tr><td><a href="b">b</a></td><td>{mt(stats['b'])}</td><td>{hrs(stats['b'])}</td></tr>
+<tr><td><a href="c">c</a></td><td>{mt(stats['c'])}</td><td>{hrs(stats['c'])}</td></tr>
 <tr><td><a style="color:red" href="{PERMISSIONS_NAME}">{PERMISSIONS_NAME}</a></td><td>1970-01-01 00:00</td><td>12 B</td></tr>
-<tr><td><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></td><td>{mtime['ёлки иголки.png']}</td><td>225 B</td></tr></tbody>
+<tr><td><a href="%D1%91%D0%BB%D0%BA%D0%B8%20%D0%B8%D0%B3%D0%BE%D0%BB%D0%BA%D0%B8.png">ёлки иголки.png</a></td><td>{mt(stats['ёлки иголки.png'])}</td><td>{hrs(stats['ёлки иголки.png'])}</td></tr></tbody>
 </table></body></html>""",
         )
 
