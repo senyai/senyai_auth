@@ -7,6 +7,7 @@ class DN(NamedTuple):
     common_name: bytes | None  # cn=John Smith
     organization_units: tuple[bytes, ...]
     domain_components: tuple[bytes, ...]
+    dn: bytes  # original dn
 
 
 def parse_dn(dn: bytes) -> DN:
@@ -31,4 +32,5 @@ def parse_dn(dn: bytes) -> DN:
         common_name=common_name,
         organization_units=tuple(ou_list),
         domain_components=tuple(dc_list),
+        dn=dn,
     )
