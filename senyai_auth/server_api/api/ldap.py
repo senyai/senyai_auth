@@ -61,23 +61,32 @@ async def find_user(
     ## Find user for LDAP server
 
     * Return user that has git permissions assigned
-    * Only admins can do this action
     """
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
-    if permissions < PermissionsAPI.admin:
-        raise not_authorized_exception
-
-    user = await session.scalar(
-        get_user_by_username_or_email_stmt,
-        {"username_or_email": username_or_email},
-    )
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+    assert permissions is not None
+    if permissions >= PermissionsAPI.admin:
+        # Admin can fetch any user. TODO: limit to managed projects only.
+        user = await session.scalar(
+            get_user_by_username_or_email_stmt,
+            {"username_or_email": username_or_email},
         )
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+    else:
+        await session.refresh(auth_user, ("display_name", "email"))
+        if (
+            auth_user.username == username_or_email
+            or auth_user.email == username_or_email
+        ):
+            user = auth_user
+        else:
+            raise not_authorized_exception
+
     permissions_stmt = {
         "extra": permissions_extra_stmt,
         "git": permissions_git_stmt,
@@ -114,6 +123,7 @@ async def all_users(
     permissions = await session.scalar(
         permissions_api_stmt, {"user_id": auth_user.id}
     )
+    assert permissions is not None
     if permissions < PermissionsAPI.admin:
         raise not_authorized_exception
 
@@ -153,6 +163,8 @@ async def user_roles(
     """
     ## This is exactly like `find_user`, but the output is just list of roles
 
+    Useful for WebDAV
+
     * View current user roles, acceptable for everyone
     * Only admins can view roles of specified `username`
     """
@@ -162,6 +174,7 @@ async def user_roles(
         permissions = await session.scalar(
             permissions_api_stmt, {"user_id": auth_user.id}
         )
+        assert permissions is not None
         if permissions < PermissionsAPI.admin:
             raise not_authorized_exception
 
