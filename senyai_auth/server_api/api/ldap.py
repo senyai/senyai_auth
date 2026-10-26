@@ -163,12 +163,12 @@ async def user_roles(
     """
     ## This is exactly like `find_user`, but the output is just list of roles
 
-    Useful for WebDAV
+    Useful for `server_dav`, but also used in `server_ldap`
 
     * View current user roles, acceptable for everyone
     * Only admins can view roles of specified `username`
     """
-    if username is None:
+    if username is None or auth_user.username == username:
         user_id = auth_user.id
     else:
         permissions = await session.scalar(
