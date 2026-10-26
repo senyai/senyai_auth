@@ -366,8 +366,8 @@ class SearchRequest(univ.Sequence):
             } if (
                 username == username_mail
             ):
-                async for user in self._find_user(api_client, username):
-                    yield user
+                async for lm in self._find_user(api_client, username):
+                    yield lm
             case {
                 "op": "and",
                 "operands": [
@@ -381,17 +381,17 @@ class SearchRequest(univ.Sequence):
                     },
                 ],
             }:
-                async for user in self._list_all_users(api_client):
-                    yield user
+                async for lm in self._list_all_users(api_client):
+                    yield lm
             case {"op": "=", "lhs": "memberOf", "rhs": rhs_dn_str}:
                 rhs_dn = parse_dn(rhs_dn_str.encode())
                 assert rhs_dn.common_name == b"admin", rhs_dn.common_name
                 assert rhs_dn.organization_units == (b"groups",)
                 assert dn.user_name is not None, "client problem"
-                async for user in self._find_user(
+                async for lm in self._find_user(
                     api_client, dn.user_name.decode(), only_admin=True
                 ):
-                    yield user
+                    yield lm
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
                 logger.warning(msg)
