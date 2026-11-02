@@ -100,7 +100,7 @@ async def _async_main(
     from .app import get_settings
 
     settings = get_settings()
-    async_engine, async_session = settings.create_engine()
+    async_engine, async_session = settings.create_engine(log=print)
     try:
         await command(async_engine, async_session)
     finally:
