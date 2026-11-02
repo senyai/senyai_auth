@@ -10,8 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 
-def _default_input(prompt: str, default: str) -> str:
-    return input(f"{prompt} ({default}): ") or default
+def _default_input(
+    prompt: str, default: str, validation: Callable[[str], bool] | None = None
+) -> str:
+    while True:
+        answer = input(f"{prompt} ({default}): ") or default
+        if validation is None or validation(answer):
+            return answer
+        print(f"Invalid {prompt}")
 
 
 async def _init(
@@ -30,7 +36,11 @@ async def _init(
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session() as session:
-        username = _default_input("Username", username)
+        username = _default_input(
+            "Username",
+            username,
+            validation=lambda username: "@" not in username,
+        )
         while True:
             password = (
                 getpass(prompt=f"Strong password ({password!r}): ") or password
@@ -42,8 +52,10 @@ async def _init(
                 password = base64.b85encode(os.urandom(10)).decode()
                 print(f"weak password: {e}")
                 continue
-        display_name = _default_input("Display Name", display_name)
-        email = _default_input("E-mail", email)
+        display_name = _default_input(
+            "Display Name", display_name, lambda dn: len(dn) > 0
+        )
+        email = _default_input("E-mail", email, lambda email: "@" in email)
         user = User(
             username=username,
             display_name=display_name,
