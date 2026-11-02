@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Literal, AsyncGenerator
+from typing import Any, Literal, AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -23,7 +23,7 @@ class AppSettings(BaseModel, strict=True, frozen=True):
     # arguments for `create_async_engine`, for example {"echo": True}
     engine: dict[str, bool | int] = {}
 
-    def create_engine(self):
+    def create_engine(self, *, log: Callable[[str], None] | None = None):
         """
         Notice: dispose async_engine after usage
         """
@@ -39,6 +39,8 @@ class AppSettings(BaseModel, strict=True, frozen=True):
             }
 
         async_engine = create_async_engine(self.db_url, **engine_kwargs)
+        if log is not None:
+            log(f"Created engine {async_engine.url} with args {engine_kwargs}")
         async_session = sessionmaker[AsyncSession](
             bind=async_engine,
             class_=AsyncSession,
