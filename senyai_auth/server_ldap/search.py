@@ -196,7 +196,7 @@ class FilterTail(univ.Choice):
         raise NotImplementedError(op)
 
 
-def _create_filter_class(cls_name: str, parent_filter: univ.Choice):
+def _create_filter_class(cls_name: str, parent_filter: type[univ.Choice]):
     componentType = namedtype.NamedTypes(
         namedtype.NamedType('and', univ.SetOf(componentType=parent_filter()).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))),
