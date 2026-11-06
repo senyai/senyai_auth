@@ -363,3 +363,13 @@ class SearchTest(CompareTest):
         )
         answers = await _send_side_effect([request_bytes, b""])
         self.assertIn(b" not implemented", answers[0])
+
+    async def test_abandon_request(self):
+        request_bytes = bytes.fromhex("300602010250010130050201034200")
+        reader = AsyncMock(spec=asyncio.StreamReader)
+        writer = MagicMock(spec=asyncio.StreamWriter)
+        writer.get_extra_info.side_effect = ("test_client",)
+        reader.read.side_effect = [request_bytes, b""]
+        await LDAPProtocol.handle_client(reader, writer)
+        writer.write.assert_not_called()
+        writer.close.assert_called()

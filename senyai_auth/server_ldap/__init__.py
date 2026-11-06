@@ -15,7 +15,7 @@ from asyncio import (
 )
 import json
 from httpx2 import AsyncClient, AsyncBaseTransport
-from pyasn1.type import univ, namedtype
+from pyasn1.type import univ, namedtype, tag
 from pyasn1.codec.ber import decoder, encoder
 from pyasn1.error import EndOfStreamError, PyAsn1Error
 from .bind import (
@@ -24,7 +24,7 @@ from .bind import (
     clear_cache_periodically,
     UnbindRequest,
 )
-from .search import SearchRequest, SearchResultEntry, SearchResultDone
+from .search import SearchRequest, SearchResultDone, SearchResultEntry
 from .logger import create_logger
 from .ldap_types import LDAPMessage
 
@@ -52,6 +52,22 @@ class MessageID(univ.Integer):
     pass
 
 
+class AbandonRequest(MessageID):
+    """
+    User requests to abandon previous requests. Do not drop the connection.
+    """
+
+    tagSet = MessageID.tagSet.tagImplicitly(
+        tag.Tag(tag.tagClassApplication, tag.tagFormatSimple, 16)
+    )
+
+    async def process(
+        self, api_client: AsyncClient
+    ) -> AsyncGenerator[LDAPMessage, None]:
+        if False:
+            yield
+
+
 LDAPMessage.componentType = namedtype.NamedTypes(
     namedtype.NamedType("messageID", MessageID()),
     namedtype.NamedType(
@@ -75,7 +91,7 @@ LDAPMessage.componentType = namedtype.NamedTypes(
                 # namedtype.NamedType('modDNResponse', ModifyDNResponse()),
                 # namedtype.NamedType('compareRequest', CompareRequest()),
                 # namedtype.NamedType('compareResponse', CompareResponse()),
-                # namedtype.NamedType('abandonRequest', AbandonRequest()),
+                namedtype.NamedType("abandonRequest", AbandonRequest()),
                 # namedtype.NamedType('extendedReq', ExtendedRequest()),
                 # namedtype.NamedType('extendedResp', ExtendedResponse())
             )
