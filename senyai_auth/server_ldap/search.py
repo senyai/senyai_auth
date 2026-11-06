@@ -90,6 +90,18 @@ class SubstringFilter(univ.Sequence):
         ),
     )
 
+    def build(self):
+        type_ = self["type"].asOctets().decode()
+        substrings = {}
+        for substring in self["substrings"]:
+            name = substring.getName()
+            value = substring[name].asOctets().decode()
+            substrings[name] = value
+        return {
+            "op": type_,
+            "substrings": substrings,
+        }
+
 
 class MatchingRuleAssertion(univ.Sequence):
     componentType = namedtype.NamedTypes(
@@ -130,10 +142,27 @@ class MatchingRuleAssertion(univ.Sequence):
     )
 
 
+def _filter_build(self):
+    op = self.getName()
+    if op in ("and", "or"):
+        return {"op": op, "operands": [item.build() for item in self[op]]}
+    if op == "equalityMatch":
+        return {
+            "op": "=",
+            "lhs": self[op]["attributeDesc"].asOctets().decode(),
+            "rhs": self[op]["assertionValue"].asOctets().decode(),
+        }
+    if op == "not":
+        return {"op": "!", "rhs": self[op].build()}
+    if op == "substrings":
+        return {"op": "substrings", "rhs": self[op].build()}
+    raise NotImplementedError(op)
+
+
 # Ugly hack to handle recursive Filter reference (up to 3-levels deep).
 # fmt: off
 
-class Filter3(univ.Choice):
+class FilterTail(univ.Choice):
     componentType = namedtype.NamedTypes(
         namedtype.NamedType('equalityMatch', AttributeValueAssertion().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))),
@@ -167,14 +196,14 @@ class Filter3(univ.Choice):
         raise NotImplementedError(op)
 
 
-class Filter2(univ.Choice):
+def _create_filter_class(cls_name: str, parent_filter: univ.Choice):
     componentType = namedtype.NamedTypes(
-        namedtype.NamedType('and', univ.SetOf(componentType=Filter3()).subtype(
+        namedtype.NamedType('and', univ.SetOf(componentType=parent_filter()).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))),
-        namedtype.NamedType('or', univ.SetOf(componentType=Filter3()).subtype(
+        namedtype.NamedType('or', univ.SetOf(componentType=parent_filter()).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))),
         namedtype.NamedType('not',
-                            Filter3().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))),
+                            parent_filter().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))),
         namedtype.NamedType('equalityMatch', AttributeValueAssertion().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))),
         namedtype.NamedType('substrings', SubstringFilter().subtype(
@@ -191,44 +220,19 @@ class Filter2(univ.Choice):
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 9)))
     )
 
-    def build(self):
-        op = self.getName()
-        if op in ("and", "or"):
-            return {"op": op, "operands": [item.build() for item in self[op]]}
-        elif op == "equalityMatch":
-            return {
-                "op": "=",
-                "lhs": self[op]["attributeDesc"].asOctets().decode(),
-                "rhs": self[op]["assertionValue"].asOctets().decode(),
-            }
-        raise NotImplementedError(op)
+    return type(
+        cls_name,
+        (univ.Choice,),
+        {"componentType": componentType,
+         "build": _filter_build
+         }
 
-
-class Filter(univ.Choice):
-    componentType = namedtype.NamedTypes(
-        namedtype.NamedType('and', univ.SetOf(componentType=Filter2()).subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))),
-        namedtype.NamedType('or', univ.SetOf(componentType=Filter2()).subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))),
-        namedtype.NamedType('not',
-                            Filter2().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))),
-        namedtype.NamedType('equalityMatch', AttributeValueAssertion().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))),
-        namedtype.NamedType('substrings', SubstringFilter().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 4))),
-        namedtype.NamedType('greaterOrEqual', AttributeValueAssertion().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 5))),
-        namedtype.NamedType('lessOrEqual', AttributeValueAssertion().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 6))),
-        namedtype.NamedType('present', AttributeDescription().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 7))),
-        namedtype.NamedType('approxMatch', AttributeValueAssertion().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 8))),
-        namedtype.NamedType('extensibleMatch', MatchingRuleAssertion().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 9)))
     )
 
-    build = Filter2.build
+Filter4 = _create_filter_class("Filter4", FilterTail)
+Filter3 = _create_filter_class("Filter3", Filter4)
+Filter2 = _create_filter_class("Filter2", Filter3)
+Filter = _create_filter_class("Filter", Filter2)
 
 # End of Filter hack
 
