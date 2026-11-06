@@ -50,12 +50,20 @@ async def _send(
     *ldap_message: LDAPMessage,
     transport: AsyncBaseTransport | None = None,
 ) -> list[bytes]:
+    return await _send_side_effect(
+        [cast(bytes, ber_encoder.encode(lm)) for lm in ldap_message] + [b""],
+        transport,
+    )
+
+
+async def _send_side_effect(
+    side_effect: list[bytes],
+    transport: AsyncBaseTransport | None = None,
+) -> list[bytes]:
     reader = AsyncMock(spec=asyncio.StreamReader)
     writer = MagicMock(spec=asyncio.StreamWriter)
     writer.get_extra_info.side_effect = ("test_client",)
-    reader.read.side_effect = [
-        cast(bytes, ber_encoder.encode(lm)) for lm in ldap_message
-    ] + [b""]
+    reader.read.side_effect = side_effect
     await LDAPProtocol.handle_client(reader, writer, transport=transport)
     writer.write.assert_called()
     writer.close.assert_called()
@@ -328,3 +336,30 @@ class SearchTest(CompareTest):
                 _create_search_result_done(msgid=8, result_code=0, diag=""),
             ],
         )
+
+    async def test_sssd_request_is_Working(self):
+        request_bytes = bytes.fromhex(
+            "308202960201026382028f041164633d6578616d706c652c64633d636f6d0a01"
+            "020a0100020100020100010100a08201b8a317040b6f626a656374436c617373"
+            "04087375646f526f6c65a182019ba01ca20a87087375646f486f7374a30e0402"
+            "636e040864656661756c7473a30f04087375646f486f73740403414c4ca31404"
+            "087375646f486f737404085562756e74753232a32b04087375646f486f737404"
+            "1f5562756e747532322e6d7967756573742e7669727475616c626f782e6f7267"
+            "a31504087375646f486f7374040931302e302e322e3135a31704087375646f48"
+            "6f7374040b31302e302e322e302f3234a33004087375646f486f737404246664"
+            "31373a363235633a663033373a323a316337613a373035383a356234363a3935"
+            "3666a32104087375646f486f73740415666431373a363235633a663033373a32"
+            "3a3a2f3634a33004087375646f486f73740424666431373a363235633a663033"
+            "373a323a336263653a336566333a643534303a65656634a32104087375646f48"
+            "6f73740415666431373a363235633a663033373a323a3a2f3634a32504087375"
+            "646f486f73740419666538303a3a633366373a396538313a653865353a643439"
+            "30a31504087375646f486f73740409666538303a3a2f3634a40f04087375646f"
+            "486f7374300380012b3081ae040b6f626a656374436c617373040b6f626a6563"
+            "74436c6173730402636e040b7375646f436f6d6d616e6404087375646f486f73"
+            "7404087375646f55736572040a7375646f4f7074696f6e04097375646f52756e"
+            "4173040d7375646f52756e417355736572040e7375646f52756e417347726f75"
+            "70040d7375646f4e6f744265666f7265040c7375646f4e6f7441667465720409"
+            "7375646f4f72646572040f6d6f6469667954696d657374616d70"
+        )
+        answers = await _send_side_effect([request_bytes, b""])
+        self.assertIn(b" not implemented", answers[0])
