@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TypedDict, cast
 from pyasn1.type import univ, tag, namedtype, namedval, constraint
 from httpx2 import AsyncClient, ConnectError
 from .ldap_types import LDAPString
@@ -7,9 +7,25 @@ from .ldap import parse_dn, DN
 from .logger import create_logger
 from .ldap_types import LDAPMessage
 from .. import server_ldap
+from urllib.parse import quote
 
 logger = create_logger(__name__)
 maxInt = univ.Integer(2147483647)
+
+
+class SudoGroup(TypedDict):
+    cn: str
+    gidNumber: int
+    memberUids: list[str]
+
+
+class SudoUser(TypedDict):
+    uid: str
+    uidNumber: int
+    gidNumber: int
+    cn: str
+    homeDirectory: str
+    loginShell: str
 
 
 class AttributeValueAssertion(univ.Sequence):
@@ -396,6 +412,27 @@ class SearchRequest(univ.Sequence):
                     api_client, dn.user_name.decode(), only_admin=True
                 ):
                     yield lm
+            case {
+                "op": "and",
+                "operands": [
+                    {"op": "=", "lhs": "objectClass", "rhs": "sudoRole"},
+                    {
+                        "op": "or",
+                        "operands": operands,
+                    },
+                ],
+            }:
+                for operand in operands:
+                    if operand["op"] == "=" and operand["lhs"] == "sudoHost":
+                        host: str = operand["rhs"]
+                        if (
+                            ":" not in host
+                            and "." not in host
+                            and host != "ALL"
+                        ):
+                            async for lm in self._find_sudo(api_client, host):
+                                yield lm
+                            break
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
                 logger.warning(msg)
@@ -426,7 +463,7 @@ class SearchRequest(univ.Sequence):
         api_client: AsyncClient,
         username_or_email: str,
         only_admin: bool = False,
-    ):
+    ) -> AsyncGenerator[LDAPMessage, None]:
         res = await api_client.get(
             f"/ldap/find_user/git",
             params={"username_or_email": username_or_email},
@@ -444,6 +481,54 @@ class SearchRequest(univ.Sequence):
                         b"objectClass": [b"account", b"inetOrgPerson"],
                         b"uid": username.encode(),
                         b"cn": [user["display_name"].encode()],
+                    },
+                )
+        else:
+            yield _create_search_result_done(
+                result_code=1, diag=f"api status {res.status_code}"
+            )
+            return
+        yield _create_search_result_done()  # success
+
+    async def _find_sudo(
+        self, api_client: AsyncClient, host: str
+    ) -> AsyncGenerator[LDAPMessage, None]:
+        host = quote(host, safe="").replace(".", "%2E")
+        url = f"/ldap/sudo/{quote(host)}"
+        res = await api_client.get(url)
+        logger.info(f"GET {url}: {res.status_code}")
+        if res.status_code == 200:
+            sudo = res.json()
+            assert res.status_code == 200, (res.status_code, sudo)
+            for group in cast(list[SudoGroup], sudo["groups"]):
+                cn = group["cn"].encode()
+                yield _create_search_result_entry(
+                    dn=f"uid={cn},{server_ldap.DOMAIN.dc}",
+                    attributes={
+                        b"objectClass": b"posixGroup",
+                        b"cn": cn,
+                        b"gidNumber": b"%d" % group["gidNumber"],
+                        b"memberUid": [
+                            uid.encode() for uid in group["memberUids"]
+                        ],
+                        b"memberUid": [
+                            f"uid={uid},ou=Users,{server_ldap.DOMAIN.dc}".encode()
+                            for uid in group["memberUids"]
+                        ],
+                    },
+                )
+            for user in cast(list[SudoUser], sudo["users"]):
+                uid = user["uid"]
+                yield _create_search_result_entry(
+                    dn=f"uid={uid},{server_ldap.DOMAIN.dc}",
+                    attributes={
+                        b"objectClass": [b"top", b"posixAccount"],
+                        b"uid": uid.encode(),
+                        b"uidNumber": b"%d" % user["uidNumber"],
+                        b"gidNumber": b"%d" % user["gidNumber"],
+                        b"cn": user["cn"].encode(),
+                        b"homeDirectory": user["homeDirectory"].encode(),
+                        b"loginShell": user["loginShell"].encode(),
                     },
                 )
         else:

@@ -3,13 +3,16 @@ from typing import Annotated, Literal
 from pydantic import (
     AfterValidator,
     BaseModel,
+    BeforeValidator,
     Field,
     model_validator,
     PlainSerializer,
     StringConstraints,
+    TypeAdapter,
+    ValidationError,
 )
 from fastapi import APIRouter, Depends, status, HTTPException, Response
-from sqlalchemy import delete, insert, literal, select
+from sqlalchemy import delete, insert, literal, select, exists
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import (
@@ -18,17 +21,19 @@ from ..db import (
     MemberRole,
     PermissionsAPI,
     Role,
+    SudoRole,
     User,
 )
 from .auth import get_current_user
 from ..app import get_async_session
 from .project import Description
 from .exceptions import (
-    not_authorized_exception,
-    response_description,
     conflict_description,
     conflict_exception,
+    not_authorized_exception,
+    response_description,
     response_with_perm_check,
+    validation_error,
 )
 
 router = APIRouter(tags=["role"])
@@ -47,14 +52,90 @@ type PermissionsType = Literal[
 ]
 
 
+def host_match_search(cn: str) -> list[str]:
+    cns = [f"{cn[:i]}*" for i in range(len(cn))]
+    cns.append(f"{cn}*")
+    cns.append(cn)
+    return cns
+
+
+async def _update_sudo_roles(session: AsyncSession, role: Role) -> None:
+    data = SudoRolesInfo.validate_json(role.permissions_extra)
+    await session.flush()
+    assert role.id is not None
+
+    new_roles: list[SudoRole] = []
+
+    for host_match, records in data.items():
+        exist_query = exists().where(
+            SudoRole.host_match.in_(host_match_search(host_match))
+        )
+        for record in records:
+            cn_already_exists = await session.scalar(
+                select(exist_query.where(SudoRole.cn == record.cn))
+            )
+            if cn_already_exists:
+                raise ValueError(f"cn `{record.cn}` already exists")
+            new_roles.append(
+                SudoRole(
+                    role_id=role.id,
+                    host_match=host_match,
+                    cn=record.cn,
+                    record={
+                        "sudoUser": record.sudoUser,
+                        "sudoHost": record.sudoHost,
+                        "sudoCommand": record.sudoCommand,
+                        "sudoOrder": record.sudoOrder,
+                    },
+                )
+            )
+    session.add_all(new_roles)
+
+
+def _validate_sudo_json(v: str) -> str:
+    if v:
+        try:
+            SudoRolesInfo.validate_json(v)
+        except ValidationError as e:
+            # Key: raising ValueError will be wrapped by Pydantic and returned as 422 by FastAPI
+            raise ValueError(f"Invalid JSON structure: {e}")
+    return v
+
+
+PermissionsExtra = Annotated[
+    str,
+    BeforeValidator(_validate_sudo_json),
+    Field(
+        description="""JSON Object Field. Example:
+    ```json
+        {
+        "vpc1": [
+            {
+                "cn": "fulladmin",
+                "sudoUser": "devel",
+                "sudoHost": "ALL",
+                "sudoCommand": "ALL",
+                "sudoOrder": 100,
+            }
+        ]
+        }
+    ```"""
+    ),
+]
+
+
 class RoleCreate(BaseModel, strict=True, frozen=True, extra="forbid"):
     project_id: Annotated[int, Field(strict=False)]
     name: RoleName
     description: Description = ""
     permissions_api: PermissionsType = "none"
-    permissions_git: str = ""
-    permissions_storage: str = ""
-    permissions_extra: str = ""
+    permissions_git: Annotated[
+        str, Field(description="none, user or admin")
+    ] = ""
+    permissions_storage: Annotated[
+        str, Field(description="new line separated list of storage paths")
+    ] = ""
+    permissions_extra: PermissionsExtra = ""
 
     @model_validator(mode="after")
     def check_model_does_something(self):
@@ -125,13 +206,20 @@ async def new_role(
     role_db = role.make_role(permission)
     session.add(role_db)
     try:
+        await _update_sudo_roles(session, role_db)
         await session.commit()
     except IntegrityError:
         raise conflict_exception(f"Role '{role.name}' already exists", "name")
+    except ValueError as e:
+        raise validation_error(e, "permissions_extra")
     return RoleModel(role_id=role_db.id)
 
 
 class RoleInfo(BaseModel, strict=True, frozen=True):
+    """
+    For getting /role/{role_id}
+    """
+
     id: int
     name: str
     description: str
@@ -183,6 +271,17 @@ async def role(
     return RoleInfo.from_role(role_db)
 
 
+class SudoRoleInfo(BaseModel, strict=True, frozen=True, extra="forbid"):
+    cn: str
+    sudoUser: str
+    sudoHost: str
+    sudoCommand: str | list[str]
+    sudoOrder: int
+
+
+SudoRolesInfo = TypeAdapter(dict[str, list[SudoRoleInfo]])
+
+
 class RoleUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     name: RoleName | None = None
     description: Description | None = None
@@ -193,13 +292,22 @@ class RoleUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     permissions_storage: Annotated[
         str | None, PlainSerializer(lambda s: s.replace("\n", "|"))
     ] = None
-    permissions_extra: str | None = None
+    permissions_extra: PermissionsExtra | None = None
 
-    def update(self, role: Role) -> None:
+    async def update(self, session: AsyncSession, role: Role) -> None:
+        initial_permissions_extra = self.permissions_extra
         for key, value in self.model_dump(
             exclude_unset=True, exclude_none=True
         ).items():
             setattr(role, key, value)
+        if initial_permissions_extra != self.permissions_extra:
+            from sqlalchemy import delete
+
+            await session.execute(
+                delete(SudoRole).where(SudoRole.role_id == role.id)
+            )
+            if self.permissions_extra:
+                await _update_sudo_roles(session, role)
 
 
 @router.patch(
@@ -237,8 +345,9 @@ async def update_role(
             detail="User can't update role to have higher permissions "
             f"({role_db.permissions_api.name} > {permission.name})",
         )
-    role.update(role_db)
+    await role.update(session, role_db)
     session.add(role_db)
+
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -271,7 +380,7 @@ async def delete_role(
     assert permission is not None
     if permission < PermissionsAPI.admin:
         raise not_authorized_exception
-    await session.delete(role_db)
+    await session.delete(role_db)  # must automatically delete SudoRole
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -3,18 +3,21 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, StringConstraints
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from ..db import (
-    permissions_api_stmt,
+    all_users_extra_stmt,
+    all_users_git_stmt,
+    all_users_storage_stmt,
     get_user_by_username_or_email_stmt,
+    permissions_api_stmt,
     permissions_extra_stmt,
     permissions_git_stmt,
     permissions_storage_stmt,
-    all_users_extra_stmt,
-    all_users_storage_stmt,
-    all_users_git_stmt,
-    select_userid_by_username_stmt,
     PermissionsAPI,
+    select_userid_by_username_stmt,
     User,
+    MemberRole,
+    SudoRole,
 )
 from .auth import get_current_user
 from ..app import get_async_session
@@ -23,6 +26,7 @@ from .exceptions import (
     response_description,
     response_with_perm_check,
 )
+from .role import host_match_search
 
 router = APIRouter(prefix="/ldap", tags=["ldap"])
 Domain = Literal["git", "storage", "extra"]
@@ -195,3 +199,84 @@ async def user_roles(
         permissions_stmt, {"user_id": user_id}
     )
     return _permissions_from_str(permissions_str)
+
+
+class SudoGroup(BaseModel, strict=True, frozen=True):
+    # dn `cn=admins,ou=Groups,dc=example,dc=com` - construct on client side
+    # objectClass: list[str] - construct on client side
+    cn: str
+    gidNumber: int
+    memberUids: list[str]
+    # members: list[str] - construct on client side
+
+
+class SudoUser(BaseModel, strict=True, frozen=True):
+    # dn `uid=alice,ou=People,dc=example,dc=com` - construct on client side
+    # objectClass: list[str] - construct on client side
+    uid: str
+    uidNumber: int
+    gidNumber: int
+    cn: str
+    homeDirectory: str
+    loginShell: str
+
+
+class LDAPSudo(BaseModel, strict=True, frozen=True):
+    users: list[SudoUser]
+    groups: list[SudoGroup]
+
+
+@router.get(
+    "/sudo/{host}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("Host not found"),
+    },
+)
+async def sudo_roles(
+    host: str,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> LDAPSudo:
+    """
+    Trying to implement `sudoers.ldap`
+    """
+    permissions = await session.scalar(
+        permissions_api_stmt, {"user_id": auth_user.id}
+    )
+    assert permissions is not None
+    if permissions < PermissionsAPI.admin:
+        raise not_authorized_exception
+    roles_dict = {
+        role_db.id: SudoGroup(
+            cn=role_db.cn, gidNumber=10_000 + role_db.id, memberUids=[]
+        )
+        for role_db in await session.scalars(
+            select(SudoRole).where(
+                SudoRole.host_match.in_(host_match_search(host))
+            )
+        )
+    }
+
+    users_dict: dict[int, SudoUser] = {}
+    for role_id, user in await session.execute(
+        select(MemberRole.role_id, User)
+        .join(MemberRole, User.id == MemberRole.user_id)
+        .where(MemberRole.role_id.in_(roles_dict.keys()))
+    ):
+        roles_dict[role_id].memberUids.append(user.username)
+        if user.id not in users_dict:
+            users_dict[user.id] = SudoUser(
+                uid=user.username,
+                uidNumber=40_000 + user.id,
+                gidNumber=40_000 + user.id,
+                cn=user.display_name,
+                homeDirectory=f"/home/{user.username}",
+                loginShell="/bin/bash",
+            )
+
+    return LDAPSudo(
+        users=list(users_dict.values()),
+        groups=list(roles_dict.values()),
+    )

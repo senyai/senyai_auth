@@ -293,6 +293,21 @@ class Invitation(Base):
     project: Mapped[Project] = relationship(foreign_keys=[project_id])
 
 
+class SudoRole(Base):
+    """
+    `Managing sudoers.ldap`
+    """
+
+    __tablename__ = "sudo_role"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role_id: Mapped[int] = mapped_column(
+        ForeignKey("role.id", ondelete="CASCADE"), nullable=False
+    )
+    host_match: Mapped[str] = mapped_column(index=True)
+    cn: Mapped[str] = mapped_column(index=True)  # for checking uniqueness
+    record: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
+
+
 def _create_auth_for_project_stmt():
     """
     Let's say user wants to add a `Role`. We must ensure he or she have
