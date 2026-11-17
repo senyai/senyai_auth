@@ -268,36 +268,38 @@ class SudoRoleInfo(BaseModel, strict=True, frozen=True, extra="forbid"):
     # https://www.sudo.ws/docs/man/1.8.17/sudoers.ldap.man/#Sudo_schema_for_OpenLDAP
     cn: str
     sudoUser: str | list[str] | None = Field(
-        description="User(s) who may  run sudo"
+        default=None, description="User(s) who may  run sudo"
     )
     sudoHost: str | list[str] | None = Field(
-        description="Host(s) who may run sudo", default="ALL"
+        default="ALL", description="Host(s) who may run sudo"
     )
     sudoCommand: str | list[str] | None = Field(
-        description="Command(s) to be executed by sudo"
+        default=None, description="Command(s) to be executed by sudo"
     )
     sudoRunAs: str | list[str] | None = Field(
-        description="User(s) impersonated by sudo"
+        default=None, description="User(s) impersonated by sudo"
     )
     sudoOption: str | list[str] | None = Field(
-        description="Options(s) followed by sudo’"
+        default=None, description="Options(s) followed by sudo’"
     )
     sudoRunAsUser: str | list[str] | None = Field(
-        description="User(s) impersonated by sudo"
+        default=None, description="User(s) impersonated by sudo"
     )
     sudoRunAsGroup: str | list[str] | None = Field(
-        description="Group(s) impersonated by sudo"
+        default=None, description="Group(s) impersonated by sudo"
     )
     sudoNotBefore: str | None = Field(
-        description="Start of time interval for which the entry is valid"
+        default=None,
+        description="Start of time interval for which the entry is valid",
     )
     sudoNotAfter: str | None = Field(
-        description="End of time interval for which the entry is valid"
+        default=None,
+        description="End of time interval for which the entry is valid",
     )
     sudoOrder: int | None = Field(
-        description="an integer to order the sudoRole entries"
+        default=None, description="an integer to order the sudoRole entries"
     )
-    description: str | None = Field(description="")
+    description: str | None = Field(default=None, description="")
 
 
 SudoRolesInfo = TypeAdapter(dict[str, list[SudoRoleInfo]])
