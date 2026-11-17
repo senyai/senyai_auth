@@ -331,6 +331,7 @@ class RoleUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
             )
             if self.permissions_extra:
                 await _update_sudo_roles(session, role)
+                await session.commit()
 
 
 @router.patch(
