@@ -71,22 +71,19 @@ async def _update_sudo_roles(session: AsyncSession, role: Role) -> None:
             SudoRole.host_match.in_(host_match_search(host_match))
         )
         for record in records:
+            record_dict = record.model_dump(exclude_unset=True)
+            cn = record_dict.pop("cn")
             cn_already_exists = await session.scalar(
-                select(exist_query.where(SudoRole.cn == record.cn))
+                select(exist_query.where(SudoRole.cn == cn))
             )
             if cn_already_exists:
-                raise ValueError(f"cn `{record.cn}` already exists")
+                raise ValueError(f"cn `{cn}` already exists")
             new_roles.append(
                 SudoRole(
                     role_id=role.id,
                     host_match=host_match,
-                    cn=record.cn,
-                    record={
-                        "sudoUser": record.sudoUser,
-                        "sudoHost": record.sudoHost,
-                        "sudoCommand": record.sudoCommand,
-                        "sudoOrder": record.sudoOrder,
-                    },
+                    cn=cn,
+                    record=record_dict,
                 )
             )
     session.add_all(new_roles)
@@ -112,10 +109,6 @@ PermissionsExtra = Annotated[
         "vpc1": [
             {
                 "cn": "fulladmin",
-                "sudoUser": "devel",
-                "sudoHost": "ALL",
-                "sudoCommand": "ALL",
-                "sudoOrder": 100,
             }
         ]
         }
@@ -272,11 +265,39 @@ async def role(
 
 
 class SudoRoleInfo(BaseModel, strict=True, frozen=True, extra="forbid"):
+    # https://www.sudo.ws/docs/man/1.8.17/sudoers.ldap.man/#Sudo_schema_for_OpenLDAP
     cn: str
-    sudoUser: str
-    sudoHost: str
-    sudoCommand: str | list[str]
-    sudoOrder: int
+    sudoUser: str | list[str] | None = Field(
+        description="User(s) who may  run sudo"
+    )
+    sudoHost: str | list[str] | None = Field(
+        description="Host(s) who may run sudo", default="ALL"
+    )
+    sudoCommand: str | list[str] | None = Field(
+        description="Command(s) to be executed by sudo"
+    )
+    sudoRunAs: str | list[str] | None = Field(
+        description="User(s) impersonated by sudo"
+    )
+    sudoOption: str | list[str] | None = Field(
+        description="Options(s) followed by sudo’"
+    )
+    sudoRunAsUser: str | list[str] | None = Field(
+        description="User(s) impersonated by sudo"
+    )
+    sudoRunAsGroup: str | list[str] | None = Field(
+        description="Group(s) impersonated by sudo"
+    )
+    sudoNotBefore: str | None = Field(
+        description="Start of time interval for which the entry is valid"
+    )
+    sudoNotAfter: str | None = Field(
+        description="End of time interval for which the entry is valid"
+    )
+    sudoOrder: int | None = Field(
+        description="an integer to order the sudoRole entries"
+    )
+    description: str | None = Field(description="")
 
 
 SudoRolesInfo = TypeAdapter(dict[str, list[SudoRoleInfo]])

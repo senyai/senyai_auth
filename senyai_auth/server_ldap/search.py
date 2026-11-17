@@ -17,6 +17,7 @@ class SudoGroup(TypedDict):
     cn: str
     gidNumber: int
     memberUids: list[str]
+    record: dict[str, str | list[str]]
 
 
 class SudoUser(TypedDict):
@@ -502,6 +503,15 @@ class SearchRequest(univ.Sequence):
             assert res.status_code == 200, (res.status_code, sudo)
             for group in cast(list[SudoGroup], sudo["groups"]):
                 cn = group["cn"].encode()
+                record = {
+                    key.encode(): (
+                        value.encode()
+                        if isinstance(value, str)
+                        else [item.encode() for item in value]
+                    )
+                    for key, value in group["record"].items()
+                }
+
                 yield _create_search_result_entry(
                     dn=f"uid={cn},{server_ldap.DOMAIN.dc}",
                     attributes={
@@ -515,6 +525,7 @@ class SearchRequest(univ.Sequence):
                             f"uid={uid},ou=Users,{server_ldap.DOMAIN.dc}".encode()
                             for uid in group["memberUids"]
                         ],
+                        **record,
                     },
                 )
             for user in cast(list[SudoUser], sudo["users"]):

@@ -207,6 +207,7 @@ class SudoGroup(BaseModel, strict=True, frozen=True):
     cn: str
     gidNumber: int
     memberUids: list[str]
+    record: dict[str, str | list[str]]
     # members: list[str] - construct on client side
 
 
@@ -250,7 +251,10 @@ async def sudo_roles(
         raise not_authorized_exception
     roles_dict = {
         role_db.id: SudoGroup(
-            cn=role_db.cn, gidNumber=10_000 + role_db.id, memberUids=[]
+            cn=role_db.cn,
+            gidNumber=10_000 + role_db.id,
+            memberUids=[],
+            record=role_db.record,
         )
         for role_db in await session.scalars(
             select(SudoRole).where(

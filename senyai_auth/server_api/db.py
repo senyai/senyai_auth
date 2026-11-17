@@ -305,7 +305,9 @@ class SudoRole(Base):
     )
     host_match: Mapped[str] = mapped_column(index=True)
     cn: Mapped[str] = mapped_column(index=True)  # for checking uniqueness
-    record: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
+    record: Mapped[dict[str, str | list[str]]] = mapped_column(
+        JSON, nullable=False
+    )
 
 
 def _create_auth_for_project_stmt():
