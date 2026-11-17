@@ -132,7 +132,7 @@ class BindRequest(univ.Sequence):
                 matchedDN=b"",
                 diag=f"api backend down ({e})",
             )
-            logger.info("server error: post: {e}")
+            logger.info(f"server error: post: {e}")
             return
         future: Future[Bearer | None] = get_running_loop().create_future()
         bearer_cache[cache_key] = now + 10.0, future
