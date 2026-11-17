@@ -318,11 +318,12 @@ class RoleUpdate(BaseModel, strict=True, frozen=True, extra="forbid"):
     permissions_extra: PermissionsExtra | None = None
 
     async def update(self, session: AsyncSession, role: Role) -> None:
+        initial_permissions_extra = role.permissions_extra
         for key, value in self.model_dump(
             exclude_unset=True, exclude_none=True
         ).items():
             setattr(role, key, value)
-        if role.permissions_extra != self.permissions_extra:
+        if initial_permissions_extra != self.permissions_extra:
             from sqlalchemy import delete
 
             await session.execute(
