@@ -383,8 +383,16 @@ class SearchRequest(univ.Sequence):
                     {
                         "op": "or",
                         "operands": [
-                            {"lhs": "uid", "op": "=", "rhs": username},
-                            {"lhs": "mail", "op": "=", "rhs": username_mail},
+                            {
+                                "lhs": "uid",
+                                "op": "=",
+                                "rhs": str() as username,
+                            },
+                            {
+                                "lhs": "mail",
+                                "op": "=",
+                                "rhs": str() as username_mail,
+                            },
                         ],
                     },
                 ],
@@ -408,7 +416,7 @@ class SearchRequest(univ.Sequence):
             }:
                 async for lm in self._list_all_users(api_client):
                     yield lm
-            case {"op": "=", "lhs": "memberOf", "rhs": rhs_dn_str}:
+            case {"op": "=", "lhs": "memberOf", "rhs": str() as rhs_dn_str}:
                 rhs_dn = parse_dn(rhs_dn_str.encode())
                 assert rhs_dn.common_name == b"admin", rhs_dn.common_name
                 assert rhs_dn.organization_units == (b"groups",)
@@ -441,19 +449,20 @@ class SearchRequest(univ.Sequence):
                             ):
                                 yield lm
                             break
-
             case {
                 "op": "and",
                 "operands": [
-                    {"op": "=", "lhs": "uid", "rhs": username},
+                    {
+                        "op": "=",
+                        "lhs": "uid" | "memberuid",
+                        "rhs": str() as username,
+                    },
                     {"op": "=", "lhs": "objectclass", "rhs": "posixAccount"},
                     *_,
                 ],
             }:
-                assert isinstance(username, str)
                 async for lm in self._find_posix_account(api_client, username):
                     yield lm
-
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
                 yield self._error(msg)
