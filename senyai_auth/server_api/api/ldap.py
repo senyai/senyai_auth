@@ -330,7 +330,7 @@ async def sudo_posix_account(
         status.HTTP_404_NOT_FOUND: response_description("User not found"),
     },
 )
-async def sudo_posix_account(
+async def sudo_posix_groups(
     username: str,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),

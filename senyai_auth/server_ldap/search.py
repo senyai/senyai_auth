@@ -463,11 +463,21 @@ class SearchRequest(univ.Sequence):
                 "op": "and",
                 "operands": [
                     {"op": "=", "lhs": "memberuid", "rhs": str() as username},
-                    {"op": "=", "lhs": "objectclass", "rhs": "posixGroup"},
+                    {"op": "=", "lhs": "objectClass", "rhs": "posixGroup"},
                     *_,
                 ],
             }:
-                async for lm in self._find_posix_groups(api_client, username):
+                async for lm in self._find_posix_groups(username):
+                    yield lm
+            case {
+                "op": "and",
+                "operands": [
+                    {"op": "=", "lhs": "gidNumber", "rhs": str() as gid},
+                    {"op": "=", "lhs": "objectClass", "rhs": "posixGroup"},
+                    *_,
+                ],
+            }:
+                async for lm in self._find_posix_group(api_client, gid):
                     yield lm
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
@@ -632,6 +642,17 @@ class SearchRequest(univ.Sequence):
             )
             return
         yield _create_search_result_done()  # success
+
+    async def _find_posix_group(
+        self, gid: str
+    ) -> AsyncGenerator[LDAPMessage, None]:
+        assert gid.isnumeric()
+        gid_num = int(gid)
+        if gid_num >= 40000:
+            yield _create_search_result_done()  # no group exists - good!
+        yield _create_search_result_done(
+            result_code=1, diag=f"do not request gid `{gid_num}`"
+        )
 
     async def _search_projects(
         self, api_client: AsyncClient
