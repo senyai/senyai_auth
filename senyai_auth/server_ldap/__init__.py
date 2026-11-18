@@ -173,11 +173,25 @@ class LDAPProtocol:
 
 
 async def _server_main(
-    host: str, port: int, api_url: str, usernames: set[str]
+    host: str,
+    port: int,
+    api_url: str,
+    usernames: set[str],
+    certs: tuple[str, str] | None,
 ) -> None:
+    if certs is not None:
+        import ssl
+
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.load_cert_chain(certfile=certs[0], keyfile=certs[1])
+    else:
+        tls_context = None
+
     LDAPProtocol.base_url = api_url.rstrip("/")
     BindRequest.usernames = usernames
-    server = await start_server(LDAPProtocol.handle_client, host, port)
+    server = await start_server(
+        LDAPProtocol.handle_client, host, port, ssl=tls_context
+    )
     addr = server.sockets[0].getsockname()
     logger.info(
         f"{__name__} server listening on {addr} and serving {DOMAIN.name}"
@@ -218,6 +232,9 @@ def main():
         help=f"{help}, usernames to cache",
         nargs="*",
         default=[],
+    )
+    parser.add_argument(
+        "--ssl", dest="certs", nargs=2, help="path to cert.pem and key.pem"
     )
     args = vars(parser.parse_args())
     args["usernames"] = str(args["usernames"])
