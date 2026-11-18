@@ -447,7 +447,7 @@ class SearchRequest(univ.Sequence):
                 "operands": [
                     {"op": "=", "lhs": "uid", "rhs": username},
                     {"op": "=", "lhs": "objectclass", "rhs": "posixAccount"},
-                    _,
+                    *_,
                 ],
             }:
                 assert isinstance(username, str)
@@ -562,22 +562,21 @@ class SearchRequest(univ.Sequence):
         res = await api_client.get(url)
         logger.info(f"GET {url}: {res.status_code}")
         if res.status_code == 200:
-            sudo_accounts = res.json()
-            assert res.status_code == 200, (res.status_code, sudo_accounts)
-            for user in cast(list[SudoUser], sudo_accounts):
-                uid = user["uid"]
-                yield _create_search_result_entry(
-                    dn=f"uid={uid},{server_ldap.DOMAIN.dc}",
-                    attributes={
-                        b"objectClass": [b"top", b"posixAccount"],
-                        b"uid": uid.encode(),
-                        b"uidNumber": b"%d" % user["uidNumber"],
-                        b"gidNumber": b"%d" % user["gidNumber"],
-                        b"cn": user["cn"].encode(),
-                        b"homeDirectory": user["homeDirectory"].encode(),
-                        b"loginShell": user["loginShell"].encode(),
-                    },
-                )
+            sudo_account = cast(SudoUser, res.json())
+            assert res.status_code == 200, (res.status_code, sudo_account)
+            uid = sudo_account["uid"]
+            yield _create_search_result_entry(
+                dn=f"uid={uid},{server_ldap.DOMAIN.dc}",
+                attributes={
+                    b"objectClass": [b"top", b"posixAccount"],
+                    b"uid": uid.encode(),
+                    b"uidNumber": b"%d" % sudo_account["uidNumber"],
+                    b"gidNumber": b"%d" % sudo_account["gidNumber"],
+                    b"cn": sudo_account["cn"].encode(),
+                    b"homeDirectory": sudo_account["homeDirectory"].encode(),
+                    b"loginShell": sudo_account["loginShell"].encode(),
+                },
+            )
         elif res.status_code != 404:
             yield _create_search_result_done(
                 result_code=1, diag=f"api status {res.status_code}"
