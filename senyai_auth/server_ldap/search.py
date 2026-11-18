@@ -467,7 +467,7 @@ class SearchRequest(univ.Sequence):
                     *_,
                 ],
             }:
-                async for lm in self._find_posix_groups(username):
+                async for lm in self._find_posix_groups(api_client, username):
                     yield lm
             case {
                 "op": "and",
@@ -477,7 +477,7 @@ class SearchRequest(univ.Sequence):
                     *_,
                 ],
             }:
-                async for lm in self._find_posix_group(api_client, gid):
+                async for lm in self._find_posix_group(gid):
                     yield lm
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
