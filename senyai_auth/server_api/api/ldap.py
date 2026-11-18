@@ -4,6 +4,7 @@ from pydantic import BaseModel, StringConstraints
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 from ..db import (
     all_users_extra_stmt,
     all_users_git_stmt,
@@ -320,7 +321,52 @@ async def sudo_posix_account(
         loginShell="/bin/bash",
     )
 
-    # return LDAPSudo(
-    #     users=list(users_dict.values()),
-    #     groups=list(roles_dict.values()),
-    # )
+
+@router.get(
+    "/sudo_posix_groups/{username}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("User not found"),
+    },
+)
+async def sudo_posix_account(
+    username: str,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> list[SudoGroup]:
+    """
+    Trying to implement `sudoers.ldap`
+    """
+    permissions = await session.scalar(
+        permissions_api_stmt, {"user_id": auth_user.id}
+    )
+    assert permissions is not None
+    if permissions < PermissionsAPI.admin:
+        raise not_authorized_exception
+    user = await session.scalar(
+        select(User)
+        .where(User.username == username)
+        .options(load_only(User.id))
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    roles: list[SudoGroup] = []
+    for role_db in await session.scalars(
+        select(SudoRole)
+        .join(MemberRole, SudoRole.role_id == MemberRole.role_id)
+        .where(MemberRole.user_id == user.id)
+    ):
+        roles.append(
+            SudoGroup(
+                cn=role_db.cn,
+                gidNumber=10_000 + role_db.id,
+                memberUids=[],
+                record=role_db.record,
+            )
+        )
+    return roles

@@ -452,16 +452,22 @@ class SearchRequest(univ.Sequence):
             case {
                 "op": "and",
                 "operands": [
-                    {
-                        "op": "=",
-                        "lhs": "uid" | "memberuid",
-                        "rhs": str() as username,
-                    },
+                    {"op": "=", "lhs": "uid", "rhs": str() as username},
                     {"op": "=", "lhs": "objectclass", "rhs": "posixAccount"},
                     *_,
                 ],
             }:
                 async for lm in self._find_posix_account(api_client, username):
+                    yield lm
+            case {
+                "op": "and",
+                "operands": [
+                    {"op": "=", "lhs": "memberuid", "rhs": str() as username},
+                    {"op": "=", "lhs": "objectclass", "rhs": "posixGroup"},
+                    *_,
+                ],
+            }:
+                async for lm in self._find_posix_groups(api_client, username):
                     yield lm
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
@@ -527,9 +533,9 @@ class SearchRequest(univ.Sequence):
         res = await api_client.get(url)
         logger.info(f"GET {url}: {res.status_code}")
         if res.status_code == 200:
-            sudo_roles = res.json()
+            sudo_roles = cast(list[SudoGroup], res.json())
             assert res.status_code == 200, (res.status_code, sudo_roles)
-            for group in cast(list[SudoGroup], sudo_roles):
+            for group in sudo_roles:
                 cn = group["cn"].encode()
                 record = {
                     key.encode(): (
@@ -586,6 +592,40 @@ class SearchRequest(univ.Sequence):
                     b"loginShell": sudo_account["loginShell"].encode(),
                 },
             )
+        elif res.status_code != 404:
+            yield _create_search_result_done(
+                result_code=1, diag=f"api status {res.status_code}"
+            )
+            return
+        yield _create_search_result_done()  # success
+
+    async def _find_posix_groups(
+        self, api_client: AsyncClient, username: str
+    ) -> AsyncGenerator[LDAPMessage, None]:
+        username = quote(username, safe="").replace(".", "%2E")
+        url = f"/ldap/sudo_posix_groups/{quote(username)}"
+        res = await api_client.get(url)
+        logger.info(f"GET {url}: {res.status_code}")
+        if res.status_code == 200:
+            posix_groups = cast(list[SudoGroup], res.json())
+            assert res.status_code == 200, (res.status_code, posix_groups)
+            for group in posix_groups:
+                cn = group["cn"]
+                yield _create_search_result_entry(
+                    dn=f"uid={cn},{server_ldap.DOMAIN.dc}",
+                    attributes={
+                        b"objectClass": [b"posixGroup", b"sudoRole"],
+                        b"cn": cn.encode(),
+                        b"gidNumber": b"%d" % group["gidNumber"],
+                        b"memberUid": [
+                            uid.encode() for uid in group["memberUids"]
+                        ],
+                        b"memberUid": [
+                            f"uid={uid},ou=Users,{server_ldap.DOMAIN.dc}".encode()
+                            for uid in group["memberUids"]
+                        ],
+                    },
+                )
         elif res.status_code != 404:
             yield _create_search_result_done(
                 result_code=1, diag=f"api status {res.status_code}"
