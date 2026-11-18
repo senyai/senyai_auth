@@ -173,6 +173,9 @@ def _filter_build(self):
         return {"op": "!", "rhs": self[op].build()}
     if op == "substrings":
         return {"op": "substrings", "rhs": self[op].build()}
+    if op == "present":
+        return {"op": "has", "attr": self[op].asOctets().decode()}
+
     raise NotImplementedError(op)
 
 
@@ -338,6 +341,7 @@ class SearchRequest(univ.Sequence):
 
     @staticmethod
     def _error(diag: str) -> LDAPMessage:
+        logger.warning(diag)
         return _create_search_result_done(result_code=1, diag=diag)
 
     async def process(
@@ -425,18 +429,33 @@ class SearchRequest(univ.Sequence):
             }:
                 for operand in operands:
                     if operand["op"] == "=" and operand["lhs"] == "sudoHost":
-                        host: str = operand["rhs"]
+                        host = operand["rhs"]
+                        assert isinstance(host, str)
                         if (
                             ":" not in host
                             and "." not in host
                             and host != "ALL"
                         ):
-                            async for lm in self._find_sudo(api_client, host):
+                            async for lm in self._find_sudo_roles(
+                                api_client, host
+                            ):
                                 yield lm
                             break
+
+            case {
+                "op": "and",
+                "operands": [
+                    {"op": "=", "lhs": "uid", "rhs": username},
+                    {"op": "=", "lhs": "objectclass", "rhs": "posixAccount"},
+                    _,
+                ],
+            }:
+                assert isinstance(username, str)
+                async for lm in self._find_posix_account(api_client, username):
+                    yield lm
+
             case unknown_query:
                 msg = f"query {unknown_query} not implemented"
-                logger.warning(msg)
                 yield self._error(msg)
 
     async def _list_all_users(self, api_client: AsyncClient):
@@ -491,17 +510,17 @@ class SearchRequest(univ.Sequence):
             return
         yield _create_search_result_done()  # success
 
-    async def _find_sudo(
+    async def _find_sudo_roles(
         self, api_client: AsyncClient, host: str
     ) -> AsyncGenerator[LDAPMessage, None]:
         host = quote(host, safe="").replace(".", "%2E")
-        url = f"/ldap/sudo/{quote(host)}"
+        url = f"/ldap/sudo_roles/{quote(host)}"
         res = await api_client.get(url)
         logger.info(f"GET {url}: {res.status_code}")
         if res.status_code == 200:
-            sudo = res.json()
-            assert res.status_code == 200, (res.status_code, sudo)
-            for group in cast(list[SudoGroup], sudo["groups"]):
+            sudo_roles = res.json()
+            assert res.status_code == 200, (res.status_code, sudo_roles)
+            for group in cast(list[SudoGroup], sudo_roles):
                 cn = group["cn"].encode()
                 record = {
                     key.encode(): (
@@ -515,7 +534,7 @@ class SearchRequest(univ.Sequence):
                 yield _create_search_result_entry(
                     dn=f"uid={cn},{server_ldap.DOMAIN.dc}",
                     attributes={
-                        b"objectClass": b"posixGroup",
+                        b"objectClass": [b"posixGroup", b"sudoRole"],
                         b"cn": cn,
                         b"gidNumber": b"%d" % group["gidNumber"],
                         b"memberUid": [
@@ -528,7 +547,24 @@ class SearchRequest(univ.Sequence):
                         **record,
                     },
                 )
-            for user in cast(list[SudoUser], sudo["users"]):
+        elif res.status_code != 404:
+            yield _create_search_result_done(
+                result_code=1, diag=f"api status {res.status_code}"
+            )
+            return
+        yield _create_search_result_done()  # success
+
+    async def _find_posix_account(
+        self, api_client: AsyncClient, username: str
+    ) -> AsyncGenerator[LDAPMessage, None]:
+        username = quote(username, safe="").replace(".", "%2E")
+        url = f"/ldap/sudo_posix_account/{quote(username)}"
+        res = await api_client.get(url)
+        logger.info(f"GET {url}: {res.status_code}")
+        if res.status_code == 200:
+            sudo_accounts = res.json()
+            assert res.status_code == 200, (res.status_code, sudo_accounts)
+            for user in cast(list[SudoUser], sudo_accounts):
                 uid = user["uid"]
                 yield _create_search_result_entry(
                     dn=f"uid={uid},{server_ldap.DOMAIN.dc}",
@@ -542,7 +578,7 @@ class SearchRequest(univ.Sequence):
                         b"loginShell": user["loginShell"].encode(),
                     },
                 )
-        else:
+        elif res.status_code != 404:
             yield _create_search_result_done(
                 result_code=1, diag=f"api status {res.status_code}"
             )

@@ -228,7 +228,7 @@ class LDAPSudo(BaseModel, strict=True, frozen=True):
 
 
 @router.get(
-    "/sudo/{host}",
+    "/sudo_roles/{host}",
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
@@ -239,7 +239,7 @@ async def sudo_roles(
     host: str,
     auth_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
-) -> LDAPSudo:
+) -> list[SudoGroup]:
     """
     Trying to implement `sudoers.ldap`
     """
@@ -280,7 +280,47 @@ async def sudo_roles(
                 loginShell="/bin/bash",
             )
 
-    return LDAPSudo(
-        users=list(users_dict.values()),
-        groups=list(roles_dict.values()),
+    return list(roles_dict.values())
+
+
+@router.get(
+    "/sudo_posix_account/{username}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: response_with_perm_check,
+        status.HTTP_404_NOT_FOUND: response_description("User not found"),
+    },
+)
+async def sudo_posix_account(
+    username: str,
+    auth_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> SudoUser:
+    """
+    Trying to implement `sudoers.ldap`
+    """
+    permissions = await session.scalar(
+        permissions_api_stmt, {"user_id": auth_user.id}
     )
+    assert permissions is not None
+    if permissions < PermissionsAPI.admin:
+        raise not_authorized_exception
+    user = await session.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return SudoUser(
+        uid=user.username,
+        uidNumber=40_000 + user.id,
+        gidNumber=40_000 + user.id,
+        cn=user.display_name,
+        homeDirectory=f"/home/{user.username}",
+        loginShell="/bin/bash",
+    )
+
+    # return LDAPSudo(
+    #     users=list(users_dict.values()),
+    #     groups=list(roles_dict.values()),
+    # )
