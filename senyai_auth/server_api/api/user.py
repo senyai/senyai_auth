@@ -135,14 +135,12 @@ class CreateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
         return value
 
     def make_user(self) -> User:
-        salt = User.make_salt()
         password_hash = User.create_password_hash(
-            password=self.password.get_secret_value(), salt=salt
+            password=self.password.get_secret_value()
         )
         return User(
             username=self.username,
             password_hash=password_hash,
-            salt=salt,
             email=self.email,
             contacts=self.contacts,
             display_name=self.display_name,
@@ -239,25 +237,28 @@ class UpdateUserModel(BaseModel, strict=True, frozen=True, extra="forbid"):
         return self
 
     def update(self, user: User, is_superadmin: bool) -> None:
+        token_touched = False
         if self.password_old is not None and self.password_new is not None:
-            current_password_hash = user.create_password_hash(
-                self.password_old.get_secret_value(), user.salt
-            )
-            if current_password_hash != user.password_hash:
+            password_old = self.password_old.get_secret_value()
+            if not user.validate_password(password_old):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Current password does not match",
                 )
             user.update_password(self.password_new.get_secret_value())
+            token_touched = True  # `update_password` touches it
         if self.username is not None and not is_superadmin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only Administrator can change user's username",
             )
+        init_user_disabled = user.disabled
         for key, value in self.model_dump(
             exclude_unset=True, exclude_none=True, exclude={"password"}
         ).items():
             setattr(user, key, value)
+        if init_user_disabled != user.disabled and not token_touched:
+            user.update_token_ver()
 
 
 class UserInfo(BaseModel, strict=True, frozen=True):
