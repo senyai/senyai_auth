@@ -102,13 +102,11 @@ invitation_str: str | None = None
 
 class WorkflowTest(IsolatedAsyncioTestCase):
     async def create_test_user(self):
-        salt = ")mEzH=k-BU>poq%uz8=d"
         password = "realitycheck23"
         test_admin = User(
             username="test_admin",
             display_name="Test Admin",
-            password_hash=User.create_password_hash(password, salt),
-            salt=salt,
+            password_hash=User.create_password_hash(password),
             email="test_admin@example.com",
         )
         root_project = Project(

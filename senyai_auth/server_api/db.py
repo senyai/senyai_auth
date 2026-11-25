@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import base64
 from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -10,7 +8,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 from datetime import datetime
-from pyargon2 import hash as pyargon2_hash
+from argon2 import PasswordHasher
 from sqlalchemy import (
     bindparam,
     CheckConstraint,
@@ -41,8 +39,8 @@ class Base(DeclarativeBase):
 
 class MemberRole(Base):
     """
-    Assign a role user to a user. Must be managed carefully, because users can be
-    removed from `Project` `Member`s
+    Assign a role user to a user. Must be managed carefully, because users
+    can be removed from `Project` `Member`s
     """
 
     __tablename__ = "member_role"
@@ -66,6 +64,11 @@ class MemberRole(Base):
     # member: Mapped[Member] = relationship()
 
 
+# parameters are much weaker than recommended in `rfc9106`, but we are
+# deploying on weak hardware and all passwords should be fine
+PH = PasswordHasher(time_cost=3, memory_cost=2048, parallelism=1)
+
+
 class User(Base):
     __tablename__ = "user"
 
@@ -78,7 +81,8 @@ class User(Base):
         default=lambda x: x.get_current_parameters()["username"],
     )
     password_hash: Mapped[str] = mapped_column(nullable=False)
-    salt: Mapped[str] = mapped_column(nullable=False)
+    token_ver: Mapped[int] = mapped_column(nullable=False, default=0)
+    salt: Mapped[str] = mapped_column(nullable=False, default="deprecated")
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     contacts: Mapped[str] = mapped_column(
         default="", nullable=False, deferred=True
@@ -103,32 +107,33 @@ class User(Base):
     )
 
     @staticmethod
-    def make_salt() -> str:
-        return base64.b85encode(os.urandom(16)).decode()
-
-    @staticmethod
-    def create_password_hash(password: str, salt: str):
+    def create_password_hash(password: str) -> str:
         """
         Convenient method for when a new user is created or
         existing user changes its password
         """
-        return pyargon2_hash(
-            password=password, salt=salt, encoding="b64", variant="id"
-        )
+        return PH.hash(password)
 
     def validate_password(self, password: str) -> bool:
         """
         This method should ony be used once in login /token api
         """
-        return self.password_hash == self.create_password_hash(
-            password, self.salt
-        )
+        try:
+            res = PH.verify(self.password_hash, password)
+            if PH.check_needs_rehash(self.password_hash):
+                self.update_password(password)
+            return res
+        except Exception:
+            return False
+
+    def update_token_ver(self):
+        tv = self.token_ver
+        # not atomic, but should be fine
+        self.token_ver = tv + 1 if tv < 0x7FFFFFFF else 0
 
     def update_password(self, password: str) -> None:
-        new_salt = User.make_salt()
-        new_password_hash = self.create_password_hash(password, new_salt)
-        self.salt = new_salt
-        self.password_hash = new_password_hash
+        self.password_hash = PH.hash(password)
+        self.update_token_ver()
 
     def mark_deleted(self):
         self.username = f"deleted-user-{self.id}"
@@ -138,6 +143,7 @@ class User(Base):
         self.email = f"deleted-user@localhost"
         self.contacts = ""
         self.disabled = True
+        self.update_token_ver()
         # do not touch `created_at` and `last_login_at`
 
     def __repr__(self) -> str:
@@ -369,7 +375,7 @@ def _create_get_user_for_authentication_stmt():
                 User.id,
                 User.username,
                 User.password_hash,
-                User.salt,
+                User.token_ver,
                 User.disabled,
             )
         )
@@ -504,7 +510,7 @@ get_user_for_session_stmt = (
         load_only(
             User.id,
             User.username,
-            User.salt,
+            User.token_ver,
             User.disabled,
         )
     )

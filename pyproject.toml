@@ -15,10 +15,10 @@ classifiers = [
 dependencies = [
   "aiosqlite>=0.22.1",
   "fastapi[standard]>=0.128.0",
-  "pyargon2>=1.1.2",
+  "argon2-cffi==25.1.0",
   "pyasn1>=0.6.1",
   "pydantic>=2.12.5",
-  "PyJWT>=2.10.1",
+  "PyJWT>=2.15.1",
   "sqlalchemy[asyncio]>=2.1.1",
   "zxcvbn>=4.5.0",
   "Quart>=0.20.0",

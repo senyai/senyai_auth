@@ -30,7 +30,6 @@ async def _init(
     password = base64.b85encode(os.urandom(10)).decode()
     display_name = "Administrator"
     email = ""
-    salt = User.make_salt()
 
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -59,8 +58,7 @@ async def _init(
         user = User(
             username=username,
             display_name=display_name,
-            password_hash=User.create_password_hash(password, salt),
-            salt=salt,
+            password_hash=User.create_password_hash(password),
             email=email,
         )
         session.add(user)

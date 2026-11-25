@@ -26,18 +26,23 @@ class Token(BaseModel, strict=True, frozen=True):
 
 
 class TokenData(TypedDict):
-    username: str
-    salt: str  # defence against user password change
+    sub: str
+    "username"
+    tv: int
+    (
+        "token version. if tv is updated, token must be reevaluated. "
+        "tv should be updated on logout"
+    )
     exp: datetime
 
 
 def _create_access_token(
-    username: str, expires_delta: timedelta, salt: str
+    username: str, expires_delta: timedelta, token_ver: int
 ) -> str:
     to_encode: TokenData = {
-        "username": username,
+        "sub": username,
         "exp": datetime.now(timezone.utc) + expires_delta,
-        "salt": salt,
+        "tv": token_ver,
     }
     encoded_jwt = jwt.encode(
         to_encode, app.state.secret_key, algorithm=app.state.algorithm
@@ -88,7 +93,7 @@ async def login_for_access_token(
     access_token = _create_access_token(
         username=user.username,
         expires_delta=access_token_expires,
-        salt=user.salt,
+        token_ver=user.token_ver,
     )
     return Token(access_token=access_token, token_type="bearer")
 
@@ -118,13 +123,19 @@ async def get_current_user(
         )
     # we must fetch user on every request, because user information update
     user = await session.scalar(
-        get_user_for_session_stmt, {"username": payload["username"]}
+        get_user_for_session_stmt, {"username": payload["sub"]}
     )
-    # we must check salt because user password can change
-    if user is None or user.salt != payload["salt"] or user.disabled:
+    if user is None or user.disabled:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User is not available anymore",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    elif user.token_ver != payload["tv"]:  # password or status changed
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
